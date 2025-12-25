@@ -1,20 +1,28 @@
 import { useState } from "react";
 import { Habit } from "@/types/habit";
+import { Task } from "@/types/task";
 import { defaultHabits, generateId, getMonthName } from "@/lib/habitUtils";
+import { defaultTasks } from "@/lib/taskUtils";
 import { HabitGrid } from "@/components/HabitGrid";
 import { StatsOverview } from "@/components/StatsOverview";
 import { CompletionLineChart } from "@/components/charts/CompletionLineChart";
 import { HabitPieChart } from "@/components/charts/HabitPieChart";
 import { HabitBarChart } from "@/components/charts/HabitBarChart";
 import { IndividualHabitChart } from "@/components/charts/IndividualHabitChart";
+import { TaskCompletionChart } from "@/components/charts/TaskCompletionChart";
+import { TaskProgressChart } from "@/components/charts/TaskProgressChart";
 import { AddHabitDialog } from "@/components/AddHabitDialog";
+import { GoalsOverview } from "@/components/GoalsOverview";
+import { TaskReportCard } from "@/components/TaskReportCard";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const Index = () => {
   const [habits, setHabits] = useState<Habit[]>(defaultHabits);
+  const [tasks, setTasks] = useState<Task[]>(defaultTasks);
   const [currentMonth, setCurrentMonth] = useState(new Date(2025, 0, 1)); // January 2025
 
   const handleToggleDay = (habitId: string, day: number) => {
@@ -58,6 +66,27 @@ const Index = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
+  const handleToggleTask = (taskId: string) => {
+    setTasks(prev =>
+      prev.map(task =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      )
+    );
+  };
+
+  const handleAddTask = (task: Task) => {
+    setTasks(prev => [...prev, task]);
+    toast.success(`Added "${task.title}"`);
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+    if (task) {
+      toast.success(`Removed "${task.title}"`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -92,46 +121,83 @@ const Index = () => {
           <StatsOverview habits={habits} currentMonth={currentMonth} />
         </section>
 
-        {/* Habit Grid */}
-        <section>
-          <Card className="overflow-hidden border-border">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <h2 className="font-semibold">Monthly Tracking Grid</h2>
-              {habits.length > 0 && (
-                <div className="flex gap-2">
-                  {habits.slice(0, 3).map(habit => (
-                    <Button
-                      key={habit.id}
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteHabit(habit.id)}
-                    >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      {habit.name.substring(0, 10)}...
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <HabitGrid
-              habits={habits}
-              currentMonth={currentMonth}
-              onToggleDay={handleToggleDay}
-            />
-          </Card>
-        </section>
+        <Tabs defaultValue="habits" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
+            <TabsTrigger value="habits">Habits</TabsTrigger>
+            <TabsTrigger value="goals">Goals & Tasks</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
+          </TabsList>
 
-        {/* Charts Section */}
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Analytics</h2>
-          <div className="grid lg:grid-cols-2 gap-6">
-            <CompletionLineChart habits={habits} currentMonth={currentMonth} />
-            <HabitPieChart habits={habits} />
-            <HabitBarChart habits={habits} currentMonth={currentMonth} />
-            <IndividualHabitChart habits={habits} currentMonth={currentMonth} />
-          </div>
-        </section>
+          <TabsContent value="habits" className="space-y-8">
+            {/* Habit Grid */}
+            <section>
+              <Card className="overflow-hidden border-border">
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                  <h2 className="font-semibold">Monthly Tracking Grid</h2>
+                  {habits.length > 0 && (
+                    <div className="flex gap-2">
+                      {habits.slice(0, 3).map(habit => (
+                        <Button
+                          key={habit.id}
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteHabit(habit.id)}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          {habit.name.substring(0, 10)}...
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <HabitGrid
+                  habits={habits}
+                  currentMonth={currentMonth}
+                  onToggleDay={handleToggleDay}
+                />
+              </Card>
+            </section>
+
+            {/* Habit Charts */}
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Habit Analytics</h2>
+              <div className="grid lg:grid-cols-2 gap-6">
+                <CompletionLineChart habits={habits} currentMonth={currentMonth} />
+                <HabitPieChart habits={habits} />
+                <HabitBarChart habits={habits} currentMonth={currentMonth} />
+                <IndividualHabitChart habits={habits} currentMonth={currentMonth} />
+              </div>
+            </section>
+          </TabsContent>
+
+          <TabsContent value="goals" className="space-y-8">
+            <GoalsOverview
+              tasks={tasks}
+              currentMonth={currentMonth}
+              onToggleTask={handleToggleTask}
+              onAddTask={handleAddTask}
+              onDeleteTask={handleDeleteTask}
+            />
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-8">
+            {/* Task Reports */}
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Task Reports</h2>
+              <TaskReportCard tasks={tasks} />
+            </section>
+
+            {/* Task Charts */}
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Task Analytics</h2>
+              <div className="grid lg:grid-cols-2 gap-6">
+                <TaskCompletionChart tasks={tasks} />
+                <TaskProgressChart tasks={tasks} currentMonth={currentMonth} />
+              </div>
+            </section>
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Footer */}
