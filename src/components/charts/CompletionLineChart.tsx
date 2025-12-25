@@ -52,10 +52,10 @@ export const CompletionLineChart = ({ habits, currentMonth }: CompletionLineChar
             <Line
               type="monotone"
               dataKey="completion"
-              stroke="hsl(var(--foreground))"
+              stroke="hsl(var(--chart-1))"
               strokeWidth={2}
-              dot={{ fill: "hsl(var(--foreground))", strokeWidth: 0, r: 3 }}
-              activeDot={{ r: 5, fill: "hsl(var(--foreground))" }}
+              dot={{ fill: "hsl(var(--chart-1))", strokeWidth: 0, r: 3 }}
+              activeDot={{ r: 5, fill: "hsl(var(--chart-1))" }}
             />
           </LineChart>
         </ResponsiveContainer>

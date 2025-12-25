@@ -47,7 +47,7 @@ export const TaskCompletionChart = ({ tasks }: TaskCompletionChartProps) => {
     },
   ].filter(d => d.value > 0);
 
-  const COLORS = ["hsl(var(--foreground))", "hsl(var(--muted-foreground))", "hsl(var(--accent-foreground))", "hsl(var(--card-foreground))"];
+  const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
 
   return (
     <Card className="p-6 border-border">

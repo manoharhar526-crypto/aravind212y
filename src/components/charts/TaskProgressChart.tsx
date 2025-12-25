@@ -31,11 +31,13 @@ export const TaskProgressChart = ({ tasks, currentMonth }: TaskProgressChartProp
     };
   });
 
+  const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
+
   const categoryData = [
-    { name: "General", rate: calculateTaskCompletionRate(getTasksByType(tasks, "general")) },
-    { name: "Monthly", rate: calculateTaskCompletionRate(getTasksByType(tasks, "monthly")) },
-    { name: "Weekly", rate: calculateTaskCompletionRate(getTasksByType(tasks, "weekly")) },
-    { name: "Daily", rate: calculateTaskCompletionRate(getTasksByType(tasks, "daily")) },
+    { name: "General", rate: calculateTaskCompletionRate(getTasksByType(tasks, "general")), color: COLORS[0] },
+    { name: "Monthly", rate: calculateTaskCompletionRate(getTasksByType(tasks, "monthly")), color: COLORS[1] },
+    { name: "Weekly", rate: calculateTaskCompletionRate(getTasksByType(tasks, "weekly")), color: COLORS[2] },
+    { name: "Daily", rate: calculateTaskCompletionRate(getTasksByType(tasks, "daily")), color: COLORS[3] },
   ];
 
   return (
@@ -64,10 +66,10 @@ export const TaskProgressChart = ({ tasks, currentMonth }: TaskProgressChartProp
             formatter={(value: number) => [`${value}%`, "Completion"]}
           />
           <Bar dataKey="rate" radius={[4, 4, 0, 0]}>
-            {categoryData.map((_, index) => (
+            {categoryData.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`}
-                fill={index % 2 === 0 ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))"}
+                fill={entry.color}
               />
             ))}
           </Bar>
