@@ -1,6 +1,10 @@
 import { Task, TaskType } from "@/types/task";
 import { generateId } from "./habitUtils";
 
+export const getDaysInMonth = (date: Date): number => {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+};
+
 export const defaultTasks: Task[] = [
   // General Goals
   { id: generateId(), title: "Improve overall fitness", completed: false, type: "general" },

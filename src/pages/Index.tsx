@@ -14,6 +14,7 @@ import { TaskProgressChart } from "@/components/charts/TaskProgressChart";
 import { AddHabitDialog } from "@/components/AddHabitDialog";
 import { GoalsOverview } from "@/components/GoalsOverview";
 import { TaskReportCard } from "@/components/TaskReportCard";
+import { DailyTasksView } from "@/components/DailyTasksView";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -173,6 +174,13 @@ const Index = () => {
 
           <TabsContent value="goals" className="space-y-8">
             <GoalsOverview
+              tasks={tasks}
+              currentMonth={currentMonth}
+              onToggleTask={handleToggleTask}
+              onAddTask={handleAddTask}
+              onDeleteTask={handleDeleteTask}
+            />
+            <DailyTasksView
               tasks={tasks}
               currentMonth={currentMonth}
               onToggleTask={handleToggleTask}
