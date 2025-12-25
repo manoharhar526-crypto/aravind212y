@@ -11,12 +11,25 @@ interface HabitBarChartProps {
 export const HabitBarChart = ({ habits, currentMonth }: HabitBarChartProps) => {
   const daysInMonth = getDaysInMonth(currentMonth);
   
+  const COLORS = [
+    "hsl(var(--chart-1))",
+    "hsl(var(--chart-2))",
+    "hsl(var(--chart-3))",
+    "hsl(var(--chart-4))",
+    "hsl(var(--chart-5))",
+    "hsl(142, 60%, 40%)",
+    "hsl(221, 70%, 45%)",
+    "hsl(262, 70%, 50%)",
+    "hsl(25, 80%, 45%)",
+    "hsl(340, 70%, 45%)",
+  ];
+
   const data = habits.map((habit, index) => ({
     name: habit.name.length > 12 ? habit.name.substring(0, 12) + "..." : habit.name,
     fullName: habit.name,
     completion: calculateCompletionRate(habit, daysInMonth),
     days: habit.completedDays.length,
-    fill: `hsl(0, 0%, ${20 + index * (60 / habits.length)}%)`,
+    fill: COLORS[index % COLORS.length],
   }));
 
   return (

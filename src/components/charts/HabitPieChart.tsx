@@ -7,10 +7,23 @@ interface HabitPieChartProps {
 }
 
 export const HabitPieChart = ({ habits }: HabitPieChartProps) => {
+  const COLORS = [
+    "hsl(var(--chart-1))",
+    "hsl(var(--chart-2))",
+    "hsl(var(--chart-3))",
+    "hsl(var(--chart-4))",
+    "hsl(var(--chart-5))",
+    "hsl(142, 60%, 40%)",
+    "hsl(221, 70%, 45%)",
+    "hsl(262, 70%, 50%)",
+    "hsl(25, 80%, 45%)",
+    "hsl(340, 70%, 45%)",
+  ];
+
   const data = habits.map((habit, index) => ({
     name: habit.name,
     value: habit.completedDays.length,
-    fill: `hsl(0, 0%, ${90 - index * (70 / habits.length)}%)`,
+    fill: COLORS[index % COLORS.length],
   }));
 
   const totalCompleted = data.reduce((sum, item) => sum + item.value, 0);
