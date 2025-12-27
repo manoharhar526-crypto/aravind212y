@@ -1,6 +1,7 @@
 import { Task } from "@/types/task";
 import { TaskSection } from "./TaskSection";
 import { getDailyTasksByDay, getDaysInMonth } from "@/lib/taskUtils";
+import { getDayOfWeek } from "@/lib/habitUtils";
 
 interface DailyTasksViewProps {
   tasks: Task[];
@@ -30,11 +31,12 @@ export const DailyTasksView = ({
       <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
           const isToday = isCurrentMonth && day === currentDay;
+          const dayOfWeek = getDayOfWeek(currentMonth, day);
           
           return (
             <TaskSection
               key={day}
-              title={`Day ${day}`}
+              title={`Day ${day} (${dayOfWeek})`}
               tasks={getDailyTasksByDay(tasks, day)}
               type="daily"
               day={day}
