@@ -98,19 +98,16 @@ const Index = () => {
               <h1 className="text-2xl font-bold tracking-tight">Habit Tracker</h1>
               <p className="text-sm text-muted-foreground">Track your daily progress</p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <span className="font-medium min-w-36 text-center">
-                  {getMonthName(currentMonth)}
-                </span>
-                <Button variant="ghost" size="icon" onClick={handleNextMonth}>
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-              <AddHabitDialog onAddHabit={handleAddHabit} />
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="font-medium min-w-36 text-center">
+                {getMonthName(currentMonth)}
+              </span>
+              <Button variant="ghost" size="icon" onClick={handleNextMonth}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -135,7 +132,9 @@ const Index = () => {
               <Card className="overflow-hidden border-border">
                 <div className="p-4 border-b border-border flex items-center justify-between">
                   <h2 className="font-semibold">Monthly Tracking Grid</h2>
-                  {habits.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <AddHabitDialog onAddHabit={handleAddHabit} />
+                    {habits.length > 0 && (
                     <div className="flex gap-2">
                       {habits.slice(0, 3).map(habit => (
                         <Button
@@ -151,6 +150,7 @@ const Index = () => {
                       ))}
                     </div>
                   )}
+                  </div>
                 </div>
                 <HabitGrid
                   habits={habits}
