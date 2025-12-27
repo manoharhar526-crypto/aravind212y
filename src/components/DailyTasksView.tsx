@@ -36,7 +36,7 @@ export const DailyTasksView = ({
           return (
             <TaskSection
               key={day}
-              title={`Day ${day} (${dayOfWeek})`}
+              title={dayOfWeek}
               tasks={getDailyTasksByDay(tasks, day)}
               type="daily"
               day={day}
