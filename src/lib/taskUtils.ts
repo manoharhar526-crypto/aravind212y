@@ -5,31 +5,7 @@ export const getDaysInMonth = (date: Date): number => {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 };
 
-export const defaultTasks: Task[] = [
-  // General Goals
-  { id: generateId(), title: "Improve overall fitness", completed: false, type: "general" },
-  { id: generateId(), title: "Read 4 books this month", completed: false, type: "general" },
-  { id: generateId(), title: "Save $500", completed: true, type: "general" },
-
-  // Monthly Tasks
-  { id: generateId(), title: "Complete monthly review", completed: false, type: "monthly" },
-  { id: generateId(), title: "Plan next month's goals", completed: false, type: "monthly" },
-  { id: generateId(), title: "Deep clean house", completed: true, type: "monthly" },
-
-  // Weekly Tasks
-  { id: generateId(), title: "Meal prep for the week", completed: true, type: "weekly", weekNumber: 1 },
-  { id: generateId(), title: "Review weekly expenses", completed: false, type: "weekly", weekNumber: 1 },
-  { id: generateId(), title: "Plan weekend activities", completed: true, type: "weekly", weekNumber: 2 },
-  { id: generateId(), title: "Grocery shopping", completed: false, type: "weekly", weekNumber: 2 },
-  { id: generateId(), title: "Laundry day", completed: true, type: "weekly", weekNumber: 3 },
-  { id: generateId(), title: "Check appointments", completed: false, type: "weekly", weekNumber: 3 },
-  { id: generateId(), title: "Organize workspace", completed: false, type: "weekly", weekNumber: 4 },
-  
-  // Daily Tasks
-  { id: generateId(), title: "Morning meditation", completed: true, type: "daily", day: 1 },
-  { id: generateId(), title: "Check emails", completed: true, type: "daily", day: 1 },
-  { id: generateId(), title: "Plan tomorrow", completed: false, type: "daily", day: 1 },
-];
+export const defaultTasks: Task[] = [];
 
 export const getTasksByType = (tasks: Task[], type: TaskType): Task[] => {
   return tasks.filter(task => task.type === type);
