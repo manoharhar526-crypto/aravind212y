@@ -154,6 +154,7 @@ const Index = () => {
                 </div>
                 <HabitGrid
                   habits={habits}
+                  tasks={tasks}
                   currentMonth={currentMonth}
                   onToggleDay={handleToggleDay}
                 />
