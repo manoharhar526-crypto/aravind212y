@@ -86,14 +86,14 @@ export const IndividualHabitChart = ({ habits, currentMonth }: IndividualHabitCh
             <Line
               type="monotone"
               dataKey="cumulative"
-              stroke="hsl(var(--chart-2))"
+              stroke="hsl(260, 20%, 30%)"
               strokeWidth={2}
               dot={false}
             />
             <Line
               type="step"
               dataKey="completed"
-              stroke="hsl(var(--chart-4))"
+              stroke="hsl(210, 20%, 40%)"
               strokeWidth={1}
               strokeDasharray="3 3"
               dot={false}
@@ -103,11 +103,11 @@ export const IndividualHabitChart = ({ habits, currentMonth }: IndividualHabitCh
       </div>
       <div className="flex justify-center gap-6 mt-4">
         <div className="flex items-center gap-2 text-sm">
-          <div className="w-4 h-0.5" style={{ backgroundColor: "hsl(var(--chart-2))" }} />
+          <div className="w-4 h-0.5" style={{ backgroundColor: "hsl(260, 20%, 30%)" }} />
           <span className="text-muted-foreground">Cumulative Rate</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <div className="w-4 h-0.5" style={{ backgroundColor: "hsl(var(--chart-4))", borderTopWidth: 2, borderTopStyle: 'dashed' }} />
+          <div className="w-4 h-0.5" style={{ backgroundColor: "hsl(210, 20%, 40%)", borderTopWidth: 2, borderTopStyle: 'dashed' }} />
           <span className="text-muted-foreground">Daily Status</span>
         </div>
       </div>

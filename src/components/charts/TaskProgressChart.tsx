@@ -31,7 +31,7 @@ export const TaskProgressChart = ({ tasks, currentMonth }: TaskProgressChartProp
     };
   });
 
-  const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
+  const COLORS = ["hsl(220, 25%, 25%)", "hsl(260, 20%, 30%)", "hsl(200, 30%, 20%)", "hsl(280, 15%, 35%)"];
 
   const categoryData = [
     { name: "General", rate: calculateTaskCompletionRate(getTasksByType(tasks, "general")), color: COLORS[0] },
