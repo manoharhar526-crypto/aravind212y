@@ -8,16 +8,16 @@ interface HabitPieChartProps {
 
 export const HabitPieChart = ({ habits }: HabitPieChartProps) => {
   const COLORS = [
-    "hsl(var(--chart-1))",
-    "hsl(var(--chart-2))",
-    "hsl(var(--chart-3))",
-    "hsl(var(--chart-4))",
-    "hsl(var(--chart-5))",
-    "hsl(142, 60%, 40%)",
-    "hsl(221, 70%, 45%)",
-    "hsl(262, 70%, 50%)",
-    "hsl(25, 80%, 45%)",
-    "hsl(340, 70%, 45%)",
+    "hsl(220, 25%, 25%)",    // Deep slate blue
+    "hsl(260, 20%, 30%)",    // Muted purple
+    "hsl(200, 30%, 20%)",    // Dark ocean
+    "hsl(280, 15%, 35%)",    // Dusty violet
+    "hsl(210, 20%, 40%)",    // Storm grey-blue
+    "hsl(240, 25%, 28%)",    // Midnight indigo
+    "hsl(270, 18%, 38%)",    // Faded lavender
+    "hsl(195, 25%, 32%)",    // Melancholy teal
+    "hsl(230, 22%, 45%)",    // Overcast blue
+    "hsl(290, 12%, 42%)",    // Lonely mauve
   ];
 
   const data = habits.map((habit, index) => ({
