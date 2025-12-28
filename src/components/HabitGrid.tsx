@@ -14,11 +14,10 @@ interface HabitGridProps {
 export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGridProps) => {
   const daysInMonth = getDaysInMonth(currentMonth);
 
-  // Calculate task stats for each day
+  // Calculate total task stats for each day (all completed tasks)
   const getDayTaskStats = (day: number) => {
-    const dayTasks = tasks.filter(t => t.type === 'daily' && t.day === day);
-    const completedCount = dayTasks.filter(t => t.completed).length;
-    const totalCount = dayTasks.length;
+    const completedCount = tasks.filter(t => t.completed).length;
+    const totalCount = tasks.length;
     const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
     return { completedCount, totalCount, percentage };
   };
@@ -69,12 +68,12 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
           </div>
         </div>
 
-        {/* Task Stats Row */}
+        {/* Total Task Stats Row */}
         <div className="flex border-b border-border bg-muted/30">
           <div className="w-48 flex-shrink-0 p-3 font-semibold text-foreground">
-            <div className="text-xs text-muted-foreground">Daily Tasks</div>
+            <div className="text-xs text-muted-foreground">Total Tasks</div>
           </div>
-          {weeks.map(week => (
+          {weeks.map((week, weekIdx) => (
             <div key={week.week} className="flex">
               {week.days.map(day => {
                 const stats = getDayTaskStats(day);
@@ -83,7 +82,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
                     key={day}
                     className="w-10 h-10 flex flex-col items-center justify-center border-l border-border text-[9px]"
                   >
-                    <span className="font-medium text-foreground">{stats.completedCount}/{stats.totalCount}</span>
+                    <span className="font-medium text-foreground">{stats.completedCount}</span>
                     <span className="text-muted-foreground">{stats.percentage}%</span>
                   </div>
                 );
