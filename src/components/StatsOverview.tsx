@@ -54,37 +54,37 @@ export const StatsOverview = ({ habits, currentMonth }: StatsOverviewProps) => {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
       {stats.map((stat) => (
         <Card 
           key={stat.label} 
-          className="p-4 animate-slide-up bg-card border-border"
+          className="p-3 sm:p-4 animate-slide-up bg-card border-border"
           style={{ animationDelay: stat.delay }}
         >
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <p className="text-2xl font-bold mt-1">{stat.value}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{stat.label}</p>
+              <p className="text-xl sm:text-2xl font-bold mt-1">{stat.value}</p>
             </div>
-            <stat.icon className="w-5 h-5 text-muted-foreground" />
+            <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
           </div>
         </Card>
       ))}
       {bestHabit && (
         <Card 
-          className="p-4 animate-slide-up bg-card border-border col-span-2 lg:col-span-4"
+          className="p-3 sm:p-4 animate-slide-up bg-card border-border col-span-2 lg:col-span-4"
           style={{ animationDelay: "200ms" }}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Best Performing Habit</p>
-              <p className="text-lg font-semibold mt-1">{bestHabit.name}</p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm text-muted-foreground">Best Performing Habit</p>
+              <p className="text-sm sm:text-lg font-semibold mt-1 truncate">{bestHabit.name}</p>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold">
+            <div className="text-right flex-shrink-0">
+              <p className="text-xl sm:text-2xl font-bold">
                 {calculateCompletionRate(bestHabit, daysInMonth)}%
               </p>
-              <p className="text-xs text-muted-foreground">completion rate</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">completion rate</p>
             </div>
           </div>
         </Card>
