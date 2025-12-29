@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { defaultHabits, generateId, getMonthName } from "@/lib/habitUtils";
 import { defaultTasks } from "@/lib/taskUtils";
+import { loadAppStorage, saveAppStorage } from "@/lib/appStorage";
 import { HabitGrid } from "@/components/HabitGrid";
 import { StatsOverview } from "@/components/StatsOverview";
 import { CompletionLineChart } from "@/components/charts/CompletionLineChart";
@@ -22,9 +23,17 @@ import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const Index = () => {
-  const [habits, setHabits] = useState<Habit[]>(defaultHabits);
-  const [tasks, setTasks] = useState<Task[]>(defaultTasks);
-  const [currentMonth, setCurrentMonth] = useState(new Date(2025, 0, 1)); // January 2025
+  const stored = loadAppStorage();
+
+  const [habits, setHabits] = useState<Habit[]>(stored?.habits ?? defaultHabits);
+  const [tasks, setTasks] = useState<Task[]>(stored?.tasks ?? defaultTasks);
+  const [currentMonth, setCurrentMonth] = useState<Date>(
+    stored?.currentMonth ?? new Date(2025, 0, 1) // January 2025
+  );
+
+  useEffect(() => {
+    saveAppStorage({ habits, tasks, currentMonth });
+  }, [habits, tasks, currentMonth]);
 
   const handleToggleDay = (habitId: string, day: number) => {
     setHabits(prev =>
