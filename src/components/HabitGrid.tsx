@@ -36,42 +36,42 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
   });
 
   return (
-    <div className="overflow-x-auto animate-fade-in">
-      <div className="min-w-[900px]">
+    <div className="overflow-x-auto animate-fade-in -mx-3 sm:mx-0 px-3 sm:px-0">
+      <div className="min-w-[700px] sm:min-w-[900px]">
         {/* Header */}
         <div className="flex border-b border-border">
-          <div className="w-48 flex-shrink-0 p-3 font-semibold text-foreground">
-            Habit Names
+          <div className="w-28 sm:w-48 flex-shrink-0 p-2 sm:p-3 font-semibold text-foreground text-xs sm:text-sm">
+            Habits
           </div>
           {weeks.map((week, idx) => (
             <div key={week.week} className="flex flex-col">
-              <div className="text-center text-xs font-medium text-muted-foreground py-1 border-l border-border">
-                Week {idx + 1}
+              <div className="text-center text-[10px] sm:text-xs font-medium text-muted-foreground py-1 border-l border-border">
+                W{idx + 1}
               </div>
               <div className="flex">
                 {week.days.map(day => (
                   <div
                     key={day}
-                    className="w-10 text-center p-1 border-l border-border"
+                    className="w-7 sm:w-10 text-center p-0.5 sm:p-1 border-l border-border"
                   >
-                    <div className="text-[10px] text-muted-foreground">
+                    <div className="text-[8px] sm:text-[10px] text-muted-foreground">
                       {getDayOfWeek(currentMonth, day)}
                     </div>
-                    <div className="text-xs font-medium">{day}</div>
+                    <div className="text-[10px] sm:text-xs font-medium">{day}</div>
                   </div>
                 ))}
               </div>
             </div>
           ))}
-          <div className="w-24 flex-shrink-0 p-3 font-semibold text-foreground border-l border-border text-center">
-            Completed
+          <div className="w-16 sm:w-24 flex-shrink-0 p-2 sm:p-3 font-semibold text-foreground border-l border-border text-center text-[10px] sm:text-sm">
+            Done
           </div>
         </div>
 
         {/* Total Task Stats Row */}
         <div className="flex border-b border-border bg-muted/30">
-          <div className="w-48 flex-shrink-0 p-3 font-semibold text-foreground">
-            <div className="text-xs text-muted-foreground">Total Tasks</div>
+          <div className="w-28 sm:w-48 flex-shrink-0 p-2 sm:p-3 font-semibold text-foreground">
+            <div className="text-[10px] sm:text-xs text-muted-foreground">Total Tasks</div>
           </div>
           {weeks.map((week, weekIdx) => (
             <div key={week.week} className="flex">
@@ -80,7 +80,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
                 return (
                   <div
                     key={day}
-                    className="w-10 h-10 flex flex-col items-center justify-center border-l border-border text-[9px]"
+                    className="w-7 sm:w-10 h-7 sm:h-10 flex flex-col items-center justify-center border-l border-border text-[7px] sm:text-[9px]"
                   >
                     <span className="font-medium text-foreground">{stats.completedCount}</span>
                     <span className="text-muted-foreground">{stats.percentage}%</span>
@@ -89,7 +89,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
               })}
             </div>
           ))}
-          <div className="w-24 flex-shrink-0 p-2 border-l border-border" />
+          <div className="w-16 sm:w-24 flex-shrink-0 p-2 border-l border-border" />
         </div>
 
         {/* Habit Rows */}
@@ -104,7 +104,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
               )}
               style={{ animationDelay: `${habitIdx * 50}ms` }}
             >
-              <div className="w-48 flex-shrink-0 p-3 font-medium text-foreground truncate">
+              <div className="w-28 sm:w-48 flex-shrink-0 p-2 sm:p-3 font-medium text-foreground truncate text-xs sm:text-sm">
                 {habit.name}
               </div>
               {weeks.map(week => (
@@ -116,7 +116,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
                         key={day}
                         onClick={() => onToggleDay(habit.id, day)}
                         className={cn(
-                          "w-10 h-10 flex items-center justify-center border-l border-border transition-all duration-200",
+                          "w-7 sm:w-10 h-7 sm:h-10 flex items-center justify-center border-l border-border transition-all duration-200",
                           isCompleted
                             ? "bg-primary"
                             : "bg-background hover:bg-muted"
@@ -124,7 +124,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
                       >
                         {isCompleted && (
                           <Check
-                            className="w-4 h-4 text-primary-foreground animate-check-bounce"
+                            className="w-3 h-3 sm:w-4 sm:h-4 text-primary-foreground animate-check-bounce"
                             strokeWidth={3}
                           />
                         )}
@@ -133,15 +133,15 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
                   })}
                 </div>
               ))}
-              <div className="w-24 flex-shrink-0 p-2 border-l border-border">
-                <div className="h-full flex items-center gap-2">
-                  <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
+              <div className="w-16 sm:w-24 flex-shrink-0 p-1 sm:p-2 border-l border-border">
+                <div className="h-full flex items-center gap-1 sm:gap-2">
+                  <div className="flex-1 h-2 sm:h-4 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-primary transition-all duration-500 ease-out"
                       style={{ width: `${completionRate}%` }}
                     />
                   </div>
-                  <span className="text-xs font-medium w-8 text-right">
+                  <span className="text-[10px] sm:text-xs font-medium w-6 sm:w-8 text-right">
                     {completionRate}%
                   </span>
                 </div>

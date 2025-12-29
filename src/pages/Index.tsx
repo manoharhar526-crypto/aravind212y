@@ -188,89 +188,112 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Habit Tracker</h1>
-              <p className="text-sm text-muted-foreground">Track your daily progress</p>
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Habit Tracker</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">Track your daily progress</p>
+              </div>
+              <div className="flex items-center gap-1 sm:hidden">
+                <Button
+                  variant={reminderEnabled ? "default" : "outline"}
+                  size="icon"
+                  onClick={handleToggleReminder}
+                  className="h-8 w-8"
+                >
+                  {reminderEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                </Button>
+                <SettingsDialog
+                  onResetData={handleResetData}
+                  reminderEnabled={reminderEnabled}
+                  reminderTime={reminderTime}
+                  onReminderEnabledChange={setReminderEnabled}
+                  onReminderTimeChange={setReminderTime}
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={reminderEnabled ? "default" : "outline"}
-                size="sm"
-                onClick={handleToggleReminder}
-                className="gap-1.5"
-              >
-                {reminderEnabled ? (
-                  <>
-                    <Bell className="w-4 h-4" />
-                    <span className="hidden sm:inline">Reminder On</span>
-                  </>
-                ) : (
-                  <>
-                    <BellOff className="w-4 h-4" />
-                    <span className="hidden sm:inline">Reminder Off</span>
-                  </>
-                )}
-              </Button>
-              <SettingsDialog
-                onResetData={handleResetData}
-                reminderEnabled={reminderEnabled}
-                reminderTime={reminderTime}
-                onReminderEnabledChange={setReminderEnabled}
-                onReminderTimeChange={setReminderTime}
-              />
-              <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <span className="font-medium min-w-36 text-center">
-                {getMonthName(currentMonth)}
-              </span>
-              <Button variant="ghost" size="icon" onClick={handleNextMonth}>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+            <div className="flex items-center justify-between sm:justify-end gap-2">
+              <div className="hidden sm:flex items-center gap-2">
+                <Button
+                  variant={reminderEnabled ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleToggleReminder}
+                  className="gap-1.5"
+                >
+                  {reminderEnabled ? (
+                    <>
+                      <Bell className="w-4 h-4" />
+                      <span>Reminder On</span>
+                    </>
+                  ) : (
+                    <>
+                      <BellOff className="w-4 h-4" />
+                      <span>Reminder Off</span>
+                    </>
+                  )}
+                </Button>
+                <SettingsDialog
+                  onResetData={handleResetData}
+                  reminderEnabled={reminderEnabled}
+                  reminderTime={reminderTime}
+                  onReminderEnabledChange={setReminderEnabled}
+                  onReminderTimeChange={setReminderTime}
+                />
+              </div>
+              <div className="flex items-center">
+                <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 sm:h-10 sm:w-10">
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="font-medium min-w-24 sm:min-w-36 text-center text-sm sm:text-base">
+                  {getMonthName(currentMonth)}
+                </span>
+                <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8 sm:h-10 sm:w-10">
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-8">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8">
         {/* Stats Overview */}
         <section>
           <StatsOverview habits={habits} currentMonth={currentMonth} />
         </section>
 
         <Tabs defaultValue="habits" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
-            <TabsTrigger value="habits">Habits</TabsTrigger>
-            <TabsTrigger value="goals">Goals & Tasks</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
+          <TabsList className="grid w-full max-w-md grid-cols-3 mb-4 sm:mb-6">
+            <TabsTrigger value="habits" className="text-xs sm:text-sm">Habits</TabsTrigger>
+            <TabsTrigger value="goals" className="text-xs sm:text-sm">Goals</TabsTrigger>
+            <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="habits" className="space-y-8">
+          <TabsContent value="habits" className="space-y-6 sm:space-y-8">
             {/* Habit Grid */}
             <section>
               <Card className="overflow-hidden border-border">
-                <div className="p-4 border-b border-border flex items-center justify-between">
-                  <h2 className="font-semibold">Monthly Tracking Grid</h2>
-                  <div className="flex items-center gap-2">
+                <div className="p-3 sm:p-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <h2 className="font-semibold text-sm sm:text-base">Monthly Tracking Grid</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
                     <AddHabitDialog onAddHabit={handleAddHabit} />
                     {habits.length > 0 && (
-                    <div className="flex gap-2">
-                      {habits.slice(0, 3).map(habit => (
-                        <Button
-                          key={habit.id}
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteHabit(habit.id)}
-                        >
-                          <Trash2 className="w-3 h-3 mr-1" />
-                          {habit.name.substring(0, 10)}...
-                        </Button>
-                      ))}
-                    </div>
-                  )}
+                      <div className="hidden md:flex gap-2">
+                        {habits.slice(0, 3).map(habit => (
+                          <Button
+                            key={habit.id}
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDeleteHabit(habit.id)}
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            {habit.name.substring(0, 10)}...
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <HabitGrid
@@ -284,8 +307,8 @@ const Index = () => {
 
             {/* Habit Charts */}
             <section>
-              <h2 className="text-xl font-semibold mb-4">Habit Analytics</h2>
-              <div className="grid lg:grid-cols-2 gap-6">
+              <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Habit Analytics</h2>
+              <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                 <CompletionLineChart habits={habits} currentMonth={currentMonth} />
                 <HabitPieChart habits={habits} />
                 <HabitBarChart habits={habits} currentMonth={currentMonth} />
@@ -311,17 +334,17 @@ const Index = () => {
             />
           </TabsContent>
 
-          <TabsContent value="reports" className="space-y-8">
+          <TabsContent value="reports" className="space-y-6 sm:space-y-8">
             {/* Task Reports */}
             <section>
-              <h2 className="text-xl font-semibold mb-4">Task Reports</h2>
+              <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Task Reports</h2>
               <TaskReportCard tasks={tasks} />
             </section>
 
             {/* Task Charts */}
             <section>
-              <h2 className="text-xl font-semibold mb-4">Task Analytics</h2>
-              <div className="grid lg:grid-cols-2 gap-6">
+              <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Task Analytics</h2>
+              <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                 <TaskCompletionChart tasks={tasks} />
                 <TaskProgressChart tasks={tasks} currentMonth={currentMonth} />
               </div>
