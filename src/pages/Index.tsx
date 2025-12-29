@@ -1,9 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { defaultHabits, generateId, getMonthName } from "@/lib/habitUtils";
 import { defaultTasks } from "@/lib/taskUtils";
-import { loadAppStorage, saveAppStorage } from "@/lib/appStorage";
+import {
+  loadAppStorage,
+  saveAppStorage,
+  loadSettings,
+  saveSettings,
+  clearAllStorage,
+  AppSettings,
+} from "@/lib/appStorage";
+import { sendNotification } from "@/lib/notificationUtils";
 import { HabitGrid } from "@/components/HabitGrid";
 import { StatsOverview } from "@/components/StatsOverview";
 import { CompletionLineChart } from "@/components/charts/CompletionLineChart";
@@ -16,6 +24,7 @@ import { AddHabitDialog } from "@/components/AddHabitDialog";
 import { GoalsOverview } from "@/components/GoalsOverview";
 import { TaskReportCard } from "@/components/TaskReportCard";
 import { DailyTasksView } from "@/components/DailyTasksView";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,16 +33,78 @@ import { toast } from "sonner";
 
 const Index = () => {
   const stored = loadAppStorage();
+  const initialSettings = loadSettings();
 
   const [habits, setHabits] = useState<Habit[]>(stored?.habits ?? defaultHabits);
   const [tasks, setTasks] = useState<Task[]>(stored?.tasks ?? defaultTasks);
   const [currentMonth, setCurrentMonth] = useState<Date>(
     stored?.currentMonth ?? new Date(2025, 0, 1) // January 2025
   );
+  const [reminderEnabled, setReminderEnabled] = useState(initialSettings.reminderEnabled);
+  const [reminderTime, setReminderTime] = useState(initialSettings.reminderTime);
 
+  const reminderTimeoutRef = useRef<number | null>(null);
+
+  // Save app data
   useEffect(() => {
     saveAppStorage({ habits, tasks, currentMonth });
   }, [habits, tasks, currentMonth]);
+
+  // Save settings
+  useEffect(() => {
+    saveSettings({ reminderEnabled, reminderTime });
+  }, [reminderEnabled, reminderTime]);
+
+  // Schedule daily reminder
+  useEffect(() => {
+    if (reminderTimeoutRef.current) {
+      clearTimeout(reminderTimeoutRef.current);
+      reminderTimeoutRef.current = null;
+    }
+
+    if (!reminderEnabled) return;
+
+    const scheduleNextReminder = () => {
+      const now = new Date();
+      const [hours, minutes] = reminderTime.split(":").map(Number);
+      const target = new Date();
+      target.setHours(hours, minutes, 0, 0);
+
+      // If target time has passed today, schedule for tomorrow
+      if (target <= now) {
+        target.setDate(target.getDate() + 1);
+      }
+
+      const delay = target.getTime() - now.getTime();
+
+      reminderTimeoutRef.current = window.setTimeout(() => {
+        sendNotification(
+          "Habit Tracker Reminder",
+          "Don't forget to track your habits and tasks today!"
+        );
+        // Schedule the next reminder
+        scheduleNextReminder();
+      }, delay);
+    };
+
+    scheduleNextReminder();
+
+    return () => {
+      if (reminderTimeoutRef.current) {
+        clearTimeout(reminderTimeoutRef.current);
+      }
+    };
+  }, [reminderEnabled, reminderTime]);
+
+  const handleResetData = () => {
+    clearAllStorage();
+    setHabits(defaultHabits);
+    setTasks(defaultTasks);
+    setCurrentMonth(new Date(2025, 0, 1));
+    setReminderEnabled(false);
+    setReminderTime("09:00");
+    toast.success("All data has been reset");
+  };
 
   const handleToggleDay = (habitId: string, day: number) => {
     setHabits(prev =>
@@ -108,6 +179,13 @@ const Index = () => {
               <p className="text-sm text-muted-foreground">Track your daily progress</p>
             </div>
             <div className="flex items-center gap-2">
+              <SettingsDialog
+                onResetData={handleResetData}
+                reminderEnabled={reminderEnabled}
+                reminderTime={reminderTime}
+                onReminderEnabledChange={setReminderEnabled}
+                onReminderTimeChange={setReminderTime}
+              />
               <Button variant="ghost" size="icon" onClick={handlePrevMonth}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
