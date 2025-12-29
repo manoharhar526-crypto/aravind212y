@@ -28,7 +28,7 @@ import { SettingsDialog } from "@/components/SettingsDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, Bell, BellOff } from "lucide-react";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -106,6 +106,22 @@ const Index = () => {
     toast.success("All data has been reset");
   };
 
+  const handleToggleReminder = async () => {
+    if (!reminderEnabled) {
+      const { requestNotificationPermission } = await import("@/lib/notificationUtils");
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setReminderEnabled(true);
+        toast.success("Reminders enabled!");
+      } else {
+        toast.error("Please allow notifications in your browser settings");
+      }
+    } else {
+      setReminderEnabled(false);
+      toast.success("Reminders disabled");
+    }
+  };
+
   const handleToggleDay = (habitId: string, day: number) => {
     setHabits(prev =>
       prev.map(habit => {
@@ -179,6 +195,24 @@ const Index = () => {
               <p className="text-sm text-muted-foreground">Track your daily progress</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant={reminderEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={handleToggleReminder}
+                className="gap-1.5"
+              >
+                {reminderEnabled ? (
+                  <>
+                    <Bell className="w-4 h-4" />
+                    <span className="hidden sm:inline">Reminder On</span>
+                  </>
+                ) : (
+                  <>
+                    <BellOff className="w-4 h-4" />
+                    <span className="hidden sm:inline">Reminder Off</span>
+                  </>
+                )}
+              </Button>
               <SettingsDialog
                 onResetData={handleResetData}
                 reminderEnabled={reminderEnabled}
