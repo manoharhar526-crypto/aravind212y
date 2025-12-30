@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { defaultHabits, generateId, getMonthName } from "@/lib/habitUtils";
@@ -43,7 +43,31 @@ const Index = () => {
   const [reminderEnabled, setReminderEnabled] = useState(initialSettings.reminderEnabled);
   const [reminderTime, setReminderTime] = useState(initialSettings.reminderTime);
 
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   const reminderTimeoutRef = useRef<number | null>(null);
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatIndianDateTime = useCallback((date: Date) => {
+    return date.toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+  }, []);
 
   // Save app data
   useEffect(() => {
@@ -193,7 +217,7 @@ const Index = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Habit Tracker</h1>
-                <p className="text-xs sm:text-sm text-muted-foreground">Track your daily progress</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{formatIndianDateTime(currentTime)}</p>
               </div>
               <div className="flex items-center gap-1 sm:hidden">
                 <Button
