@@ -38,7 +38,7 @@ const Index = () => {
   const [habits, setHabits] = useState<Habit[]>(stored?.habits ?? defaultHabits);
   const [tasks, setTasks] = useState<Task[]>(stored?.tasks ?? defaultTasks);
   const [currentMonth, setCurrentMonth] = useState<Date>(
-    stored?.currentMonth ?? new Date(2025, 0, 1) // January 2025
+    stored?.currentMonth ?? new Date() // Current date
   );
   const [reminderEnabled, setReminderEnabled] = useState(initialSettings.reminderEnabled);
   const [reminderTime, setReminderTime] = useState(initialSettings.reminderTime);
@@ -100,7 +100,7 @@ const Index = () => {
     clearAllStorage();
     setHabits(defaultHabits);
     setTasks(defaultTasks);
-    setCurrentMonth(new Date(2025, 0, 1));
+    setCurrentMonth(new Date());
     setReminderEnabled(false);
     setReminderTime("09:00");
     toast.success("All data has been reset");
