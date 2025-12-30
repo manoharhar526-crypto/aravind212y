@@ -1,7 +1,7 @@
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { getDaysInMonth, getDayOfWeek, getWeekNumber, calculateCompletionRate } from "@/lib/habitUtils";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HabitGridProps {
@@ -13,6 +13,29 @@ interface HabitGridProps {
 
 export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGridProps) => {
   const daysInMonth = getDaysInMonth(currentMonth);
+  const today = new Date();
+  const todayDay = today.getDate();
+  const isCurrentMonth = today.getFullYear() === currentMonth.getFullYear() && 
+                         today.getMonth() === currentMonth.getMonth();
+
+  const isToday = (day: number) => isCurrentMonth && day === todayDay;
+  const isPast = (day: number) => {
+    if (!isCurrentMonth) {
+      // If viewing a past month, all days are past
+      if (currentMonth < new Date(today.getFullYear(), today.getMonth(), 1)) return true;
+      // If viewing a future month, no days are past
+      return false;
+    }
+    return day < todayDay;
+  };
+  const isFuture = (day: number) => {
+    if (!isCurrentMonth) {
+      // If viewing a future month, all days are future
+      if (currentMonth > new Date(today.getFullYear(), today.getMonth(), 1)) return true;
+      return false;
+    }
+    return day > todayDay;
+  };
 
   // Calculate total task stats for each day (all completed tasks)
   const getDayTaskStats = (day: number) => {
@@ -111,21 +134,40 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
                 <div key={week.week} className="flex">
                   {week.days.map(day => {
                     const isCompleted = habit.completedDays.includes(day);
+                    const dayIsToday = isToday(day);
+                    const dayIsPast = isPast(day);
+                    const dayIsFuture = isFuture(day);
+                    const isMissed = dayIsPast && !isCompleted;
+                    const canToggle = dayIsToday;
+
                     return (
                       <button
                         key={day}
-                        onClick={() => onToggleDay(habit.id, day)}
+                        onClick={() => canToggle && onToggleDay(habit.id, day)}
+                        disabled={!canToggle}
                         className={cn(
                           "w-7 sm:w-10 h-7 sm:h-10 flex items-center justify-center border-l border-border transition-all duration-200",
+                          dayIsToday && "ring-2 ring-primary ring-inset",
                           isCompleted
                             ? "bg-primary"
-                            : "bg-background hover:bg-muted"
+                            : isMissed
+                            ? "bg-destructive/20"
+                            : dayIsFuture
+                            ? "bg-muted/50 cursor-not-allowed"
+                            : "bg-background hover:bg-muted",
+                          !canToggle && "cursor-not-allowed opacity-70"
                         )}
                       >
                         {isCompleted && (
                           <Check
                             className="w-3 h-3 sm:w-4 sm:h-4 text-primary-foreground animate-check-bounce"
                             strokeWidth={3}
+                          />
+                        )}
+                        {isMissed && (
+                          <X
+                            className="w-3 h-3 sm:w-4 sm:h-4 text-destructive"
+                            strokeWidth={2}
                           />
                         )}
                       </button>
