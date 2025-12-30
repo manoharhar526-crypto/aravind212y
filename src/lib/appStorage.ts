@@ -30,17 +30,15 @@ export const loadAppStorage = (): {
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as Partial<StoredStateV1>;
-    if (!Array.isArray(parsed.habits) || !Array.isArray(parsed.tasks) || !parsed.currentMonth) {
+    if (!Array.isArray(parsed.habits) || !Array.isArray(parsed.tasks)) {
       return null;
     }
 
-    const currentMonth = new Date(parsed.currentMonth);
-    if (Number.isNaN(currentMonth.getTime())) return null;
-
+    // Always use current month instead of stored month
     return {
       habits: parsed.habits as Habit[],
       tasks: parsed.tasks as Task[],
-      currentMonth,
+      currentMonth: new Date(),
     };
   } catch {
     return null;
