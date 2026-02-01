@@ -1,7 +1,7 @@
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
-import { getDaysInMonth, getDayOfWeek, getWeekNumber, calculateCompletionRate, isDayCompleted, createDateString } from "@/lib/habitUtils";
-import { Check, X } from "lucide-react";
+import { getDaysInMonth, getDayOfWeek, getWeekNumber, calculateCompletionRate, isDayCompleted } from "@/lib/habitUtils";
+import { Check, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HabitGridProps {
@@ -9,9 +9,10 @@ interface HabitGridProps {
   tasks: Task[];
   currentMonth: Date;
   onToggleDay: (habitId: string, day: number) => void;
+  onDeleteHabit: (habitId: string) => void;
 }
 
-export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGridProps) => {
+export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHabit }: HabitGridProps) => {
   const daysInMonth = getDaysInMonth(currentMonth);
   const today = new Date();
   const todayDay = today.getDate();
@@ -63,7 +64,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
       <div className="min-w-[700px] sm:min-w-[900px]">
         {/* Header */}
         <div className="flex border-b border-border">
-          <div className="w-28 sm:w-48 flex-shrink-0 p-2 sm:p-3 font-semibold text-foreground text-xs sm:text-sm">
+          <div className="w-32 sm:w-52 flex-shrink-0 p-2 sm:p-3 font-semibold text-foreground text-xs sm:text-sm">
             Habits
           </div>
           {weeks.map((week, idx) => (
@@ -93,7 +94,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
 
         {/* Total Task Stats Row */}
         <div className="flex border-b border-border bg-muted/30">
-          <div className="w-28 sm:w-48 flex-shrink-0 p-2 sm:p-3 font-semibold text-foreground">
+          <div className="w-32 sm:w-52 flex-shrink-0 p-2 sm:p-3 font-semibold text-foreground">
             <div className="text-[10px] sm:text-xs text-muted-foreground">Total Tasks</div>
           </div>
           {weeks.map((week, weekIdx) => (
@@ -122,13 +123,22 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
             <div
               key={habit.id}
               className={cn(
-                "flex border-b border-border transition-colors hover:bg-muted/50",
+                "flex border-b border-border transition-colors hover:bg-muted/50 group",
                 habitIdx % 2 === 0 ? "bg-background" : "bg-secondary/30"
               )}
               style={{ animationDelay: `${habitIdx * 50}ms` }}
             >
-              <div className="w-28 sm:w-48 flex-shrink-0 p-2 sm:p-3 font-medium text-foreground truncate text-xs sm:text-sm">
-                {habit.name}
+              <div className="w-32 sm:w-52 flex-shrink-0 p-2 sm:p-3 flex items-center gap-1 sm:gap-2">
+                <button
+                  onClick={() => onDeleteHabit(habit.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/20 rounded text-muted-foreground hover:text-destructive flex-shrink-0"
+                  title="Delete habit"
+                >
+                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                </button>
+                <span className="font-medium text-foreground truncate text-xs sm:text-sm">
+                  {habit.name}
+                </span>
               </div>
               {weeks.map(week => (
                 <div key={week.week} className="flex">

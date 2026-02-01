@@ -326,6 +326,7 @@ const Index = () => {
                   tasks={tasks}
                   currentMonth={currentMonth}
                   onToggleDay={handleToggleDay}
+                  onDeleteHabit={handleDeleteHabit}
                 />
               </Card>
             </section>
