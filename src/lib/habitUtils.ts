@@ -31,7 +31,7 @@ export const createDateString = (currentMonth: Date, day: number): string => {
 // Helper to check if a day is completed for a specific month
 export const isDayCompleted = (habit: Habit, currentMonth: Date, day: number): boolean => {
   const dateString = createDateString(currentMonth, day);
-  return habit.completedDays.includes(dateString);
+  return habit.completedDays.some(d => typeof d === 'string' && d === dateString);
 };
 
 // Get completed days for a specific month (returns day numbers)
@@ -41,7 +41,7 @@ export const getCompletedDaysForMonth = (habit: Habit, currentMonth: Date): numb
   const prefix = `${year}-${String(month).padStart(2, '0')}-`;
   
   return habit.completedDays
-    .filter(dateStr => dateStr.startsWith(prefix))
+    .filter((dateStr): dateStr is string => typeof dateStr === 'string' && dateStr.startsWith(prefix))
     .map(dateStr => parseInt(dateStr.split('-')[2], 10));
 };
 
