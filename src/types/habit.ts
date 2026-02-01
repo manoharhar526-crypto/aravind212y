@@ -1,7 +1,7 @@
 export interface Habit {
   id: string;
   name: string;
-  completedDays: number[]; // Array of day numbers (1-31) that are completed
+  completedDays: string[]; // Array of date strings "YYYY-MM-DD" that are completed
 }
 
 export interface HabitData {

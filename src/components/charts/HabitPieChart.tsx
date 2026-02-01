@@ -1,12 +1,14 @@
 import { Habit } from "@/types/habit";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { Card } from "@/components/ui/card";
+import { getCompletedDaysForMonth } from "@/lib/habitUtils";
 
 interface HabitPieChartProps {
   habits: Habit[];
+  currentMonth: Date;
 }
 
-export const HabitPieChart = ({ habits }: HabitPieChartProps) => {
+export const HabitPieChart = ({ habits, currentMonth }: HabitPieChartProps) => {
   const COLORS = [
     "hsl(220, 25%, 25%)",    // Deep slate blue
     "hsl(260, 20%, 30%)",    // Muted purple
@@ -22,7 +24,7 @@ export const HabitPieChart = ({ habits }: HabitPieChartProps) => {
 
   const data = habits.map((habit, index) => ({
     name: habit.name,
-    value: habit.completedDays.length,
+    value: getCompletedDaysForMonth(habit, currentMonth).length,
     fill: COLORS[index % COLORS.length],
   }));
 
@@ -57,7 +59,7 @@ export const HabitPieChart = ({ habits }: HabitPieChartProps) => {
                 color: "hsl(var(--foreground))",
               }}
               formatter={(value: number, name: string) => [
-                `${value} days (${Math.round((value / totalCompleted) * 100)}%)`,
+                `${value} days (${totalCompleted > 0 ? Math.round((value / totalCompleted) * 100) : 0}%)`,
                 name,
               ]}
             />

@@ -1,5 +1,5 @@
 import { Habit } from "@/types/habit";
-import { getDaysInMonth, calculateCompletionRate } from "@/lib/habitUtils";
+import { getDaysInMonth, calculateCompletionRate, getCompletedDaysForMonth } from "@/lib/habitUtils";
 import { Card } from "@/components/ui/card";
 import { Target, CheckCircle2, TrendingUp, Calendar } from "lucide-react";
 
@@ -10,18 +10,21 @@ interface StatsOverviewProps {
 
 export const StatsOverview = ({ habits, currentMonth }: StatsOverviewProps) => {
   const daysInMonth = getDaysInMonth(currentMonth);
-  const today = new Date().getDate();
-  const currentDayOfMonth = currentMonth.getMonth() === new Date().getMonth() ? today : daysInMonth;
+  const today = new Date();
+  const isCurrentMonthViewing = currentMonth.getMonth() === today.getMonth() && 
+                                currentMonth.getFullYear() === today.getFullYear();
+  const currentDayOfMonth = isCurrentMonthViewing ? today.getDate() : daysInMonth;
   
   const totalPossible = habits.length * currentDayOfMonth;
-  const totalCompleted = habits.reduce((sum, h) => 
-    sum + h.completedDays.filter(d => d <= currentDayOfMonth).length, 0
-  );
+  const totalCompleted = habits.reduce((sum, h) => {
+    const completedDays = getCompletedDaysForMonth(h, currentMonth);
+    return sum + completedDays.filter(d => d <= currentDayOfMonth).length;
+  }, 0);
   const overallRate = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
   
   const bestHabit = habits.length > 0 
     ? habits.reduce((best, current) => 
-        calculateCompletionRate(current, daysInMonth) > calculateCompletionRate(best, daysInMonth) 
+        calculateCompletionRate(current, currentMonth, daysInMonth) > calculateCompletionRate(best, currentMonth, daysInMonth) 
           ? current : best
       )
     : null;
@@ -82,7 +85,7 @@ export const StatsOverview = ({ habits, currentMonth }: StatsOverviewProps) => {
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-xl sm:text-2xl font-bold">
-                {calculateCompletionRate(bestHabit, daysInMonth)}%
+                {calculateCompletionRate(bestHabit, currentMonth, daysInMonth)}%
               </p>
               <p className="text-[10px] sm:text-xs text-muted-foreground">completion rate</p>
             </div>
