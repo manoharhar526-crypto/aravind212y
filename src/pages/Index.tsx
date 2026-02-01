@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
-import { defaultHabits, generateId, getMonthName } from "@/lib/habitUtils";
+import { defaultHabits, generateId, getMonthName, createDateString, isDayCompleted } from "@/lib/habitUtils";
 import { defaultTasks } from "@/lib/taskUtils";
 import {
   loadAppStorage,
@@ -147,15 +147,16 @@ const Index = () => {
   };
 
   const handleToggleDay = (habitId: string, day: number) => {
+    const dateString = createDateString(currentMonth, day);
     setHabits(prev =>
       prev.map(habit => {
         if (habit.id !== habitId) return habit;
-        const isCompleted = habit.completedDays.includes(day);
+        const isCompleted = isDayCompleted(habit, currentMonth, day);
         return {
           ...habit,
           completedDays: isCompleted
-            ? habit.completedDays.filter(d => d !== day)
-            : [...habit.completedDays, day].sort((a, b) => a - b),
+            ? habit.completedDays.filter(d => d !== dateString)
+            : [...habit.completedDays, dateString].sort(),
         };
       })
     );
@@ -334,7 +335,7 @@ const Index = () => {
               <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Habit Analytics</h2>
               <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                 <CompletionLineChart habits={habits} currentMonth={currentMonth} />
-                <HabitPieChart habits={habits} />
+                <HabitPieChart habits={habits} currentMonth={currentMonth} />
                 <HabitBarChart habits={habits} currentMonth={currentMonth} />
                 <IndividualHabitChart habits={habits} currentMonth={currentMonth} />
               </div>

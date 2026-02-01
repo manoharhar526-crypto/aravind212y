@@ -1,5 +1,5 @@
 import { Habit } from "@/types/habit";
-import { getDaysInMonth } from "@/lib/habitUtils";
+import { getDaysInMonth, isDayCompleted, getCompletedDaysForMonth } from "@/lib/habitUtils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,11 +18,13 @@ export const IndividualHabitChart = ({ habits, currentMonth }: IndividualHabitCh
   
   const data = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
-    const completedUpToDay = selectedHabit?.completedDays.filter(d => d <= day).length || 0;
+    const completedDaysInMonth = selectedHabit ? getCompletedDaysForMonth(selectedHabit, currentMonth) : [];
+    const completedUpToDay = completedDaysInMonth.filter(d => d <= day).length;
     const cumulativeRate = Math.round((completedUpToDay / day) * 100);
+    const isCompletedToday = selectedHabit ? isDayCompleted(selectedHabit, currentMonth, day) : false;
     return {
       day,
-      completed: selectedHabit?.completedDays.includes(day) ? 100 : 0,
+      completed: isCompletedToday ? 100 : 0,
       cumulative: cumulativeRate,
     };
   });

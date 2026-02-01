@@ -1,6 +1,6 @@
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
-import { getDaysInMonth, getDayOfWeek, getWeekNumber, calculateCompletionRate } from "@/lib/habitUtils";
+import { getDaysInMonth, getDayOfWeek, getWeekNumber, calculateCompletionRate, isDayCompleted, createDateString } from "@/lib/habitUtils";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -117,7 +117,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
 
         {/* Habit Rows */}
         {habits.map((habit, habitIdx) => {
-          const completionRate = calculateCompletionRate(habit, daysInMonth);
+          const completionRate = calculateCompletionRate(habit, currentMonth, daysInMonth);
           return (
             <div
               key={habit.id}
@@ -133,7 +133,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay }: HabitGri
               {weeks.map(week => (
                 <div key={week.week} className="flex">
                   {week.days.map(day => {
-                    const isCompleted = habit.completedDays.includes(day);
+                    const isCompleted = isDayCompleted(habit, currentMonth, day);
                     const dayIsToday = isToday(day);
                     const dayIsPast = isPast(day);
                     const dayIsFuture = isFuture(day);

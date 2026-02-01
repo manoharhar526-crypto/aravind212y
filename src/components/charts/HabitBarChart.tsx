@@ -1,5 +1,5 @@
 import { Habit } from "@/types/habit";
-import { getDaysInMonth, calculateCompletionRate } from "@/lib/habitUtils";
+import { getDaysInMonth, calculateCompletionRate, getCompletedDaysForMonth } from "@/lib/habitUtils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Card } from "@/components/ui/card";
 
@@ -27,8 +27,8 @@ export const HabitBarChart = ({ habits, currentMonth }: HabitBarChartProps) => {
   const data = habits.map((habit, index) => ({
     name: habit.name.length > 12 ? habit.name.substring(0, 12) + "..." : habit.name,
     fullName: habit.name,
-    completion: calculateCompletionRate(habit, daysInMonth),
-    days: habit.completedDays.length,
+    completion: calculateCompletionRate(habit, currentMonth, daysInMonth),
+    days: getCompletedDaysForMonth(habit, currentMonth).length,
     fill: COLORS[index % COLORS.length],
   }));
 

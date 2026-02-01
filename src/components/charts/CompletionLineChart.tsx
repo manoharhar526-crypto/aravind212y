@@ -15,7 +15,7 @@ export const CompletionLineChart = ({ habits, currentMonth }: CompletionLineChar
     const day = i + 1;
     return {
       day,
-      completion: calculateDailyCompletion(habits, day),
+      completion: calculateDailyCompletion(habits, currentMonth, day),
     };
   });
 
