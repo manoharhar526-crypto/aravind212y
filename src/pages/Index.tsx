@@ -30,6 +30,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight, Trash2, Bell, BellOff } from "lucide-react";
 import { toast } from "sonner";
+import { BackupRestoreDialog } from "@/components/BackupRestoreDialog";
 
 const Index = () => {
   const stored = loadAppStorage();
@@ -209,6 +210,11 @@ const Index = () => {
     }
   };
 
+  const handleRestore = (restoredHabits: Habit[], restoredTasks: Task[]) => {
+    setHabits(restoredHabits);
+    setTasks(restoredTasks);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -221,6 +227,7 @@ const Index = () => {
                 <p className="text-xs sm:text-sm text-muted-foreground">{formatIndianDateTime(currentTime)}</p>
               </div>
               <div className="flex items-center gap-1 sm:hidden">
+                <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
                   size="icon"
@@ -240,6 +247,7 @@ const Index = () => {
             </div>
             <div className="flex items-center justify-between sm:justify-end gap-2">
               <div className="hidden sm:flex items-center gap-2">
+                <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
                   size="sm"
