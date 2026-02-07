@@ -191,7 +191,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHa
                   <div className="flex items-center gap-1 sm:gap-2">
                     <button
                       onClick={() => onDeleteHabit(habit.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/20 rounded text-muted-foreground hover:text-destructive flex-shrink-0"
+                      className="p-1 hover:bg-destructive/20 rounded text-muted-foreground hover:text-destructive flex-shrink-0"
                       title="Delete habit"
                     >
                       <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -211,7 +211,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHa
                     const dayIsPast = isPast(day);
                     const dayIsFuture = isFuture(day);
                     const isMissed = dayIsPast && !isCompleted;
-                    const canToggle = dayIsToday;
+                    const canToggle = dayIsToday || dayIsPast;
 
                     return (
                       <td key={day} className="p-0 border-l border-border">
@@ -225,7 +225,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHa
                             isCompleted
                               ? "bg-primary"
                               : isMissed
-                              ? "bg-destructive/20"
+                              ? "bg-destructive/20 hover:bg-destructive/30 cursor-pointer"
                               : dayIsFuture
                               ? "bg-muted/50 cursor-not-allowed"
                               : "bg-background hover:bg-muted",
