@@ -60,4 +60,19 @@ export const generateId = (): string => {
   return Math.random().toString(36).substring(2, 9);
 };
 
+export const getMonthKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+export const getHabitsForMonth = (habits: Habit[], date: Date): Habit[] => {
+  const monthKey = getMonthKey(date);
+  return habits.filter(h => h.month === monthKey);
+};
+
+export const getPreviousMonth = (date: Date): Date => {
+  return new Date(date.getFullYear(), date.getMonth() - 1, 1);
+};
+
 export const defaultHabits: Habit[] = [];
