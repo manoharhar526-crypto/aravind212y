@@ -183,10 +183,23 @@ const Index = () => {
 
   const handleDeleteHabit = (habitId: string) => {
     const habit = habits.find(h => h.id === habitId);
+    if (!habit) return;
+
+    // Confirm before deleting
+    const confirmed = window.confirm(`Delete "${habit.name}"? You can undo this action.`);
+    if (!confirmed) return;
+
     setHabits(prev => prev.filter(h => h.id !== habitId));
-    if (habit) {
-      toast.success(`Removed "${habit.name}" from your habits`);
-    }
+    toast.success(`Removed "${habit.name}"`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          setHabits(prev => [...prev, habit]);
+          toast.success(`Restored "${habit.name}"`);
+        },
+      },
+      duration: 5000,
+    });
   };
 
   const navigateToMonth = (newMonth: Date) => {

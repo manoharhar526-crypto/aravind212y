@@ -58,6 +58,12 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHa
                          today.getMonth() === currentMonth.getMonth();
 
   const isToday = (day: number) => isCurrentMonth && day === todayDay;
+  const isYesterday = (day: number) => {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yMonth = yesterday.getFullYear() === currentMonth.getFullYear() && yesterday.getMonth() === currentMonth.getMonth();
+    return yMonth && day === yesterday.getDate();
+  };
   const isPast = (day: number) => {
     if (!isCurrentMonth) {
       if (currentMonth < new Date(today.getFullYear(), today.getMonth(), 1)) return true;
@@ -211,25 +217,28 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHa
                     const dayIsPast = isPast(day);
                     const dayIsFuture = isFuture(day);
                     const isMissed = dayIsPast && !isCompleted;
-                    const canToggle = dayIsToday || dayIsPast;
+                    const dayIsYesterday = isYesterday(day);
+                    const canToggle = dayIsToday || dayIsYesterday;
 
                     return (
                       <td key={day} className="p-0 border-l border-border">
                         <button
                           onClick={() => canToggle && onToggleDay(habit.id, day)}
                           disabled={!canToggle}
-                          title={isCompleted ? "✓ Completed" : isMissed ? "✗ Missed" : dayIsFuture ? "Upcoming" : "Click to complete"}
+                          title={isCompleted ? "✓ Completed" : canToggle ? "Click to complete" : isMissed ? "✗ Missed" : "Upcoming"}
                           className={cn(
                             "w-7 sm:w-10 h-7 sm:h-10 flex items-center justify-center transition-all duration-200",
-                            dayIsToday && "ring-2 ring-primary ring-inset",
+                            (dayIsToday || dayIsYesterday) && "ring-2 ring-primary ring-inset",
                             isCompleted
                               ? "bg-primary"
-                              : isMissed
+                              : isMissed && canToggle
                               ? "bg-destructive/20 hover:bg-destructive/30 cursor-pointer"
+                              : isMissed
+                              ? "bg-destructive/10"
                               : dayIsFuture
                               ? "bg-muted/50 cursor-not-allowed"
                               : "bg-background hover:bg-muted",
-                            !canToggle && "cursor-not-allowed opacity-70"
+                            !canToggle && !isCompleted && "cursor-not-allowed opacity-70"
                           )}
                         >
                           {isCompleted && (
