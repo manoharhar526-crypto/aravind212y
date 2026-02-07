@@ -34,9 +34,21 @@ export const loadAppStorage = (): {
       return null;
     }
 
-    // Always use current month instead of stored month
+    // Migrate habits without month field
+    const migratedHabits = (parsed.habits as Habit[]).map(h => {
+      if (!h.month) {
+        // Infer month from completedDays, or default to current month
+        const firstDate = h.completedDays?.[0];
+        const month = firstDate
+          ? firstDate.substring(0, 7) // "YYYY-MM"
+          : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+        return { ...h, month };
+      }
+      return h;
+    });
+
     return {
-      habits: parsed.habits as Habit[],
+      habits: migratedHabits,
       tasks: parsed.tasks as Task[],
       currentMonth: new Date(),
     };

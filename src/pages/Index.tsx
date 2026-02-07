@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
-import { defaultHabits, generateId, getMonthName, createDateString, isDayCompleted } from "@/lib/habitUtils";
+import { defaultHabits, generateId, getMonthName, createDateString, isDayCompleted, getMonthKey, getHabitsForMonth, getPreviousMonth } from "@/lib/habitUtils";
 import { defaultTasks } from "@/lib/taskUtils";
 import {
   loadAppStorage,
@@ -31,6 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight, Trash2, Bell, BellOff } from "lucide-react";
 import { toast } from "sonner";
 import { BackupRestoreDialog } from "@/components/BackupRestoreDialog";
+import { CopyHabitsDialog } from "@/components/CopyHabitsDialog";
 
 const Index = () => {
   const stored = loadAppStorage();
@@ -43,8 +44,13 @@ const Index = () => {
   );
   const [reminderEnabled, setReminderEnabled] = useState(initialSettings.reminderEnabled);
   const [reminderTime, setReminderTime] = useState(initialSettings.reminderTime);
+  const [showCopyDialog, setShowCopyDialog] = useState(false);
+  const [pendingMonth, setPendingMonth] = useState<Date | null>(null);
 
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Habits filtered for the current month view
+  const currentMonthHabits = getHabitsForMonth(habits, currentMonth);
 
   const reminderTimeoutRef = useRef<number | null>(null);
 
@@ -164,9 +170,11 @@ const Index = () => {
   };
 
   const handleAddHabit = (name: string) => {
+    const monthKey = getMonthKey(currentMonth);
     const newHabit: Habit = {
       id: generateId(),
       name,
+      month: monthKey,
       completedDays: [],
     };
     setHabits(prev => [...prev, newHabit]);
@@ -181,12 +189,53 @@ const Index = () => {
     }
   };
 
+  const navigateToMonth = (newMonth: Date) => {
+    const habitsInNewMonth = getHabitsForMonth(habits, newMonth);
+    const prevMonth = getPreviousMonth(newMonth);
+    const habitsInPrevMonth = getHabitsForMonth(habits, prevMonth);
+
+    if (habitsInNewMonth.length === 0 && habitsInPrevMonth.length > 0) {
+      // New month has no habits but previous month does - ask to copy
+      setPendingMonth(newMonth);
+      setShowCopyDialog(true);
+    } else {
+      setCurrentMonth(newMonth);
+    }
+  };
+
+  const handleCopyHabits = () => {
+    if (!pendingMonth) return;
+    const prevMonth = getPreviousMonth(pendingMonth);
+    const prevHabits = getHabitsForMonth(habits, prevMonth);
+    const monthKey = getMonthKey(pendingMonth);
+
+    const copiedHabits: Habit[] = prevHabits.map(h => ({
+      id: generateId(),
+      name: h.name,
+      month: monthKey,
+      completedDays: [],
+    }));
+
+    setHabits(prev => [...prev, ...copiedHabits]);
+    setCurrentMonth(pendingMonth);
+    setPendingMonth(null);
+    setShowCopyDialog(false);
+    toast.success(`Copied ${copiedHabits.length} habits from previous month`);
+  };
+
+  const handleSkipCopy = () => {
+    if (!pendingMonth) return;
+    setCurrentMonth(pendingMonth);
+    setPendingMonth(null);
+    setShowCopyDialog(false);
+  };
+
   const handlePrevMonth = () => {
-    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    navigateToMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   };
 
   const handleNextMonth = () => {
-    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    navigateToMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
   const handleToggleTask = (taskId: string) => {
@@ -293,7 +342,7 @@ const Index = () => {
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8">
         {/* Stats Overview */}
         <section>
-          <StatsOverview habits={habits} currentMonth={currentMonth} />
+          <StatsOverview habits={currentMonthHabits} currentMonth={currentMonth} />
         </section>
 
         <Tabs defaultValue="habits" className="w-full">
@@ -311,9 +360,9 @@ const Index = () => {
                   <h2 className="font-semibold text-sm sm:text-base">Monthly Tracking Grid</h2>
                   <div className="flex items-center gap-2 flex-wrap">
                     <AddHabitDialog onAddHabit={handleAddHabit} />
-                    {habits.length > 0 && (
+                    {currentMonthHabits.length > 0 && (
                       <div className="hidden md:flex gap-2">
-                        {habits.slice(0, 3).map(habit => (
+                        {currentMonthHabits.slice(0, 3).map(habit => (
                           <Button
                             key={habit.id}
                             variant="ghost"
@@ -330,7 +379,7 @@ const Index = () => {
                   </div>
                 </div>
                 <HabitGrid
-                  habits={habits}
+                  habits={currentMonthHabits}
                   tasks={tasks}
                   currentMonth={currentMonth}
                   onToggleDay={handleToggleDay}
@@ -343,10 +392,10 @@ const Index = () => {
             <section>
               <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Habit Analytics</h2>
               <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
-                <CompletionLineChart habits={habits} currentMonth={currentMonth} />
-                <HabitPieChart habits={habits} currentMonth={currentMonth} />
-                <HabitBarChart habits={habits} currentMonth={currentMonth} />
-                <IndividualHabitChart habits={habits} currentMonth={currentMonth} />
+                <CompletionLineChart habits={currentMonthHabits} currentMonth={currentMonth} />
+                <HabitPieChart habits={currentMonthHabits} currentMonth={currentMonth} />
+                <HabitBarChart habits={currentMonthHabits} currentMonth={currentMonth} />
+                <IndividualHabitChart habits={currentMonthHabits} currentMonth={currentMonth} />
               </div>
             </section>
           </TabsContent>
@@ -393,6 +442,17 @@ const Index = () => {
           Build better habits, one day at a time.
         </div>
       </footer>
+
+      {/* Copy Habits Dialog */}
+      <CopyHabitsDialog
+        open={showCopyDialog}
+        onOpenChange={setShowCopyDialog}
+        previousMonthName={getMonthName(getPreviousMonth(pendingMonth ?? currentMonth))}
+        currentMonthName={getMonthName(pendingMonth ?? currentMonth)}
+        previousHabitNames={getHabitsForMonth(habits, getPreviousMonth(pendingMonth ?? currentMonth)).map(h => h.name)}
+        onCopy={handleCopyHabits}
+        onSkip={handleSkipCopy}
+      />
     </div>
   );
 };
