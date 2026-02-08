@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { defaultHabits, generateId, getMonthName, createDateString, isDayCompleted, getMonthKey, getHabitsForMonth, getPreviousMonth } from "@/lib/habitUtils";
+import { useAuth } from "@/hooks/useAuth";
 import { defaultTasks } from "@/lib/taskUtils";
 import {
   loadAppStorage,
@@ -28,12 +29,13 @@ import { SettingsDialog } from "@/components/SettingsDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, Trash2, Bell, BellOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, Bell, BellOff, LogOut, User } from "lucide-react";
 import { toast } from "sonner";
 import { BackupRestoreDialog } from "@/components/BackupRestoreDialog";
 import { CopyHabitsDialog } from "@/components/CopyHabitsDialog";
 
 const Index = () => {
+  const { username, signOut } = useAuth();
   const stored = loadAppStorage();
   const initialSettings = loadSettings();
 
@@ -285,7 +287,15 @@ const Index = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Habit Tracker</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Habit Tracker</h1>
+                  {username && (
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground flex items-center gap-1">
+                      <User className="w-3 h-3" />
+                      {username}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">{formatIndianDateTime(currentTime)}</p>
               </div>
               <div className="flex items-center gap-1 sm:hidden">
@@ -305,6 +315,15 @@ const Index = () => {
                   onReminderEnabledChange={setReminderEnabled}
                   onReminderTimeChange={setReminderTime}
                 />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={signOut}
+                  className="h-8 w-8"
+                  title="Log out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
               </div>
             </div>
             <div className="flex items-center justify-between sm:justify-end gap-2">
@@ -335,6 +354,15 @@ const Index = () => {
                   onReminderEnabledChange={setReminderEnabled}
                   onReminderTimeChange={setReminderTime}
                 />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={signOut}
+                  className="gap-1.5"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout</span>
+                </Button>
               </div>
               <div className="flex items-center">
                 <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 sm:h-10 sm:w-10">
