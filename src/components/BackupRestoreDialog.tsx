@@ -34,6 +34,18 @@ export const BackupRestoreDialog = ({
   const [restorePin, setRestorePin] = useState("");
   const [pinError, setPinError] = useState("");
 
+  const callBackupManager = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke("backup-manager", {
+      body,
+    });
+
+    if (error) {
+      throw new Error(error.message || "Request failed");
+    }
+
+    return data;
+  };
+
   const handleBackup = async () => {
     const pin = backupPin.trim();
     if (pin.length < 4) {
@@ -44,39 +56,21 @@ export const BackupRestoreDialog = ({
     setLoading(true);
     setPinError("");
     try {
-      // Check if this PIN already exists
-      const { data: existing, error: checkError } = await supabase
-        .from("user_backups" as any)
-        .select("id")
-        .eq("pin_code", pin)
-        .maybeSingle();
+      const result = await callBackupManager({
+        action: "backup",
+        pin,
+        habits: JSON.parse(JSON.stringify(habits)),
+        tasks: JSON.parse(JSON.stringify(tasks)),
+      });
 
-      if (checkError) throw checkError;
-
-      if (existing) {
-        // PIN exists — update the backup
-        const { error: updateError } = await supabase
-          .from("user_backups" as any)
-          .update({
-            habits: JSON.parse(JSON.stringify(habits)),
-            tasks: JSON.parse(JSON.stringify(tasks)),
-          } as any)
-          .eq("pin_code", pin);
-
-        if (updateError) throw updateError;
-        toast.success("Backup updated successfully!");
+      if (result.error) {
+        toast.error(result.error);
       } else {
-        // New PIN — create backup
-        const { error: insertError } = await supabase
-          .from("user_backups" as any)
-          .insert({
-            pin_code: pin,
-            habits: JSON.parse(JSON.stringify(habits)),
-            tasks: JSON.parse(JSON.stringify(tasks)),
-          } as any);
-
-        if (insertError) throw insertError;
-        toast.success("Backup created successfully!");
+        toast.success(
+          result.message === "Backup updated"
+            ? "Backup updated successfully!"
+            : "Backup created successfully!"
+        );
       }
     } catch (err) {
       console.error("Backup error:", err);
@@ -95,22 +89,18 @@ export const BackupRestoreDialog = ({
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("user_backups" as any)
-        .select("habits, tasks")
-        .eq("pin_code", pin)
-        .maybeSingle();
+      const result = await callBackupManager({
+        action: "restore",
+        pin,
+      });
 
-      if (error) throw error;
-
-      if (!data) {
-        toast.error("No backup found for this PIN. Please check and try again.");
+      if (result.error) {
+        toast.error(result.error);
         return;
       }
 
-      const restoredData = data as any;
-      const restoredHabits = restoredData.habits as Habit[];
-      const restoredTasks = restoredData.tasks as Task[];
+      const restoredHabits = result.habits as Habit[];
+      const restoredTasks = result.tasks as Task[];
 
       onRestore(restoredHabits, restoredTasks);
       toast.success("Data restored successfully!");
@@ -183,6 +173,7 @@ export const BackupRestoreDialog = ({
                     setBackupPin(e.target.value);
                     setPinError("");
                   }}
+                  maxLength={64}
                   className="text-center text-lg font-mono tracking-wider"
                 />
                 {pinError && (
@@ -192,7 +183,8 @@ export const BackupRestoreDialog = ({
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Use the same PIN to update your backup anytime. Remember it to restore later.
+                  Use the same PIN to update your backup anytime. Remember it to
+                  restore later.
                 </p>
               </div>
               <Button
@@ -219,6 +211,7 @@ export const BackupRestoreDialog = ({
                 placeholder="Enter your PIN..."
                 value={restorePin}
                 onChange={(e) => setRestorePin(e.target.value)}
+                maxLength={64}
                 className="text-center text-lg font-mono tracking-wider"
               />
               <p className="text-xs text-muted-foreground text-center">
