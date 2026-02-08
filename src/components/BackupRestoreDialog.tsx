@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Copy, Download, Upload, Loader2, Check } from "lucide-react";
+import { Shield, Download, Upload, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Habit } from "@/types/habit";
@@ -22,11 +22,6 @@ interface BackupRestoreDialogProps {
   onRestore: (habits: Habit[], tasks: Task[]) => void;
 }
 
-const generatePin = (): string => {
-  // Generate a 6-digit numeric PIN
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
 export const BackupRestoreDialog = ({
   habits,
   tasks,
@@ -34,78 +29,67 @@ export const BackupRestoreDialog = ({
 }: BackupRestoreDialogProps) => {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("backup");
-  const [pin, setPin] = useState("");
-  const [generatedPin, setGeneratedPin] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [backupPin, setBackupPin] = useState("");
   const [restorePin, setRestorePin] = useState("");
+  const [pinError, setPinError] = useState("");
 
   const handleBackup = async () => {
+    const pin = backupPin.trim();
+    if (pin.length < 4) {
+      setPinError("PIN must be at least 4 characters");
+      return;
+    }
+
     setLoading(true);
+    setPinError("");
     try {
-      const newPin = generatePin();
+      // Check if this PIN already exists
+      const { data: existing, error: checkError } = await supabase
+        .from("user_backups" as any)
+        .select("id")
+        .eq("pin_code", pin)
+        .maybeSingle();
 
-      const { error } = await supabase.from("user_backups" as any).insert({
-        pin_code: newPin,
-        habits: JSON.parse(JSON.stringify(habits)),
-        tasks: JSON.parse(JSON.stringify(tasks)),
-      } as any);
+      if (checkError) throw checkError;
 
-      if (error) {
-        // If PIN collision, retry once
-        if (error.code === "23505") {
-          const retryPin = generatePin();
-          const { error: retryError } = await supabase
-            .from("user_backups" as any)
-            .insert({
-              pin_code: retryPin,
-              habits: JSON.parse(JSON.stringify(habits)),
-              tasks: JSON.parse(JSON.stringify(tasks)),
-            } as any);
+      if (existing) {
+        // PIN exists — update the backup
+        const { error: updateError } = await supabase
+          .from("user_backups" as any)
+          .update({
+            habits: JSON.parse(JSON.stringify(habits)),
+            tasks: JSON.parse(JSON.stringify(tasks)),
+          } as any)
+          .eq("pin_code", pin);
 
-          if (retryError) throw retryError;
-          setGeneratedPin(retryPin);
-        } else {
-          throw error;
-        }
+        if (updateError) throw updateError;
+        toast.success("Backup updated successfully!");
       } else {
-        setGeneratedPin(newPin);
-      }
+        // New PIN — create backup
+        const { error: insertError } = await supabase
+          .from("user_backups" as any)
+          .insert({
+            pin_code: pin,
+            habits: JSON.parse(JSON.stringify(habits)),
+            tasks: JSON.parse(JSON.stringify(tasks)),
+          } as any);
 
-      toast.success("Backup created successfully!");
+        if (insertError) throw insertError;
+        toast.success("Backup created successfully!");
+      }
     } catch (err) {
       console.error("Backup error:", err);
-      toast.error("Failed to create backup. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateBackup = async () => {
-    if (!generatedPin) return;
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from("user_backups" as any)
-        .update({
-          habits: JSON.parse(JSON.stringify(habits)),
-          tasks: JSON.parse(JSON.stringify(tasks)),
-        } as any)
-        .eq("pin_code", generatedPin);
-
-      if (error) throw error;
-      toast.success("Backup updated with latest data!");
-    } catch (err) {
-      console.error("Update error:", err);
-      toast.error("Failed to update backup.");
+      toast.error("Failed to save backup. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleRestore = async () => {
-    if (restorePin.length !== 6) {
-      toast.error("Please enter a valid 6-digit PIN");
+    const pin = restorePin.trim();
+    if (pin.length < 4) {
+      toast.error("Please enter a valid PIN (at least 4 characters)");
       return;
     }
 
@@ -114,7 +98,7 @@ export const BackupRestoreDialog = ({
       const { data, error } = await supabase
         .from("user_backups" as any)
         .select("habits, tasks")
-        .eq("pin_code", restorePin)
+        .eq("pin_code", pin)
         .maybeSingle();
 
       if (error) throw error;
@@ -140,24 +124,12 @@ export const BackupRestoreDialog = ({
     }
   };
 
-  const handleCopyPin = async () => {
-    if (!generatedPin) return;
-    try {
-      await navigator.clipboard.writeText(generatedPin);
-      setCopied(true);
-      toast.success("PIN copied to clipboard!");
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Failed to copy. Please copy manually.");
-    }
-  };
-
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
-      setGeneratedPin(null);
-      setCopied(false);
+      setBackupPin("");
       setRestorePin("");
+      setPinError("");
       setTab("backup");
     }
   };
@@ -177,7 +149,7 @@ export const BackupRestoreDialog = ({
             Backup & Restore
           </DialogTitle>
           <DialogDescription>
-            Save your data with a unique PIN code. Use it to restore your data anytime.
+            Choose a unique PIN to save and restore your data across devices.
           </DialogDescription>
         </DialogHeader>
 
@@ -194,92 +166,67 @@ export const BackupRestoreDialog = ({
           </TabsList>
 
           <TabsContent value="backup" className="space-y-4 mt-4">
-            {!generatedPin ? (
-              <div className="space-y-4">
-                <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-2">
-                  <p className="text-sm font-medium">What gets backed up:</p>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>✓ {habits.length} habit(s) with all completion data</li>
-                    <li>✓ {tasks.length} task(s) with status</li>
-                  </ul>
-                </div>
-                <Button
-                  onClick={handleBackup}
-                  disabled={loading}
-                  className="w-full gap-2"
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4" />
-                  )}
-                  Generate Backup Code
-                </Button>
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-2">
+                <p className="text-sm font-medium">What gets backed up:</p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>✓ {habits.length} habit(s) with all completion data</li>
+                  <li>✓ {tasks.length} task(s) with status</li>
+                </ul>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="rounded-lg border border-border bg-muted/50 p-6 text-center space-y-3">
-                  <p className="text-sm text-muted-foreground">Your unique backup PIN:</p>
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-3xl font-mono font-bold tracking-[0.3em]">
-                      {generatedPin}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleCopyPin}
-                      className="h-8 w-8"
-                    >
-                      {copied ? (
-                        <Check className="w-4 h-4 text-emerald-500" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-destructive font-medium">
-                    ⚠️ Save this PIN! You'll need it to restore your data.
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Your unique PIN</label>
+                <Input
+                  placeholder="Enter your PIN (min 4 chars)..."
+                  value={backupPin}
+                  onChange={(e) => {
+                    setBackupPin(e.target.value);
+                    setPinError("");
+                  }}
+                  className="text-center text-lg font-mono tracking-wider"
+                />
+                {pinError && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {pinError}
                   </p>
-                </div>
-                <Button
-                  onClick={handleUpdateBackup}
-                  disabled={loading}
-                  variant="outline"
-                  className="w-full gap-2"
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4" />
-                  )}
-                  Update Backup with Latest Data
-                </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Use the same PIN to update your backup anytime. Remember it to restore later.
+                </p>
               </div>
-            )}
+              <Button
+                onClick={handleBackup}
+                disabled={loading || backupPin.trim().length < 4}
+                className="w-full gap-2"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                Save Backup
+              </Button>
+            </div>
           </TabsContent>
 
           <TabsContent value="restore" className="space-y-4 mt-4">
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Enter your 6-digit backup PIN to restore your habits and tasks.
+                Enter your backup PIN to restore your habits and tasks.
               </p>
               <Input
-                placeholder="Enter 6-digit PIN..."
+                placeholder="Enter your PIN..."
                 value={restorePin}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                  setRestorePin(val);
-                }}
-                className="text-center text-xl font-mono tracking-[0.3em]"
-                maxLength={6}
-                inputMode="numeric"
+                onChange={(e) => setRestorePin(e.target.value)}
+                className="text-center text-lg font-mono tracking-wider"
               />
               <p className="text-xs text-muted-foreground text-center">
                 ⚠️ This will replace your current data
               </p>
               <Button
                 onClick={handleRestore}
-                disabled={loading || restorePin.length !== 6}
+                disabled={loading || restorePin.trim().length < 4}
                 className="w-full gap-2"
               >
                 {loading ? (
