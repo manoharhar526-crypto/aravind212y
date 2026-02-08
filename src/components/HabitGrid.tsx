@@ -1,7 +1,7 @@
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { getDaysInMonth, getDayOfWeek, getWeekNumber, calculateCompletionRate, isDayCompleted, getCompletedDaysForMonth } from "@/lib/habitUtils";
-import { Check, X, Trash2, Flame } from "lucide-react";
+import { Check, Trash2, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HabitGridProps {
@@ -80,8 +80,10 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHa
   };
 
   const getDayTaskStats = (day: number) => {
-    const completedCount = tasks.filter(t => t.completed).length;
-    const totalCount = tasks.length;
+    // Filter daily tasks assigned to this specific day
+    const dailyTasks = tasks.filter(t => t.type === 'daily' && t.day === day);
+    const completedCount = dailyTasks.filter(t => t.completed).length;
+    const totalCount = dailyTasks.length;
     const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
     return { completedCount, totalCount, percentage };
   };
@@ -247,11 +249,8 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHa
                               strokeWidth={3}
                             />
                           )}
-                          {isMissed && (
-                            <X
-                              className="w-3 h-3 sm:w-4 sm:h-4 text-destructive"
-                              strokeWidth={2}
-                            />
+                          {isMissed && !canToggle && (
+                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-destructive/40" />
                           )}
                         </button>
                       </td>
