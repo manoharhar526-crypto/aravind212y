@@ -2,3 +2,6 @@ project_id = "znkapwdqnyviudyxlofx"
 
 [functions.backup-manager]
 verify_jwt = false
+
+[functions.auth-login]
+verify_jwt = false

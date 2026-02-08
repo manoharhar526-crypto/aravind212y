@@ -1,0 +1,112 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+
+interface LoginFormProps {
+  onSwitchToSignup: () => void;
+}
+
+export const LoginForm = ({ onSwitchToSignup }: LoginFormProps) => {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const trimmedUsername = username.trim().toLowerCase();
+    if (trimmedUsername.length < 3) {
+      toast.error("Username must be at least 3 characters");
+      return;
+    }
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("auth-login", {
+        body: { username: trimmedUsername, password },
+      });
+
+      if (error || data?.error) {
+        toast.error(data?.error || "Login failed. Please try again.");
+        return;
+      }
+
+      if (data?.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+        toast.success("Welcome back!");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleLogin} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="username">Username</Label>
+        <Input
+          id="username"
+          placeholder="Enter your username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+          maxLength={30}
+          autoComplete="username"
+          className="text-base"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <div className="relative">
+          <Input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            maxLength={128}
+            autoComplete="current-password"
+            className="text-base pr-10"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </Button>
+        </div>
+      </div>
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+        Log In
+      </Button>
+      <p className="text-sm text-center text-muted-foreground">
+        Don't have an account?{" "}
+        <button
+          type="button"
+          onClick={onSwitchToSignup}
+          className="text-primary hover:underline font-medium"
+        >
+          Sign up
+        </button>
+      </p>
+    </form>
+  );
+};
