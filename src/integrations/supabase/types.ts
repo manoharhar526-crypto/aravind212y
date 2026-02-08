@@ -20,6 +20,7 @@ export type Database = {
           habits: Json
           id: string
           pin_code: string
+          pin_hash: string | null
           tasks: Json
           updated_at: string
         }
@@ -28,6 +29,7 @@ export type Database = {
           habits?: Json
           id?: string
           pin_code: string
+          pin_hash?: string | null
           tasks?: Json
           updated_at?: string
         }
@@ -36,6 +38,7 @@ export type Database = {
           habits?: Json
           id?: string
           pin_code?: string
+          pin_hash?: string | null
           tasks?: Json
           updated_at?: string
         }
