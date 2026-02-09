@@ -15,25 +15,18 @@ async function hashPin(pin: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Simple rate limiting using in-memory map (resets on cold start)
+// Simple rate limiting
 const attemptTracker = new Map<string, { count: number; resetAt: number }>();
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
   const entry = attemptTracker.get(ip);
-
   if (!entry || now > entry.resetAt) {
-    attemptTracker.set(ip, { count: 1, resetAt: now + 60_000 }); // 1 minute window
+    attemptTracker.set(ip, { count: 1, resetAt: now + 60_000 });
     return false;
   }
-
   entry.count++;
-  if (entry.count > 10) {
-    // Max 10 attempts per minute
-    return true;
-  }
-
-  return false;
+  return entry.count > 10;
 }
 
 Deno.serve(async (req) => {
@@ -42,7 +35,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Rate limiting
     const clientIp =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       req.headers.get("cf-connecting-ip") ||
@@ -51,12 +43,35 @@ Deno.serve(async (req) => {
     if (isRateLimited(clientIp)) {
       return new Response(
         JSON.stringify({ error: "Too many requests. Please try again later." }),
-        {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Authenticate user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -66,25 +81,60 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, pin, habits, tasks } = body;
 
-    // Validate PIN
-    if (!pin || typeof pin !== "string" || pin.trim().length < 4) {
+    if (action === "check") {
+      // Check if user has a backup PIN set
+      const { data, error } = await supabaseAdmin
+        .from("user_backups")
+        .select("id, created_at, updated_at")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) throw error;
+
       return new Response(
-        JSON.stringify({ error: "PIN must be at least 4 characters" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ hasBackup: !!data, backup: data }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Enforce max PIN length
+    if (action === "check-pin-available") {
+      if (!pin || typeof pin !== "string" || pin.trim().length < 4) {
+        return new Response(
+          JSON.stringify({ error: "PIN must be at least 4 characters" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const pinHash = await hashPin(pin.trim());
+      const { data, error } = await supabaseAdmin
+        .from("user_backups")
+        .select("id, user_id")
+        .eq("pin_hash", pinHash)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      // Available if no one uses it, or the current user owns it
+      const available = !data || data.user_id === userId;
+
+      return new Response(
+        JSON.stringify({ available }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate PIN for backup/restore/delete
+    if (!pin || typeof pin !== "string" || pin.trim().length < 4) {
+      return new Response(
+        JSON.stringify({ error: "PIN must be at least 4 characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (pin.length > 64) {
       return new Response(
         JSON.stringify({ error: "PIN must be at most 64 characters" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -92,81 +142,75 @@ Deno.serve(async (req) => {
     const pinHash = await hashPin(trimmedPin);
 
     if (action === "backup") {
-      // Validate habits and tasks are arrays
       if (!Array.isArray(habits) || !Array.isArray(tasks)) {
         return new Response(
           JSON.stringify({ error: "Invalid data format" }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Limit data size (prevent abuse)
       const dataSize = JSON.stringify({ habits, tasks }).length;
       if (dataSize > 500_000) {
-        // 500KB limit
         return new Response(
           JSON.stringify({ error: "Backup data too large" }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Check if backup exists by pin_hash
-      const { data: existing, error: checkError } = await supabaseAdmin
+      // Check if this PIN is taken by another user
+      const { data: pinOwner } = await supabaseAdmin
         .from("user_backups")
-        .select("id")
+        .select("user_id")
         .eq("pin_hash", pinHash)
         .maybeSingle();
 
-      if (checkError) throw checkError;
+      if (pinOwner && pinOwner.user_id !== userId) {
+        return new Response(
+          JSON.stringify({ error: "This PIN is already taken. Please choose another." }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Check if user already has a backup
+      const { data: existing } = await supabaseAdmin
+        .from("user_backups")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
 
       if (existing) {
         // Update existing backup
         const { error: updateError } = await supabaseAdmin
           .from("user_backups")
-          .update({
-            habits: habits,
-            tasks: tasks,
-          })
-          .eq("pin_hash", pinHash);
+          .update({ habits, tasks, pin_hash: pinHash, pin_code: "hashed" })
+          .eq("user_id", userId);
 
         if (updateError) throw updateError;
 
         return new Response(
           JSON.stringify({ success: true, message: "Backup updated" }),
-          {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       } else {
-        // Create new backup
         const { error: insertError } = await supabaseAdmin
           .from("user_backups")
           .insert({
+            user_id: userId,
             pin_hash: pinHash,
-            pin_code: "hashed", // Keep column non-null but don't store real PIN
-            habits: habits,
-            tasks: tasks,
+            pin_code: "hashed",
+            habits,
+            tasks,
           });
 
         if (insertError) throw insertError;
 
         return new Response(
           JSON.stringify({ success: true, message: "Backup created" }),
-          {
-            status: 201,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     } else if (action === "restore") {
-      // Look up by pin_hash
+      // Restore by PIN hash (any user can restore with correct PIN)
       const { data, error } = await supabaseAdmin
         .from("user_backups")
         .select("habits, tasks")
@@ -177,44 +221,59 @@ Deno.serve(async (req) => {
 
       if (!data) {
         return new Response(
-          JSON.stringify({
-            error: "No backup found for this PIN. Please check and try again.",
-          }),
-          {
-            status: 404,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          JSON.stringify({ error: "No backup found for this PIN." }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       return new Response(
-        JSON.stringify({
-          success: true,
-          habits: data.habits,
-          tasks: data.tasks,
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ success: true, habits: data.habits, tasks: data.tasks }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else if (action === "delete") {
+      // Delete user's backup, verify PIN matches
+      const { data: backup } = await supabaseAdmin
+        .from("user_backups")
+        .select("id, pin_hash")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (!backup) {
+        return new Response(
+          JSON.stringify({ error: "No backup found to delete." }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (backup.pin_hash !== pinHash) {
+        return new Response(
+          JSON.stringify({ error: "Incorrect PIN." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { error: deleteError } = await supabaseAdmin
+        .from("user_backups")
+        .delete()
+        .eq("user_id", userId);
+
+      if (deleteError) throw deleteError;
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Backup deleted" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else {
       return new Response(
-        JSON.stringify({ error: "Invalid action. Use 'backup' or 'restore'" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: "Invalid action" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
   } catch (err) {
     console.error("Backup manager error:", err);
     return new Response(
       JSON.stringify({ error: "An unexpected error occurred" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
