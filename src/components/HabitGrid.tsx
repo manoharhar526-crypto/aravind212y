@@ -1,7 +1,7 @@
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { getDaysInMonth, getDayOfWeek, getWeekNumber, calculateCompletionRate, isDayCompleted, getCompletedDaysForMonth } from "@/lib/habitUtils";
-import { Check, Trash2, Flame } from "lucide-react";
+import { Check, Trash2, Flame, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HabitGridProps {
@@ -248,7 +248,10 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHa
                             />
                           )}
                           {isMissed && !canToggle && (
-                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-destructive/40" />
+                            <X
+                              className="w-3 h-3 sm:w-4 sm:h-4 text-destructive/60"
+                              strokeWidth={2.5}
+                            />
                           )}
                         </button>
                       </td>
