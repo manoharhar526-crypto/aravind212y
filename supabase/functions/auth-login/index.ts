@@ -97,9 +97,13 @@ Deno.serve(async (req) => {
     });
 
     if (signInError) {
+      const msg = signInError.message?.toLowerCase().includes("email not confirmed")
+        ? "Please confirm your email before logging in. Check your inbox."
+        : "Invalid username or password";
+      const status = signInError.message?.toLowerCase().includes("email not confirmed") ? 403 : 401;
       return new Response(
-        JSON.stringify({ error: "Invalid username or password" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: msg }),
+        { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
