@@ -79,11 +79,9 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHa
     return day > todayDay;
   };
 
-  const getDayTaskStats = (day: number) => {
-    // Filter daily tasks assigned to this specific day
-    const dailyTasks = tasks.filter(t => t.type === 'daily' && t.day === day);
-    const completedCount = dailyTasks.filter(t => t.completed).length;
-    const totalCount = dailyTasks.length;
+  const getDayHabitStats = (day: number) => {
+    const completedCount = habits.filter(h => isDayCompleted(h, currentMonth, day)).length;
+    const totalCount = habits.length;
     const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
     return { completedCount, totalCount, percentage };
   };
@@ -160,7 +158,7 @@ export const HabitGrid = ({ habits, tasks, currentMonth, onToggleDay, onDeleteHa
             </td>
             {weeks.map((week) => (
               week.days.map(day => {
-                const stats = getDayTaskStats(day);
+                const stats = getDayHabitStats(day);
                 return (
                   <td
                     key={day}
