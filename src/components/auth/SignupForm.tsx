@@ -12,7 +12,6 @@ interface SignupFormProps {
 
 export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -70,10 +69,7 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
       return;
     }
 
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
+    const generatedEmail = `${username}@habittracker.local`;
 
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters");
@@ -102,7 +98,7 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
       }
 
       const { error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: generatedEmail,
         password,
         options: {
           data: { username },
@@ -165,19 +161,6 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
         )}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="signup-email">Email</Label>
-        <Input
-          id="signup-email"
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          maxLength={255}
-          autoComplete="email"
-          className="text-base"
-        />
-      </div>
 
       <div className="space-y-2">
         <Label htmlFor="signup-password">Password</Label>
