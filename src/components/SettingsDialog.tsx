@@ -22,13 +22,15 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Settings, Bell, Trash2 } from "lucide-react";
+import { Settings, Bell, Trash2, UserX, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import {
   requestNotificationPermission,
   sendNotification,
   getNotificationStatus,
 } from "@/lib/notificationUtils";
+
 
 interface SettingsDialogProps {
   onResetData: () => void;
@@ -47,6 +49,9 @@ export const SettingsDialog = ({
 }: SettingsDialogProps) => {
   const [notificationStatus, setNotificationStatus] = useState(getNotificationStatus());
   const [open, setOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     setNotificationStatus(getNotificationStatus());
@@ -79,6 +84,42 @@ export const SettingsDialog = ({
       toast.success("Test notification sent!");
     } else {
       toast.error("Enable notifications first");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deletePassword.length < 6) {
+      toast.error("Please enter your password");
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-account", {
+        body: { password: deletePassword },
+      });
+
+      if (error || data?.error) {
+        toast.error(data?.error || "Failed to delete account");
+        return;
+      }
+
+      // Clear all local data
+      onResetData();
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Sign out
+      await supabase.auth.signOut();
+      toast.success("Account deleted permanently");
+      setOpen(false);
+    } catch (err) {
+      console.error("Delete account error:", err);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setDeleting(false);
+      setDeletePassword("");
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -193,6 +234,59 @@ export const SettingsDialog = ({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+          </div>
+
+          {/* Delete Account Section */}
+          <div className="space-y-4 pt-4 border-t border-border">
+            <div className="flex items-center gap-2">
+              <UserX className="h-4 w-4 text-destructive" />
+              <h3 className="font-medium text-destructive">Delete Account</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Permanently delete your account and all data (local, cloud backups, profile). This cannot be undone.
+            </p>
+            {!showDeleteConfirm ? (
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                Delete My Account
+              </Button>
+            ) : (
+              <div className="space-y-3 rounded-lg border border-destructive/50 bg-destructive/5 p-4">
+                <p className="text-sm font-medium text-destructive">Enter your password to confirm:</p>
+                <Input
+                  type="password"
+                  placeholder="Your password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  maxLength={128}
+                  className="text-base"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setDeletePassword("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1 gap-2"
+                    disabled={deleting || deletePassword.length < 6}
+                    onClick={handleDeleteAccount}
+                  >
+                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
+                    Confirm Delete
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>
