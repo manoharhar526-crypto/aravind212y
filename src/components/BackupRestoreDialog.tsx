@@ -57,7 +57,7 @@ export const BackupRestoreDialog = ({
     try {
       const result = await callBackupManager({ action: "check" });
       setHasBackup(result.hasBackup);
-      const stored = localStorage.getItem("backup_pin");
+      const stored = sessionStorage.getItem("backup_pin");
       if (stored) {
         setSavedPin(stored);
         setBackupPin(stored);
@@ -125,7 +125,7 @@ export const BackupRestoreDialog = ({
       if (result.error) {
         toast.error(result.error);
       } else {
-        localStorage.setItem("backup_pin", pin);
+        sessionStorage.setItem("backup_pin", pin);
         setSavedPin(pin);
         toast.success(
           result.message === "Backup updated"
@@ -190,7 +190,7 @@ export const BackupRestoreDialog = ({
       setHasBackup(false);
       setDeletePin("");
       localStorage.removeItem("backup_pin");
-      setSavedPin(null);
+      sessionStorage.removeItem("backup_pin");
     } catch (err) {
       console.error("Delete error:", err);
       toast.error("Failed to delete backup.");

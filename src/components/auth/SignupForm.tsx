@@ -30,18 +30,16 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
 
     setCheckingUsername(true);
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("username", value)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("check_username_available", {
+        target_username: value,
+      });
 
       if (error) {
         setUsernameAvailable(null);
         return;
       }
 
-      setUsernameAvailable(!data);
+      setUsernameAvailable(data as boolean);
     } catch {
       setUsernameAvailable(null);
     } finally {
@@ -83,14 +81,12 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
 
     setLoading(true);
     try {
-      // Final availability check
-      const { data: existing } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("username", username)
-        .maybeSingle();
+      // Final availability check via RPC
+      const { data: available } = await supabase.rpc("check_username_available", {
+        target_username: username,
+      });
 
-      if (existing) {
+      if (!available) {
         toast.error("This username was just taken! Please choose another.");
         setUsernameAvailable(false);
         setLoading(false);
