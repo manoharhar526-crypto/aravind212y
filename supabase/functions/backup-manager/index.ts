@@ -157,32 +157,25 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Check if this PIN is taken by another user
-      const { data: pinOwner } = await supabaseAdmin
-        .from("user_backups")
-        .select("user_id")
-        .eq("pin_hash", pinHash)
-        .maybeSingle();
-
-      if (pinOwner && pinOwner.user_id !== userId) {
-        return new Response(
-          JSON.stringify({ error: "This PIN is already taken. Please choose another." }),
-          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
       // Check if user already has a backup
       const { data: existing } = await supabaseAdmin
         .from("user_backups")
-        .select("id")
+        .select("id, pin_hash")
         .eq("user_id", userId)
         .maybeSingle();
 
       if (existing) {
-        // Update existing backup
+        // User already has a backup — they MUST use the same PIN
+        if (existing.pin_hash !== pinHash) {
+          return new Response(
+            JSON.stringify({ error: "You already have a backup with a different PIN. Use your original PIN to update." }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         const { error: updateError } = await supabaseAdmin
           .from("user_backups")
-          .update({ habits, tasks, pin_hash: pinHash, pin_code: "hashed" })
+          .update({ habits, tasks })
           .eq("user_id", userId);
 
         if (updateError) throw updateError;
@@ -192,6 +185,20 @@ Deno.serve(async (req) => {
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       } else {
+        // New backup — check PIN isn't taken by another user
+        const { data: pinOwner } = await supabaseAdmin
+          .from("user_backups")
+          .select("user_id")
+          .eq("pin_hash", pinHash)
+          .maybeSingle();
+
+        if (pinOwner) {
+          return new Response(
+            JSON.stringify({ error: "This PIN is already taken. Please choose another." }),
+            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         const { error: insertError } = await supabaseAdmin
           .from("user_backups")
           .insert({
