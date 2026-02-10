@@ -38,6 +38,7 @@ export const BackupRestoreDialog = ({
   const [checkingBackup, setCheckingBackup] = useState(false);
   const [pinAvailable, setPinAvailable] = useState<boolean | null>(null);
   const [checkingPin, setCheckingPin] = useState(false);
+  const [savedPin, setSavedPin] = useState<string | null>(null);
 
   const callBackupManager = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("backup-manager", {
@@ -56,6 +57,8 @@ export const BackupRestoreDialog = ({
     try {
       const result = await callBackupManager({ action: "check" });
       setHasBackup(result.hasBackup);
+      const stored = localStorage.getItem("backup_pin");
+      if (stored) setSavedPin(stored);
     } catch {
       // Ignore
     } finally {
@@ -119,6 +122,8 @@ export const BackupRestoreDialog = ({
       if (result.error) {
         toast.error(result.error);
       } else {
+        localStorage.setItem("backup_pin", pin);
+        setSavedPin(pin);
         toast.success(
           result.message === "Backup updated"
             ? "Backup updated successfully!"
@@ -181,6 +186,8 @@ export const BackupRestoreDialog = ({
       toast.success("Backup deleted successfully!");
       setHasBackup(false);
       setDeletePin("");
+      localStorage.removeItem("backup_pin");
+      setSavedPin(null);
     } catch (err) {
       console.error("Delete error:", err);
       toast.error("Failed to delete backup.");
@@ -248,6 +255,12 @@ export const BackupRestoreDialog = ({
                   <p className="text-xs text-primary font-medium mt-2">
                     ✓ You already have a backup. Saving will update it.
                   </p>
+                )}
+                {savedPin && hasBackup && (
+                  <div className="mt-2 p-2 rounded bg-background border border-border">
+                    <p className="text-xs text-muted-foreground">Your saved PIN:</p>
+                    <p className="text-sm font-mono font-bold tracking-wider text-foreground">{savedPin}</p>
+                  </div>
                 )}
               </div>
               <div className="space-y-2">
