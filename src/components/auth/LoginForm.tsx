@@ -63,7 +63,7 @@ export const LoginForm = ({ onSwitchToSignup }: LoginFormProps) => {
           id="username"
           placeholder="Enter your username"
           value={username}
-          onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
           maxLength={30}
           autoComplete="username"
           className="text-base"

@@ -47,7 +47,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (username.length > 30 || password.length > 128) {
+    const trimmedUsername = username.trim().toLowerCase();
+    
+    if (!/^[a-z0-9_]{3,30}$/.test(trimmedUsername) || password.length > 128) {
       return new Response(
         JSON.stringify({ error: "Invalid credentials" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -63,7 +65,7 @@ Deno.serve(async (req) => {
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("user_id")
-      .eq("username", username.trim().toLowerCase())
+      .eq("username", trimmedUsername)
       .maybeSingle();
 
     if (profileError || !profile) {
