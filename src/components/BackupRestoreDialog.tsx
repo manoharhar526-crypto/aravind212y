@@ -268,7 +268,7 @@ export const BackupRestoreDialog = ({
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  {hasBackup ? "Your PIN (enter to update)" : "Choose a unique PIN"}
+                  {hasBackup && savedPin ? "Your PIN (locked)" : hasBackup ? "Your PIN (enter to update)" : "Choose a unique PIN"}
                 </label>
                 <div className="relative">
                   <Input
@@ -276,9 +276,10 @@ export const BackupRestoreDialog = ({
                     value={backupPin}
                     onChange={(e) => handlePinChange(e.target.value)}
                     maxLength={64}
+                    readOnly={!!(hasBackup && savedPin)}
                     className="text-center text-lg font-mono tracking-wider pr-10"
                   />
-                  {backupPin.trim().length >= 4 && (
+                  {backupPin.trim().length >= 4 && !hasBackup && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
                       {checkingPin ? (
                         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -296,11 +297,13 @@ export const BackupRestoreDialog = ({
                     {pinError}
                   </p>
                 )}
-                {pinAvailable === false && !pinError && (
+                {pinAvailable === false && !pinError && !hasBackup && (
                   <p className="text-xs text-destructive">This PIN is already taken by another user</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Your PIN is unique to you — like a username. Remember it to restore your data on any device.
+                  {hasBackup && savedPin
+                    ? "Your PIN is locked. Use the Manage tab to delete and create a new one."
+                    : "Your PIN is unique to you — like a username. Remember it to restore your data on any device."}
                 </p>
               </div>
               <Button
