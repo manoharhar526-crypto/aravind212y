@@ -58,7 +58,10 @@ export const BackupRestoreDialog = ({
       const result = await callBackupManager({ action: "check" });
       setHasBackup(result.hasBackup);
       const stored = localStorage.getItem("backup_pin");
-      if (stored) setSavedPin(stored);
+      if (stored) {
+        setSavedPin(stored);
+        setBackupPin(stored);
+      }
     } catch {
       // Ignore
     } finally {
