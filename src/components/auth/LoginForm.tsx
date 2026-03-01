@@ -19,9 +19,9 @@ export const LoginForm = ({ onSwitchToSignup }: LoginFormProps) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const trimmedUsername = username.trim().toLowerCase();
-    if (trimmedUsername.length < 3) {
-      toast.error("Username must be at least 3 characters");
+    const trimmedUsername = username.trim();
+    if (trimmedUsername.length < 1) {
+      toast.error("Username is required");
       return;
     }
     if (password.length < 6) {
@@ -63,7 +63,7 @@ export const LoginForm = ({ onSwitchToSignup }: LoginFormProps) => {
           id="username"
           placeholder="Enter your username"
           value={username}
-          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+          onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
           maxLength={30}
           autoComplete="username"
           className="text-base"

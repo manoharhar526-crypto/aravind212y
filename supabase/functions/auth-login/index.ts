@@ -47,9 +47,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const trimmedUsername = username.trim().toLowerCase();
+    const trimmedUsername = username.trim();
     
-    if (!/^[a-z0-9_]{3,30}$/.test(trimmedUsername) || password.length > 128) {
+    if (!/^[^\s]{1,30}$/.test(trimmedUsername) || password.length > 128) {
       return new Response(
         JSON.stringify({ error: "Invalid credentials" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

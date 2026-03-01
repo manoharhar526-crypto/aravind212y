@@ -19,7 +19,7 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
   const [checkingUsername, setCheckingUsername] = useState(false);
 
   const validateUsername = (value: string) => {
-    return /^[a-z0-9_]{3,30}$/.test(value);
+    return /^[^\s]{1,30}$/.test(value);
   };
 
   const checkUsernameAvailability = async (value: string) => {
@@ -48,12 +48,11 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
   };
 
   const handleUsernameChange = (value: string) => {
-    const cleaned = value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const cleaned = value.replace(/\s/g, "");
     setUsername(cleaned);
     setUsernameAvailable(null);
 
-    if (cleaned.length >= 3) {
-      // Debounce the check
+    if (cleaned.length >= 1) {
       const timeoutId = setTimeout(() => checkUsernameAvailability(cleaned), 500);
       return () => clearTimeout(timeoutId);
     }
@@ -63,7 +62,7 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
     e.preventDefault();
 
     if (!validateUsername(username)) {
-      toast.error("Username must be 3-30 characters (lowercase letters, numbers, underscores)");
+      toast.error("Username must be 1-30 characters with no spaces");
       return;
     }
 
@@ -137,7 +136,7 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
             autoComplete="username"
             className="text-base pr-10"
           />
-          {username.length >= 3 && (
+          {username.length >= 1 && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
               {checkingUsername ? (
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -150,7 +149,7 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          Lowercase letters, numbers, and underscores only (3-30 chars)
+          Any characters allowed except spaces (1-30 chars)
         </p>
         {usernameAvailable === false && (
         <p className="text-xs text-destructive">This username is already taken</p>
