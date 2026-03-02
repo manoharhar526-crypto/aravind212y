@@ -40,24 +40,16 @@ const AdminLogin = () => {
       }
 
       if (data?.session) {
+        // Check admin status from server response first
+        if (!data.is_admin) {
+          toast.error("This account does not have admin access");
+          return;
+        }
+
         await supabase.auth.setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         });
-
-        // Check if user is admin
-        const { data: roleData } = await supabase
-          .from("user_roles" as any)
-          .select("role")
-          .eq("user_id", data.user.id)
-          .eq("role", "admin")
-          .maybeSingle();
-
-        if (!roleData) {
-          await supabase.auth.signOut();
-          toast.error("This account does not have admin access");
-          return;
-        }
 
         toast.success("Welcome, Admin!");
         navigate("/admin", { replace: true });

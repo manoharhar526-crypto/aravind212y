@@ -21,17 +21,20 @@ const Auth = () => {
   // Redirect admin to admin panel after login
   useEffect(() => {
     if (user) {
-      supabase
-        .from("user_roles" as any)
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
+      const checkAdmin = async () => {
+        try {
+          const { data } = await supabase.functions.invoke("admin-manage", {
+            body: { action: "list_users" },
+          });
+          // If the call succeeds without error, user is admin
+          if (data?.users) {
             navigate("/admin", { replace: true });
           }
-        });
+        } catch {
+          // Not admin, stay on auth page
+        }
+      };
+      checkAdmin();
     }
   }, [user, navigate]);
 

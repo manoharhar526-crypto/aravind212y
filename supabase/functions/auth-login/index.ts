@@ -109,10 +109,19 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check if user has admin role
+    const { data: roleData } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", profile.user_id)
+      .eq("role", "admin")
+      .maybeSingle();
+
     return new Response(
       JSON.stringify({
         session: signInData.session,
         user: signInData.user,
+        is_admin: !!roleData,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
