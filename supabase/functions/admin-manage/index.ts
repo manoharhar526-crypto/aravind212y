@@ -32,6 +32,13 @@ async function verifyAdmin(authHeader: string) {
   return { userId: user.id, supabaseAdmin };
 }
 
+function jsonResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -40,18 +47,12 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
     const admin = await verifyAdmin(authHeader);
     if (!admin) {
-      return new Response(
-        JSON.stringify({ error: "Admin access required" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "Admin access required" }, 403);
     }
 
     const { supabaseAdmin } = admin;
@@ -60,15 +61,13 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "list_users": {
-        const { data: profiles } = await supabaseAdmin
-          .from("profiles")
-          .select("user_id, username, created_at, updated_at")
-          .order("created_at", { ascending: false });
-
-        // Get roles for all users
-        const { data: roles } = await supabaseAdmin
-          .from("user_roles")
-          .select("user_id, role");
+        const [{ data: profiles }, { data: roles }] = await Promise.all([
+          supabaseAdmin
+            .from("profiles")
+            .select("user_id, username, created_at, updated_at")
+            .order("created_at", { ascending: false }),
+          supabaseAdmin.from("user_roles").select("user_id, role"),
+        ]);
 
         const rolesMap: Record<string, string[]> = {};
         roles?.forEach((r: any) => {
@@ -81,56 +80,72 @@ Deno.serve(async (req) => {
           roles: rolesMap[p.user_id] || [],
         })) || [];
 
-        return new Response(
-          JSON.stringify({ users }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ users });
+      }
+
+      case "get_user_data": {
+        const { target_user_id } = body;
+        if (!target_user_id) return jsonResponse({ error: "User ID required" }, 400);
+
+        const [{ data: profile }, { data: backup }, { data: authUser }] = await Promise.all([
+          supabaseAdmin.from("profiles").select("*").eq("user_id", target_user_id).maybeSingle(),
+          supabaseAdmin.from("user_backups").select("*").eq("user_id", target_user_id).maybeSingle(),
+          supabaseAdmin.auth.admin.getUserById(target_user_id),
+        ]);
+
+        return jsonResponse({
+          profile,
+          backup: backup ? { habits: backup.habits, tasks: backup.tasks, updated_at: backup.updated_at } : null,
+          email: authUser?.user?.email || null,
+          last_sign_in: authUser?.user?.last_sign_in_at || null,
+        });
+      }
+
+      case "update_user_backup": {
+        const { target_user_id, habits, tasks } = body;
+        if (!target_user_id) return jsonResponse({ error: "User ID required" }, 400);
+
+        const updateData: Record<string, unknown> = {};
+        if (habits !== undefined) updateData.habits = habits;
+        if (tasks !== undefined) updateData.tasks = tasks;
+
+        if (Object.keys(updateData).length === 0) {
+          return jsonResponse({ error: "No data to update" }, 400);
+        }
+
+        const { error } = await supabaseAdmin
+          .from("user_backups")
+          .update(updateData)
+          .eq("user_id", target_user_id);
+
+        if (error) return jsonResponse({ error: error.message }, 500);
+        return jsonResponse({ success: true });
       }
 
       case "update_password": {
         const { target_user_id, new_password } = body;
         if (!target_user_id || !new_password || new_password.length < 6) {
-          return new Response(
-            JSON.stringify({ error: "Valid user ID and password (min 6 chars) required" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({ error: "Valid user ID and password (min 6 chars) required" }, 400);
         }
 
         const { error } = await supabaseAdmin.auth.admin.updateUserById(target_user_id, {
           password: new_password,
         });
-
-        if (error) {
-          return new Response(
-            JSON.stringify({ error: error.message }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        return new Response(
-          JSON.stringify({ success: true }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        if (error) return jsonResponse({ error: error.message }, 500);
+        return jsonResponse({ success: true });
       }
 
       case "update_username": {
         const { target_user_id, new_username } = body;
         if (!target_user_id || !new_username || typeof new_username !== "string") {
-          return new Response(
-            JSON.stringify({ error: "Valid user ID and username required" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({ error: "Valid user ID and username required" }, 400);
         }
 
         const trimmed = new_username.trim();
         if (trimmed.length < 1 || trimmed.length > 30 || /\s/.test(trimmed)) {
-          return new Response(
-            JSON.stringify({ error: "Username must be 1-30 chars, no spaces" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({ error: "Username must be 1-30 chars, no spaces" }, 400);
         }
 
-        // Check availability
         const { data: existing } = await supabaseAdmin
           .from("profiles")
           .select("user_id")
@@ -138,10 +153,7 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (existing && existing.user_id !== target_user_id) {
-          return new Response(
-            JSON.stringify({ error: "Username already taken" }),
-            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({ error: "Username already taken" }, 409);
         }
 
         const { error } = await supabaseAdmin
@@ -149,71 +161,39 @@ Deno.serve(async (req) => {
           .update({ username: trimmed })
           .eq("user_id", target_user_id);
 
-        if (error) {
-          return new Response(
-            JSON.stringify({ error: error.message }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+        if (error) return jsonResponse({ error: error.message }, 500);
 
-        // Also update user metadata
         await supabaseAdmin.auth.admin.updateUserById(target_user_id, {
           user_metadata: { username: trimmed },
         });
 
-        return new Response(
-          JSON.stringify({ success: true }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ success: true });
       }
 
       case "delete_user": {
         const { target_user_id } = body;
-        if (!target_user_id) {
-          return new Response(
-            JSON.stringify({ error: "User ID required" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+        if (!target_user_id) return jsonResponse({ error: "User ID required" }, 400);
 
-        // Don't allow deleting self
         if (target_user_id === admin.userId) {
-          return new Response(
-            JSON.stringify({ error: "Cannot delete your own admin account" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return jsonResponse({ error: "Cannot delete your own admin account" }, 400);
         }
 
-        // Delete profile, backups, roles, then auth user
-        await supabaseAdmin.from("user_backups").delete().eq("user_id", target_user_id);
-        await supabaseAdmin.from("user_roles").delete().eq("user_id", target_user_id);
-        await supabaseAdmin.from("profiles").delete().eq("user_id", target_user_id);
-        
+        await Promise.all([
+          supabaseAdmin.from("user_backups").delete().eq("user_id", target_user_id),
+          supabaseAdmin.from("user_roles").delete().eq("user_id", target_user_id),
+          supabaseAdmin.from("profiles").delete().eq("user_id", target_user_id),
+        ]);
+
         const { error } = await supabaseAdmin.auth.admin.deleteUser(target_user_id);
-        if (error) {
-          return new Response(
-            JSON.stringify({ error: error.message }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        return new Response(
-          JSON.stringify({ success: true }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        if (error) return jsonResponse({ error: error.message }, 500);
+        return jsonResponse({ success: true });
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: "Unknown action" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return jsonResponse({ error: "Unknown action" }, 400);
     }
   } catch (err) {
     console.error("Admin manage error:", err);
-    return new Response(
-      JSON.stringify({ error: "An unexpected error occurred" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ error: "An unexpected error occurred" }, 500);
   }
 });
