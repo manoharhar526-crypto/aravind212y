@@ -13,11 +13,8 @@ async function verifyAdmin(authHeader: string) {
     { global: { headers: { Authorization: authHeader } } }
   );
 
-  const token = authHeader.replace("Bearer ", "");
-  const { data, error } = await supabase.auth.getClaims(token);
-  if (error || !data?.claims) return null;
-
-  const userId = data.claims.sub as string;
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
 
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -27,12 +24,12 @@ async function verifyAdmin(authHeader: string) {
   const { data: roleData } = await supabaseAdmin
     .from("user_roles")
     .select("role")
-    .eq("user_id", userId)
+    .eq("user_id", user.id)
     .eq("role", "admin")
     .maybeSingle();
 
   if (!roleData) return null;
-  return { userId, supabaseAdmin };
+  return { userId: user.id, supabaseAdmin };
 }
 
 Deno.serve(async (req) => {
