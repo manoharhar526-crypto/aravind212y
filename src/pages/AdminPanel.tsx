@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import {
   Loader2, ArrowLeft, Pencil, Trash2, Key, Shield, Eye, X,
-  Database, Calendar, CheckCircle2, ListTodo,
+  Database, Calendar, CheckCircle2, ListTodo, Search,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -48,6 +48,11 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
   const [newPassword, setNewPassword] = useState("");
   const [newUsername, setNewUsername] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredUsers = users.filter(u =>
+    u.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   const [viewingUser, setViewingUser] = useState<string | null>(null);
   const [userDetail, setUserDetail] = useState<UserDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -156,16 +161,29 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search users by username..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 text-sm"
+          />
+        </div>
+
         {/* Users List */}
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : users.length === 0 ? (
-          <p className="text-muted-foreground text-center py-12">No users found</p>
+        ) : filteredUsers.length === 0 ? (
+          <p className="text-muted-foreground text-center py-12">
+            {searchQuery ? "No users match your search" : "No users found"}
+          </p>
         ) : (
           <div className="space-y-3">
-            {users.map((user) => (
+            {filteredUsers.map((user) => (
               <Card key={user.user_id} className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
