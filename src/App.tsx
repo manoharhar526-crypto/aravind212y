@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminLogin from "./pages/AdminLogin";
 import AdminPanel from "./pages/AdminPanel";
+import AdminUserDetail from "./pages/AdminUserDetail";
 import NotFound from "./pages/NotFound";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
@@ -120,6 +121,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminPanelWrapper />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/user/:userId"
+              element={
+                <AdminRoute>
+                  <AdminUserDetail />
                 </AdminRoute>
               }
             />
