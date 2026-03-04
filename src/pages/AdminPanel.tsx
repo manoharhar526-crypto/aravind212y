@@ -63,8 +63,8 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
     return data;
   }, []);
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
+  const fetchUsers = useCallback(async (showLoader = true) => {
+    if (showLoader) setLoading(true);
     try {
       const data = await adminAction({ action: "list_users" });
       setUsers(data.users || []);
@@ -155,7 +155,7 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs">{users.length} users</Badge>
-            <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
+            <Button variant="outline" size="sm" onClick={() => fetchUsers()} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
             </Button>
           </div>
