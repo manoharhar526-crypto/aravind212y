@@ -115,7 +115,7 @@ const App = () => (
                 </AuthRoute>
               }
             />
-            <Route path="/admin-login" element={<AuthRoute><AdminLogin /></AuthRoute>} />
+            <Route path="/admin-login" element={<AdminLogin />} />
             <Route
               path="/admin"
               element={
