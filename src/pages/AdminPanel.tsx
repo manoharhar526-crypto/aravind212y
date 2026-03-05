@@ -128,7 +128,8 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
     try {
       await adminAction({ action: "delete_user", target_user_id: userId });
       toast.success("User deleted");
-      fetchUsers();
+      // Optimistic local removal instead of refetching
+      setUsers(prev => prev.filter(u => u.user_id !== userId));
     } catch (e: any) {
       toast.error(e.message || "Failed to delete user");
     } finally {
