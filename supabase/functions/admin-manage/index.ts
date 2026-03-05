@@ -156,17 +156,13 @@ Deno.serve(async (req) => {
           return jsonResponse({ error: "Username already taken" }, 409);
         }
 
-        const { error } = await supabaseAdmin
-          .from("profiles")
-          .update({ username: trimmed })
-          .eq("user_id", target_user_id);
+        // Update profile and auth metadata in parallel
+        const [profileResult, _authResult] = await Promise.all([
+          supabaseAdmin.from("profiles").update({ username: trimmed }).eq("user_id", target_user_id),
+          supabaseAdmin.auth.admin.updateUserById(target_user_id, { user_metadata: { username: trimmed } }),
+        ]);
 
-        if (error) return jsonResponse({ error: error.message }, 500);
-
-        await supabaseAdmin.auth.admin.updateUserById(target_user_id, {
-          user_metadata: { username: trimmed },
-        });
-
+        if (profileResult.error) return jsonResponse({ error: profileResult.error.message }, 500);
         return jsonResponse({ success: true });
       }
 
