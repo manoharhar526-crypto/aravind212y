@@ -113,8 +113,9 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
       await adminAction({ action: "update_username", target_user_id: userId, new_username: newUsername });
       toast.success("Username updated");
       setEditingUsername(null);
+      // Optimistic local update instead of refetching
+      setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, username: newUsername.trim() } : u));
       setNewUsername("");
-      fetchUsers();
     } catch (e: any) {
       toast.error(e.message || "Failed to update username");
     } finally {
