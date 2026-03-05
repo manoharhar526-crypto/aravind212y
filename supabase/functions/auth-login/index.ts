@@ -87,41 +87,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Sign in with email + password using anon client
+    // Sign in and check admin role in parallel
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!
     );
 
-    const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-      email: user.email,
-      password: password,
-    });
+    const [signInResult, roleResult] = await Promise.all([
+      supabaseClient.auth.signInWithPassword({
+        email: user.email,
+        password: password,
+      }),
+      supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", profile.user_id)
+        .eq("role", "admin")
+        .maybeSingle(),
+    ]);
 
-    if (signInError) {
-      const msg = signInError.message?.toLowerCase().includes("email not confirmed")
+    if (signInResult.error) {
+      const msg = signInResult.error.message?.toLowerCase().includes("email not confirmed")
         ? "Please confirm your email before logging in. Check your inbox."
         : "Invalid username or password";
-      const status = signInError.message?.toLowerCase().includes("email not confirmed") ? 403 : 401;
+      const status = signInResult.error.message?.toLowerCase().includes("email not confirmed") ? 403 : 401;
       return new Response(
         JSON.stringify({ error: msg }),
         { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check if user has admin role
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", profile.user_id)
-      .eq("role", "admin")
-      .maybeSingle();
-
     return new Response(
       JSON.stringify({
-        session: signInData.session,
-        user: signInData.user,
-        is_admin: !!roleData,
+        session: signInResult.data.session,
+        user: signInResult.data.user,
+        is_admin: !!roleResult.data,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

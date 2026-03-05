@@ -113,8 +113,9 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
       await adminAction({ action: "update_username", target_user_id: userId, new_username: newUsername });
       toast.success("Username updated");
       setEditingUsername(null);
+      // Optimistic local update instead of refetching
+      setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, username: newUsername.trim() } : u));
       setNewUsername("");
-      fetchUsers();
     } catch (e: any) {
       toast.error(e.message || "Failed to update username");
     } finally {
@@ -127,7 +128,8 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
     try {
       await adminAction({ action: "delete_user", target_user_id: userId });
       toast.success("User deleted");
-      fetchUsers();
+      // Optimistic local removal instead of refetching
+      setUsers(prev => prev.filter(u => u.user_id !== userId));
     } catch (e: any) {
       toast.error(e.message || "Failed to delete user");
     } finally {

@@ -51,15 +51,11 @@ const AdminUserDetail = () => {
     if (!userId) return;
     setLoading(true);
     try {
-      const [userData, listData] = await Promise.all([
-        adminAction({ action: "get_user_data", target_user_id: userId }),
-        adminAction({ action: "list_users" }),
-      ]);
+      const userData = await adminAction({ action: "get_user_data", target_user_id: userId });
       setDetail(userData);
       setUsername(userData.profile?.username || "");
       setOriginalUsername(userData.profile?.username || "");
-      const user = listData.users?.find((u: any) => u.user_id === userId);
-      setRoles(user?.roles || []);
+      setRoles(userData.roles || []);
     } catch {
       toast.error("Failed to load user data");
     } finally {
