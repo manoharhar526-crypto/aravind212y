@@ -87,10 +87,11 @@ Deno.serve(async (req) => {
         const { target_user_id } = body;
         if (!target_user_id) return jsonResponse({ error: "User ID required" }, 400);
 
-        const [{ data: profile }, { data: backup }, { data: authUser }] = await Promise.all([
+        const [{ data: profile }, { data: backup }, { data: authUser }, { data: roles }] = await Promise.all([
           supabaseAdmin.from("profiles").select("*").eq("user_id", target_user_id).maybeSingle(),
           supabaseAdmin.from("user_backups").select("*").eq("user_id", target_user_id).maybeSingle(),
           supabaseAdmin.auth.admin.getUserById(target_user_id),
+          supabaseAdmin.from("user_roles").select("role").eq("user_id", target_user_id),
         ]);
 
         return jsonResponse({
@@ -98,6 +99,7 @@ Deno.serve(async (req) => {
           backup: backup ? { habits: backup.habits, tasks: backup.tasks, updated_at: backup.updated_at } : null,
           email: authUser?.user?.email || null,
           last_sign_in: authUser?.user?.last_sign_in_at || null,
+          roles: roles?.map((r: any) => r.role) || [],
         });
       }
 
