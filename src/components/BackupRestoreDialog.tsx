@@ -56,11 +56,6 @@ export const BackupRestoreDialog = ({
     try {
       const result = await callBackupManager({ action: "check" });
       setHasBackup(result.hasBackup);
-      const stored = sessionStorage.getItem("backup_pin");
-      if (stored) {
-        setSavedPin(stored);
-        setBackupPin(stored);
-      }
     } catch {
       // Ignore
     } finally {
