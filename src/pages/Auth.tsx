@@ -13,10 +13,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Setup admin on first load
-  useEffect(() => {
-    supabase.functions.invoke("admin-setup").catch(() => {});
-  }, []);
+  // Redirect authenticated users
 
   // Redirect admin to admin panel after login
   useEffect(() => {
