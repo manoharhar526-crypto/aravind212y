@@ -6,8 +6,69 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Hash PIN using SHA-256
+// Hash PIN using PBKDF2 with random salt (returns salt+hash hex string)
 async function hashPin(pin: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(pin),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256
+  );
+  const combined = new Uint8Array(salt.length + new Uint8Array(derivedBits).length);
+  combined.set(salt);
+  combined.set(new Uint8Array(derivedBits), salt.length);
+  return Array.from(combined).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Verify PIN against a stored PBKDF2 hash
+async function verifyPin(pin: string, storedHash: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const combined = new Uint8Array(
+    storedHash.match(/.{2}/g)!.map((b) => parseInt(b, 16))
+  );
+  const salt = combined.slice(0, 16);
+  const storedKey = combined.slice(16);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(pin),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256
+  );
+  const derivedArray = new Uint8Array(derivedBits);
+  if (derivedArray.length !== storedKey.length) return false;
+  let result = 0;
+  for (let i = 0; i < derivedArray.length; i++) {
+    result |= derivedArray[i] ^ storedKey[i];
+  }
+  return result === 0;
+}
+
+// Legacy SHA-256 hash for migration compatibility
+async function legacySha256(pin: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(pin);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -56,7 +117,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const _token = authHeader.replace("Bearer ", "");
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -105,20 +166,37 @@ Deno.serve(async (req) => {
         );
       }
 
-      const pinHash = await hashPin(pin.trim());
-      const { data, error } = await supabaseAdmin
+      // Check if current user already owns a backup (always available for them)
+      const { data: ownBackup } = await supabaseAdmin
         .from("user_backups")
-        .select("id, user_id")
-        .eq("pin_hash", pinHash)
+        .select("id")
+        .eq("user_id", userId)
         .maybeSingle();
 
-      if (error) throw error;
+      if (ownBackup) {
+        return new Response(
+          JSON.stringify({ available: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-      // Available if no one uses it, or the current user owns it
-      const available = !data || data.user_id === userId;
+      // Check all existing backups to see if PIN is taken
+      const { data: allBackups } = await supabaseAdmin
+        .from("user_backups")
+        .select("pin_hash");
+
+      let taken = false;
+      if (allBackups) {
+        for (const b of allBackups) {
+          if (b.pin_hash && await verifyPin(pin.trim(), b.pin_hash)) {
+            taken = true;
+            break;
+          }
+        }
+      }
 
       return new Response(
-        JSON.stringify({ available }),
+        JSON.stringify({ available: !taken }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -139,7 +217,6 @@ Deno.serve(async (req) => {
     }
 
     const trimmedPin = pin.trim();
-    const pinHash = await hashPin(trimmedPin);
 
     if (action === "backup") {
       if (!Array.isArray(habits) || !Array.isArray(tasks)) {
@@ -165,8 +242,12 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (existing) {
-        // User already has a backup — they MUST use the same PIN
-        if (existing.pin_hash !== pinHash) {
+        // User already has a backup — verify PIN matches
+        const pinMatches = existing.pin_hash
+          ? await verifyPin(trimmedPin, existing.pin_hash)
+          : false;
+
+        if (!pinMatches) {
           return new Response(
             JSON.stringify({ error: "You already have a backup with a different PIN. Use your original PIN to update." }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -186,24 +267,33 @@ Deno.serve(async (req) => {
         );
       } else {
         // New backup — check PIN isn't taken by another user
-        const { data: pinOwner } = await supabaseAdmin
+        const { data: allBackups } = await supabaseAdmin
           .from("user_backups")
-          .select("user_id")
-          .eq("pin_hash", pinHash)
-          .maybeSingle();
+          .select("pin_hash");
 
-        if (pinOwner) {
+        let taken = false;
+        if (allBackups) {
+          for (const b of allBackups) {
+            if (b.pin_hash && await verifyPin(trimmedPin, b.pin_hash)) {
+              taken = true;
+              break;
+            }
+          }
+        }
+
+        if (taken) {
           return new Response(
             JSON.stringify({ error: "This PIN is already taken. Please choose another." }),
             { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
+        const newHash = await hashPin(trimmedPin);
         const { error: insertError } = await supabaseAdmin
           .from("user_backups")
           .insert({
             user_id: userId,
-            pin_hash: pinHash,
+            pin_hash: newHash,
             pin_code: "hashed",
             habits,
             tasks,
@@ -217,16 +307,24 @@ Deno.serve(async (req) => {
         );
       }
     } else if (action === "restore") {
-      // Restore by PIN hash (any user can restore with correct PIN)
-      const { data, error } = await supabaseAdmin
+      // Restore by finding backup matching PIN
+      const { data: allBackups, error } = await supabaseAdmin
         .from("user_backups")
-        .select("habits, tasks")
-        .eq("pin_hash", pinHash)
-        .maybeSingle();
+        .select("pin_hash, habits, tasks");
 
       if (error) throw error;
 
-      if (!data) {
+      let matchedBackup = null;
+      if (allBackups) {
+        for (const b of allBackups) {
+          if (b.pin_hash && await verifyPin(trimmedPin, b.pin_hash)) {
+            matchedBackup = b;
+            break;
+          }
+        }
+      }
+
+      if (!matchedBackup) {
         return new Response(
           JSON.stringify({ error: "No backup found for this PIN." }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -234,7 +332,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, habits: data.habits, tasks: data.tasks }),
+        JSON.stringify({ success: true, habits: matchedBackup.habits, tasks: matchedBackup.tasks }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } else if (action === "delete") {
@@ -252,7 +350,11 @@ Deno.serve(async (req) => {
         );
       }
 
-      if (backup.pin_hash !== pinHash) {
+      const pinMatches = backup.pin_hash
+        ? await verifyPin(trimmedPin, backup.pin_hash)
+        : false;
+
+      if (!pinMatches) {
         return new Response(
           JSON.stringify({ error: "Incorrect PIN." }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
