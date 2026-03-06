@@ -6,8 +6,69 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Hash PIN using SHA-256
+// Hash PIN using PBKDF2 with random salt (returns salt+hash hex string)
 async function hashPin(pin: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(pin),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256
+  );
+  const combined = new Uint8Array(salt.length + new Uint8Array(derivedBits).length);
+  combined.set(salt);
+  combined.set(new Uint8Array(derivedBits), salt.length);
+  return Array.from(combined).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Verify PIN against a stored PBKDF2 hash
+async function verifyPin(pin: string, storedHash: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const combined = new Uint8Array(
+    storedHash.match(/.{2}/g)!.map((b) => parseInt(b, 16))
+  );
+  const salt = combined.slice(0, 16);
+  const storedKey = combined.slice(16);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(pin),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256
+  );
+  const derivedArray = new Uint8Array(derivedBits);
+  if (derivedArray.length !== storedKey.length) return false;
+  let result = 0;
+  for (let i = 0; i < derivedArray.length; i++) {
+    result |= derivedArray[i] ^ storedKey[i];
+  }
+  return result === 0;
+}
+
+// Legacy SHA-256 hash for migration compatibility
+async function legacySha256(pin: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(pin);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
