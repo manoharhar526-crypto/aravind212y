@@ -252,7 +252,7 @@ export const BackupRestoreDialog = ({
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  {hasBackup && savedPin ? "Your PIN (locked)" : hasBackup ? "Your PIN (enter to update)" : "Choose a unique PIN"}
+                  {hasBackup ? "Your PIN (enter to update)" : "Choose a unique PIN"}
                 </label>
                 <div className="relative">
                   <Input
