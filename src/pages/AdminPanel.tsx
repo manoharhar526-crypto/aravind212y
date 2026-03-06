@@ -77,6 +77,25 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  // Real-time: re-fetch user list when profiles or backups change
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => fetchUsers(false)
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_backups" },
+        () => fetchUsers(false)
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchUsers]);
+
   const viewUserData = async (userId: string) => {
     setViewingUser(userId);
     setDetailLoading(true);
