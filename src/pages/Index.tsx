@@ -300,6 +300,7 @@ const Index = () => {
                 <p className="text-xs sm:text-sm text-muted-foreground">{formatIndianDateTime(currentTime)}</p>
               </div>
               <div className="flex items-center gap-1 sm:hidden">
+                <InstallButton />
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
