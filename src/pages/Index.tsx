@@ -330,6 +330,7 @@ const Index = () => {
             </div>
             <div className="flex items-center justify-between sm:justify-end gap-2">
               <div className="hidden sm:flex items-center gap-2">
+                <InstallButton />
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
