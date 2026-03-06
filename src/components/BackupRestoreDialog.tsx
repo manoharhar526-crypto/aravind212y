@@ -284,9 +284,7 @@ export const BackupRestoreDialog = ({
                   <p className="text-xs text-destructive">This PIN is already taken by another user</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  {hasBackup && savedPin
-                    ? "Your PIN is locked. Use the Manage tab to delete and create a new one."
-                    : "Your PIN is unique to you — like a username. Remember it to restore your data on any device."}
+                  Your PIN is unique to you — like a username. Remember it to restore your data on any device.
                 </p>
               </div>
               <Button
