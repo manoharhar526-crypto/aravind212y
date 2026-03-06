@@ -6,6 +6,7 @@ import { SignupForm } from "@/components/auth/SignupForm";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { InstallButton } from "@/components/InstallButton";
 import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
@@ -55,7 +56,8 @@ const Auth = () => {
           )}
         </Card>
 
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-2">
+          <InstallButton />
           <Button
             variant="ghost"
             size="sm"
