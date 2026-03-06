@@ -33,6 +33,7 @@ import { ChevronLeft, ChevronRight, Trash2, Bell, BellOff, LogOut, User } from "
 import { toast } from "sonner";
 import { BackupRestoreDialog } from "@/components/BackupRestoreDialog";
 import { CopyHabitsDialog } from "@/components/CopyHabitsDialog";
+import { InstallButton } from "@/components/InstallButton";
 
 const Index = () => {
   const { username, signOut } = useAuth();
