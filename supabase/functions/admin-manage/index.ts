@@ -41,7 +41,7 @@ async function verifyAdmin(authHeader: string) {
   return { userId: user.id, supabaseAdmin };
 }
 
-function jsonResponse(data: unknown, status = 200) {
+function jsonResponse(data: unknown, corsHeaders: Record<string, string>, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
