@@ -249,12 +249,6 @@ export const BackupRestoreDialog = ({
                     ✓ You already have a backup. Saving will update it.
                   </p>
                 )}
-                {savedPin && hasBackup && (
-                  <div className="mt-2 p-2 rounded bg-background border border-border">
-                    <p className="text-xs text-muted-foreground">Your saved PIN:</p>
-                    <p className="text-sm font-mono font-bold tracking-wider text-foreground">{savedPin}</p>
-                  </div>
-                )}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">
