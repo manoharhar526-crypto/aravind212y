@@ -38,7 +38,6 @@ export const BackupRestoreDialog = ({
   const [checkingBackup, setCheckingBackup] = useState(false);
   const [pinAvailable, setPinAvailable] = useState<boolean | null>(null);
   const [checkingPin, setCheckingPin] = useState(false);
-  const [savedPin, setSavedPin] = useState<string | null>(null);
 
   const callBackupManager = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("backup-manager", {
