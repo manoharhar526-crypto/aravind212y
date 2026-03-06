@@ -6,6 +6,7 @@ import { SignupForm } from "@/components/auth/SignupForm";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { InstallButton } from "@/components/InstallButton";
 import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
