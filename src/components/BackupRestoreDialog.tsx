@@ -38,7 +38,6 @@ export const BackupRestoreDialog = ({
   const [checkingBackup, setCheckingBackup] = useState(false);
   const [pinAvailable, setPinAvailable] = useState<boolean | null>(null);
   const [checkingPin, setCheckingPin] = useState(false);
-  const [savedPin, setSavedPin] = useState<string | null>(null);
 
   const callBackupManager = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("backup-manager", {
@@ -57,11 +56,6 @@ export const BackupRestoreDialog = ({
     try {
       const result = await callBackupManager({ action: "check" });
       setHasBackup(result.hasBackup);
-      const stored = sessionStorage.getItem("backup_pin");
-      if (stored) {
-        setSavedPin(stored);
-        setBackupPin(stored);
-      }
     } catch {
       // Ignore
     } finally {
@@ -125,8 +119,6 @@ export const BackupRestoreDialog = ({
       if (result.error) {
         toast.error(result.error);
       } else {
-        sessionStorage.setItem("backup_pin", pin);
-        setSavedPin(pin);
         toast.success(
           result.message === "Backup updated"
             ? "Backup updated successfully!"
@@ -189,8 +181,6 @@ export const BackupRestoreDialog = ({
       toast.success("Backup deleted successfully!");
       setHasBackup(false);
       setDeletePin("");
-      localStorage.removeItem("backup_pin");
-      sessionStorage.removeItem("backup_pin");
     } catch (err) {
       console.error("Delete error:", err);
       toast.error("Failed to delete backup.");
@@ -259,16 +249,10 @@ export const BackupRestoreDialog = ({
                     ✓ You already have a backup. Saving will update it.
                   </p>
                 )}
-                {savedPin && hasBackup && (
-                  <div className="mt-2 p-2 rounded bg-background border border-border">
-                    <p className="text-xs text-muted-foreground">Your saved PIN:</p>
-                    <p className="text-sm font-mono font-bold tracking-wider text-foreground">{savedPin}</p>
-                  </div>
-                )}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  {hasBackup && savedPin ? "Your PIN (locked)" : hasBackup ? "Your PIN (enter to update)" : "Choose a unique PIN"}
+                  {hasBackup ? "Your PIN (enter to update)" : "Choose a unique PIN"}
                 </label>
                 <div className="relative">
                   <Input
@@ -276,7 +260,6 @@ export const BackupRestoreDialog = ({
                     value={backupPin}
                     onChange={(e) => handlePinChange(e.target.value)}
                     maxLength={64}
-                    readOnly={!!(hasBackup && savedPin)}
                     className="text-center text-lg font-mono tracking-wider pr-10"
                   />
                   {backupPin.trim().length >= 4 && !hasBackup && (
@@ -301,9 +284,7 @@ export const BackupRestoreDialog = ({
                   <p className="text-xs text-destructive">This PIN is already taken by another user</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  {hasBackup && savedPin
-                    ? "Your PIN is locked. Use the Manage tab to delete and create a new one."
-                    : "Your PIN is unique to you — like a username. Remember it to restore your data on any device."}
+                  Your PIN is unique to you — like a username. Remember it to restore your data on any device.
                 </p>
               </div>
               <Button
