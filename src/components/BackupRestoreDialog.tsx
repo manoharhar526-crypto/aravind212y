@@ -119,8 +119,6 @@ export const BackupRestoreDialog = ({
       if (result.error) {
         toast.error(result.error);
       } else {
-        sessionStorage.setItem("backup_pin", pin);
-        setSavedPin(pin);
         toast.success(
           result.message === "Backup updated"
             ? "Backup updated successfully!"
