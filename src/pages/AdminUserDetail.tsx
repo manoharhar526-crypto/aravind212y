@@ -65,6 +65,26 @@ const AdminUserDetail = () => {
 
   useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
+  // Real-time: refresh user detail when their profile or backup changes
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`admin-user-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles", filter: `user_id=eq.${userId}` },
+        () => fetchDetail()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_backups", filter: `user_id=eq.${userId}` },
+        () => fetchDetail()
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [userId, fetchDetail]);
+
   const handleSaveUsername = async () => {
     if (!username.trim() || /\s/.test(username)) {
       toast.error("Invalid username");
