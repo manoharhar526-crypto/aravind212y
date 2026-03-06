@@ -260,7 +260,6 @@ export const BackupRestoreDialog = ({
                     value={backupPin}
                     onChange={(e) => handlePinChange(e.target.value)}
                     maxLength={64}
-                    readOnly={!!(hasBackup && savedPin)}
                     className="text-center text-lg font-mono tracking-wider pr-10"
                   />
                   {backupPin.trim().length >= 4 && !hasBackup && (
