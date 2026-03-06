@@ -56,7 +56,8 @@ const Auth = () => {
           )}
         </Card>
 
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-2">
+          <InstallButton />
           <Button
             variant="ghost"
             size="sm"
