@@ -181,8 +181,6 @@ export const BackupRestoreDialog = ({
       toast.success("Backup deleted successfully!");
       setHasBackup(false);
       setDeletePin("");
-      localStorage.removeItem("backup_pin");
-      sessionStorage.removeItem("backup_pin");
     } catch (err) {
       console.error("Delete error:", err);
       toast.error("Failed to delete backup.");
