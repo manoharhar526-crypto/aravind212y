@@ -22,6 +22,16 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
     return /^[^\s]{1,30}$/.test(value);
   };
 
+  const createInternalEmailFromUsername = async (value: string) => {
+    const usernameBytes = new TextEncoder().encode(value.trim());
+    const hashBuffer = await crypto.subtle.digest("SHA-256", usernameBytes);
+    const hashHex = Array.from(new Uint8Array(hashBuffer))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+
+    return `${hashHex}@habittracker.app`;
+  };
+
   const checkUsernameAvailability = async (value: string) => {
     if (!validateUsername(value)) {
       setUsernameAvailable(null);
