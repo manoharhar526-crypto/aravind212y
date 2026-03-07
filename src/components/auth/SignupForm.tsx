@@ -120,8 +120,8 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
         return;
       }
 
-      toast.success("Account created! Please check your email to verify your account.", {
-        duration: 6000,
+      toast.success("Account created successfully. You can log in now.", {
+        duration: 5000,
       });
       onSwitchToLogin();
     } catch (err) {
