@@ -113,7 +113,7 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
 
       if (error) {
         if (error.message.includes("already registered")) {
-          toast.error("This email is already registered. Try logging in instead.");
+          toast.error("This username is already registered. Try logging in instead.");
         } else {
           toast.error(error.message);
         }
