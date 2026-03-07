@@ -22,6 +22,16 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
     return /^[^\s]{1,30}$/.test(value);
   };
 
+  const createInternalEmailFromUsername = async (value: string) => {
+    const usernameBytes = new TextEncoder().encode(value.trim());
+    const hashBuffer = await crypto.subtle.digest("SHA-256", usernameBytes);
+    const hashHex = Array.from(new Uint8Array(hashBuffer))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+
+    return `${hashHex}@habittracker.app`;
+  };
+
   const checkUsernameAvailability = async (value: string) => {
     if (!validateUsername(value)) {
       setUsernameAvailable(null);
@@ -66,12 +76,12 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
       return;
     }
 
-    const generatedEmail = `${username}@habittracker.app`;
-
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
     }
+
+    const generatedEmail = await createInternalEmailFromUsername(username);
 
     if (usernameAvailable === false) {
       toast.error("This username is already taken");
@@ -103,15 +113,15 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
 
       if (error) {
         if (error.message.includes("already registered")) {
-          toast.error("This email is already registered. Try logging in instead.");
+          toast.error("This username is already registered. Try logging in instead.");
         } else {
           toast.error(error.message);
         }
         return;
       }
 
-      toast.success("Account created! Please check your email to verify your account.", {
-        duration: 6000,
+      toast.success("Account created successfully. You can log in now.", {
+        duration: 5000,
       });
       onSwitchToLogin();
     } catch (err) {
