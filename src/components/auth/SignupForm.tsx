@@ -76,7 +76,7 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
       return;
     }
 
-    const generatedEmail = `${username}@habittracker.app`;
+    const generatedEmail = await createInternalEmailFromUsername(username);
 
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters");
