@@ -56,8 +56,9 @@ export const BackupRestoreDialog = ({
     try {
       const result = await callBackupManager({ action: "check" });
       setHasBackup(result.hasBackup);
-    } catch {
-      // Ignore
+    } catch (err) {
+      console.error("Failed to check backup status:", err);
+      // Don't block the UI - just assume no backup if check fails
     } finally {
       setCheckingBackup(false);
     }
