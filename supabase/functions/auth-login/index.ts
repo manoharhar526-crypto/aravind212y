@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 const allowedOrigins = [
   "https://aravind212y.lovable.app",
   "https://id-preview--2ee928ff-387d-4346-ac31-3f1aab4cf10f.lovable.app",
+  "https://2ee928ff-387d-4346-ac31-3f1aab4cf10f.lovableproject.com",
 ];
 
 function getCorsHeaders(req: Request) {

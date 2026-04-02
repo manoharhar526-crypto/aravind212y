@@ -286,27 +286,26 @@ const Index = () => {
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-shrink">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Habit Tracker</h1>
                   {username && (
-                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      {username}
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground flex items-center gap-1 truncate max-w-[120px]">
+                      <User className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate">{username}</span>
                     </span>
                   )}
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground">{formatIndianDateTime(currentTime)}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{formatIndianDateTime(currentTime)}</p>
               </div>
-              <div className="flex items-center gap-1 sm:hidden">
-                <InstallButton />
+              <div className="flex items-center gap-1 sm:hidden flex-shrink-0">
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
                   size="icon"
                   onClick={handleToggleReminder}
-                  className="h-8 w-8"
+                  className="h-8 w-8 flex-shrink-0"
                 >
                   {reminderEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                 </Button>
@@ -321,7 +320,7 @@ const Index = () => {
                   variant="ghost"
                   size="icon"
                   onClick={signOut}
-                  className="h-8 w-8"
+                  className="h-8 w-8 flex-shrink-0"
                   title="Log out"
                 >
                   <LogOut className="w-4 h-4" />

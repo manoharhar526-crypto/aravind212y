@@ -56,8 +56,9 @@ export const BackupRestoreDialog = ({
     try {
       const result = await callBackupManager({ action: "check" });
       setHasBackup(result.hasBackup);
-    } catch {
-      // Ignore
+    } catch (err) {
+      console.error("Failed to check backup status:", err);
+      // Don't block the UI - just assume no backup if check fails
     } finally {
       setCheckingBackup(false);
     }
@@ -204,7 +205,7 @@ export const BackupRestoreDialog = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
+        <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 sm:gap-1.5">
           <Shield className="w-4 h-4" />
           <span className="hidden sm:inline">Backup</span>
         </Button>
