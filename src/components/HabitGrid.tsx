@@ -15,20 +15,44 @@ interface HabitGridProps {
 // Calculate current streak for a habit
 const calculateStreak = (habit: Habit): number => {
   const today = new Date();
+  
+  // Try starting from today first
   let streak = 0;
   let currentDate = new Date(today);
   
-  while (true) {
-    const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-    const day = String(currentDate.getDate()).padStart(2, '0');
-    const dateString = `${year}-${month}-${day}`;
-    
-    if (habit.completedDays.includes(dateString)) {
-      streak++;
-      currentDate.setDate(currentDate.getDate() - 1);
-    } else {
-      break;
+  // Check if today is completed
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  
+  if (habit.completedDays.includes(todayStr)) {
+    // Count streak from today backwards
+    while (true) {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+      
+      if (habit.completedDays.includes(dateString)) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+  } else {
+    // Today not completed - count streak from yesterday backwards
+    currentDate.setDate(currentDate.getDate() - 1);
+    while (true) {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+      
+      if (habit.completedDays.includes(dateString)) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else {
+        break;
+      }
     }
   }
   
