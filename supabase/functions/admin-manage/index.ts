@@ -33,7 +33,7 @@ async function verifyAdmin(authHeader: string) {
 }
 
 Deno.serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
+  
 
   function jsonResponse(data: unknown, status = 200) {
     return new Response(JSON.stringify(data), {
