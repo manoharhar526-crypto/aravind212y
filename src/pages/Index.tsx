@@ -299,14 +299,13 @@ const Index = () => {
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">{formatIndianDateTime(currentTime)}</p>
               </div>
-              <div className="flex items-center gap-1 sm:hidden">
-                <InstallButton />
+              <div className="flex items-center gap-1 sm:hidden flex-shrink-0">
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
                   size="icon"
                   onClick={handleToggleReminder}
-                  className="h-8 w-8"
+                  className="h-8 w-8 flex-shrink-0"
                 >
                   {reminderEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                 </Button>
@@ -321,7 +320,7 @@ const Index = () => {
                   variant="ghost"
                   size="icon"
                   onClick={signOut}
-                  className="h-8 w-8"
+                  className="h-8 w-8 flex-shrink-0"
                   title="Log out"
                 >
                   <LogOut className="w-4 h-4" />
