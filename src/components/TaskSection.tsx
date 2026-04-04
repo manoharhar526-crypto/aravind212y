@@ -103,7 +103,7 @@ export const TaskSection = ({
             <Button
               variant="ghost"
               size="icon"
-              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-5 w-5 opacity-0 group-hover:opacity-100 focus:opacity-100 sm:transition-opacity touch-manipulation"
               onClick={() => onDeleteTask(task.id)}
             >
               <X className="w-3 h-3" />
