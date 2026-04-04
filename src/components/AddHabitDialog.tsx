@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -38,6 +39,7 @@ export const AddHabitDialog = ({ onAddHabit }: AddHabitDialogProps) => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add New Habit</DialogTitle>
+          <DialogDescription>Enter a name for your new habit to start tracking it daily.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
