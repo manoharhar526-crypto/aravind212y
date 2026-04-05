@@ -16,7 +16,19 @@ export const InstallButton = () => {
   }
 
   if (!isInstallable) {
-    return null;
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2"
+        onClick={() => {
+          toast.info("To install: Open this site in your browser, tap the menu (⋮) and select 'Add to Home Screen' or 'Install App'.");
+        }}
+      >
+        <Smartphone className="h-4 w-4" />
+        Install App
+      </Button>
+    );
   }
 
   return (
