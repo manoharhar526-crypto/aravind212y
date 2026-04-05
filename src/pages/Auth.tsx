@@ -44,7 +44,7 @@ const Auth = () => {
           <p className="text-muted-foreground text-sm">
             {isLogin
               ? "Welcome back! Log in to continue."
-              : "Create an account to start tracking."}
+              : "Please create an account by signing up."}
           </p>
         </div>
 
@@ -59,12 +59,12 @@ const Auth = () => {
         <div className="flex justify-center gap-2">
           <InstallButton />
           <Button
-            variant="ghost"
+            variant="default"
             size="sm"
-            className="text-xs text-muted-foreground gap-1"
+            className="gap-1.5 font-semibold"
             onClick={() => navigate("/admin-login")}
           >
-            <Shield className="w-3 h-3" />
+            <Shield className="w-4 h-4" />
             Admin Access
           </Button>
         </div>
