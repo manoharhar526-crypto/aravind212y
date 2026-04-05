@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Settings, Bell, Trash2, UserX, Loader2 } from "lucide-react";
+import { Settings, Bell, Trash2, UserX, Loader2, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -52,6 +52,9 @@ export const SettingsDialog = ({
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPasswordValue, setNewPasswordValue] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     setNotificationStatus(getNotificationStatus());
@@ -195,6 +198,75 @@ export const SettingsDialog = ({
                 )}
               </>
             )}
+          </div>
+
+          {/* Change Password Section */}
+          <div className="space-y-4 pt-4 border-t border-border">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-medium">Change Password</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="current-pw" className="text-sm">Current Password</Label>
+                <Input
+                  id="current-pw"
+                  type="password"
+                  placeholder="Enter current password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  maxLength={128}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="new-pw" className="text-sm">New Password</Label>
+                <Input
+                  id="new-pw"
+                  type="password"
+                  placeholder="Enter new password (min 6 chars)"
+                  value={newPasswordValue}
+                  onChange={(e) => setNewPasswordValue(e.target.value)}
+                  maxLength={128}
+                />
+              </div>
+              <Button
+                className="w-full gap-2"
+                disabled={changingPassword || currentPassword.length < 6 || newPasswordValue.length < 6}
+                onClick={async () => {
+                  setChangingPassword(true);
+                  try {
+                    // Verify current password by re-signing in
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (!user?.email) throw new Error("No user found");
+                    
+                    const { error: signInError } = await supabase.auth.signInWithPassword({
+                      email: user.email,
+                      password: currentPassword,
+                    });
+                    if (signInError) {
+                      toast.error("Current password is incorrect");
+                      return;
+                    }
+
+                    const { error } = await supabase.auth.updateUser({ password: newPasswordValue });
+                    if (error) {
+                      toast.error(error.message);
+                    } else {
+                      toast.success("Password changed successfully!");
+                      setCurrentPassword("");
+                      setNewPasswordValue("");
+                    }
+                  } catch (err: any) {
+                    toast.error(err.message || "Failed to change password");
+                  } finally {
+                    setChangingPassword(false);
+                  }
+                }}
+              >
+                {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                Change Password
+              </Button>
+            </div>
           </div>
 
           {/* Reset Data Section */}
