@@ -24,6 +24,7 @@ import { TaskProgressChart } from "@/components/charts/TaskProgressChart";
 import { AddHabitDialog } from "@/components/AddHabitDialog";
 import { GoalsOverview } from "@/components/GoalsOverview";
 import { TaskReportCard } from "@/components/TaskReportCard";
+import { HabitReportCard } from "@/components/HabitReportCard";
 import { DailyTasksView } from "@/components/DailyTasksView";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { Button } from "@/components/ui/button";
@@ -461,6 +462,12 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-6 sm:space-y-8">
+            {/* Habit Reports */}
+            <section>
+              <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Habit Reports</h2>
+              <HabitReportCard habits={currentMonthHabits} currentMonth={currentMonth} />
+            </section>
+
             {/* Task Reports */}
             <section>
               <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Task Reports</h2>

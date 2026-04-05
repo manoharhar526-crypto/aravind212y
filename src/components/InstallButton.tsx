@@ -16,23 +16,7 @@ export const InstallButton = () => {
   }
 
   if (!isInstallable) {
-    // Show a hint for iOS / unsupported browsers
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        className="gap-2"
-        onClick={() =>
-          toast.info(
-            "To install: tap the Share button in your browser, then 'Add to Home Screen'",
-            { duration: 5000 }
-          )
-        }
-      >
-        <Smartphone className="h-4 w-4" />
-        Install App
-      </Button>
-    );
+    return null;
   }
 
   return (

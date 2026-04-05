@@ -261,7 +261,8 @@ export const BackupRestoreDialog = ({
                     value={backupPin}
                     onChange={(e) => handlePinChange(e.target.value)}
                     maxLength={64}
-                    className="text-center text-lg font-mono tracking-wider pr-10"
+                    readOnly={hasBackup}
+                    className={`text-center text-lg font-mono tracking-wider pr-10 ${hasBackup ? "opacity-70 cursor-not-allowed bg-muted" : ""}`}
                   />
                   {backupPin.trim().length >= 4 && !hasBackup && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
