@@ -41,11 +41,17 @@ const Auth = () => {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Habit Tracker</h1>
-          <p className="text-muted-foreground text-sm">
-            {isLogin
-              ? "Welcome back! Log in to continue."
-              : "Please create an account by signing up."}
-          </p>
+          {isLogin ? (
+            <p className="text-muted-foreground text-sm">
+              Welcome back! Log in to continue.
+            </p>
+          ) : (
+            <>
+              <p className="text-base font-semibold text-primary">
+                Please create an account by signing up
+              </p>
+            </>
+          )}
         </div>
 
         <Card className="p-6">

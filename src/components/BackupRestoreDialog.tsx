@@ -251,44 +251,63 @@ export const BackupRestoreDialog = ({
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  {hasBackup ? "Your PIN (enter to update)" : "Choose a unique PIN"}
-                </label>
-                <div className="relative">
+              {hasBackup ? (
+                <div className="space-y-2">
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                    <p className="text-sm font-medium text-primary">✓ Backup PIN is set and locked</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Your PIN cannot be changed once set. Enter it below to update your backup data.
+                    </p>
+                  </div>
+                  <label className="text-sm font-medium">Enter your PIN to update backup</label>
                   <Input
-                    placeholder="Enter your PIN (min 4 chars)..."
+                    placeholder="Enter your existing PIN..."
                     value={backupPin}
-                    onChange={(e) => handlePinChange(e.target.value)}
+                    onChange={(e) => {
+                      setBackupPin(e.target.value);
+                      setPinError("");
+                    }}
                     maxLength={64}
-                    readOnly={hasBackup}
-                    className={`text-center text-lg font-mono tracking-wider pr-10 ${hasBackup ? "opacity-70 cursor-not-allowed bg-muted" : ""}`}
+                    className="text-center text-lg font-mono tracking-wider"
                   />
-                  {backupPin.trim().length >= 4 && !hasBackup && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {checkingPin ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                      ) : pinAvailable === true ? (
-                        <Check className="w-4 h-4 text-primary" />
-                      ) : pinAvailable === false ? (
-                        <X className="w-4 h-4 text-destructive" />
-                      ) : null}
-                    </div>
-                  )}
                 </div>
-                {pinError && (
-                  <p className="text-xs text-destructive flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {pinError}
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Choose a unique PIN</label>
+                  <div className="relative">
+                    <Input
+                      placeholder="Enter your PIN (min 4 chars)..."
+                      value={backupPin}
+                      onChange={(e) => handlePinChange(e.target.value)}
+                      maxLength={64}
+                      className="text-center text-lg font-mono tracking-wider pr-10"
+                    />
+                    {backupPin.trim().length >= 4 && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {checkingPin ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        ) : pinAvailable === true ? (
+                          <Check className="w-4 h-4 text-primary" />
+                        ) : pinAvailable === false ? (
+                          <X className="w-4 h-4 text-destructive" />
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                  {pinError && (
+                    <p className="text-xs text-destructive flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {pinError}
+                    </p>
+                  )}
+                  {pinAvailable === false && !pinError && (
+                    <p className="text-xs text-destructive">This PIN is already taken by another user</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Your PIN is unique to you — like a username. Remember it to restore your data on any device.
                   </p>
-                )}
-                {pinAvailable === false && !pinError && !hasBackup && (
-                  <p className="text-xs text-destructive">This PIN is already taken by another user</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Your PIN is unique to you — like a username. Remember it to restore your data on any device.
-                </p>
-              </div>
+                </div>
+              )}
               <Button
                 onClick={handleBackup}
                 disabled={loading || backupPin.trim().length < 4 || pinAvailable === false}
