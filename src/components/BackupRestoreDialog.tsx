@@ -38,6 +38,7 @@ export const BackupRestoreDialog = ({
   const [checkingBackup, setCheckingBackup] = useState(false);
   const [pinAvailable, setPinAvailable] = useState<boolean | null>(null);
   const [checkingPin, setCheckingPin] = useState(false);
+  const [pinVerified, setPinVerified] = useState(false);
 
   const callBackupManager = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("backup-manager", {
@@ -126,6 +127,7 @@ export const BackupRestoreDialog = ({
             : "Backup created with your unique PIN!"
         );
         setHasBackup(true);
+        setPinVerified(true);
       }
     } catch (err) {
       console.error("Backup error:", err);
@@ -198,6 +200,7 @@ export const BackupRestoreDialog = ({
       setDeletePin("");
       setPinError("");
       setPinAvailable(null);
+      setPinVerified(false);
       setTab("backup");
     }
   };
@@ -256,22 +259,33 @@ export const BackupRestoreDialog = ({
                   <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
                     <p className="text-sm font-medium text-primary">✓ Backup PIN is set and locked</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Your PIN cannot be changed. Enter it below to update your backup data.
+                      {pinVerified
+                        ? "PIN verified. You can now update your backup."
+                        : "Your PIN cannot be changed. Enter it below to update your backup data."}
                     </p>
                   </div>
-                  <label className="text-sm font-medium">Enter your PIN to update backup</label>
-                  <Input
-                    placeholder="Enter your existing PIN..."
-                    value={backupPin}
-                    onChange={(e) => {
-                      setBackupPin(e.target.value);
-                      setPinError("");
-                    }}
-                    maxLength={64}
-                    type="password"
-                    autoComplete="off"
-                    className="text-center text-lg font-mono tracking-wider"
-                  />
+                  <label className="text-sm font-medium">Your Backup PIN</label>
+                  {pinVerified ? (
+                    <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-muted/50 px-3 py-2.5">
+                      <span className="flex-1 text-center text-lg font-mono tracking-[0.3em] text-muted-foreground select-none">
+                        {"•".repeat(backupPin.length || 6)}
+                      </span>
+                      <Check className="w-4 h-4 text-primary shrink-0" />
+                    </div>
+                  ) : (
+                    <Input
+                      placeholder="Enter your existing PIN..."
+                      value={backupPin}
+                      onChange={(e) => {
+                        setBackupPin(e.target.value);
+                        setPinError("");
+                      }}
+                      maxLength={64}
+                      type="password"
+                      autoComplete="off"
+                      className="text-center text-lg font-mono tracking-wider"
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
