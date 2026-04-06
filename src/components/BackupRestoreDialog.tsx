@@ -256,7 +256,7 @@ export const BackupRestoreDialog = ({
                   <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
                     <p className="text-sm font-medium text-primary">✓ Backup PIN is set and locked</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Your PIN cannot be changed once set. Enter it below to update your backup data.
+                      Your PIN cannot be changed. Enter it below to update your backup data.
                     </p>
                   </div>
                   <label className="text-sm font-medium">Enter your PIN to update backup</label>
@@ -268,6 +268,8 @@ export const BackupRestoreDialog = ({
                       setPinError("");
                     }}
                     maxLength={64}
+                    type="password"
+                    autoComplete="off"
                     className="text-center text-lg font-mono tracking-wider"
                   />
                 </div>
