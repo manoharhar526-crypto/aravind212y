@@ -104,12 +104,12 @@ export const BackupRestoreDialog = ({
   };
 
   const handleBackup = async () => {
-    const pin = backupPin.trim();
+    const pin = savedPin || backupPin.trim();
     if (pin.length < 4) {
       setPinError("PIN must be at least 4 characters");
       return;
     }
-    if (pinAvailable === false) {
+    if (!savedPin && pinAvailable === false) {
       setPinError("This PIN is already taken");
       return;
     }
@@ -337,7 +337,7 @@ export const BackupRestoreDialog = ({
               )}
               <Button
                 onClick={handleBackup}
-                disabled={loading || backupPin.trim().length < 4 || pinAvailable === false}
+                disabled={loading || (!savedPin && (backupPin.trim().length < 4 || pinAvailable === false))}
                 className="w-full gap-2"
               >
                 {loading ? (
