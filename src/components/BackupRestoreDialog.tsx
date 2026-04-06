@@ -149,7 +149,9 @@ export const BackupRestoreDialog = ({
             : "Backup created with your unique PIN!"
         );
         setHasBackup(true);
-        localStorage.setItem("backup_pin", pin);
+        getPinStorageKey().then((key) => {
+          if (key) localStorage.setItem(key, pin);
+        });
         setSavedPin(pin);
       }
     } catch (err) {
@@ -207,7 +209,9 @@ export const BackupRestoreDialog = ({
       toast.success("Backup deleted successfully!");
       setHasBackup(false);
       setDeletePin("");
-      localStorage.removeItem("backup_pin");
+      getPinStorageKey().then((key) => {
+        if (key) localStorage.removeItem(key);
+      });
       setSavedPin(null);
     } catch (err) {
       console.error("Delete error:", err);
