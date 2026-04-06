@@ -22,6 +22,11 @@ interface BackupRestoreDialogProps {
   onRestore: (habits: Habit[], tasks: Task[]) => void;
 }
 
+const getPinStorageKey = async () => {
+  const { data } = await supabase.auth.getUser();
+  return data?.user ? `backup_pin_${data.user.id}` : null;
+};
+
 export const BackupRestoreDialog = ({
   habits,
   tasks,
@@ -40,10 +45,21 @@ export const BackupRestoreDialog = ({
   const [checkingPin, setCheckingPin] = useState(false);
   const [savedPin, setSavedPin] = useState<string | null>(null);
 
-  // Load saved PIN from localStorage on mount
+  // Load saved PIN from localStorage (user-specific key)
   useEffect(() => {
-    const stored = localStorage.getItem("backup_pin");
-    if (stored) setSavedPin(stored);
+    getPinStorageKey().then((key) => {
+      if (key) {
+        const stored = localStorage.getItem(key);
+        if (stored) setSavedPin(stored);
+        // Migrate old global key if exists
+        const oldPin = localStorage.getItem("backup_pin");
+        if (oldPin && !stored) {
+          localStorage.setItem(key, oldPin);
+          setSavedPin(oldPin);
+        }
+        localStorage.removeItem("backup_pin");
+      }
+    });
   }, []);
 
   const callBackupManager = async (body: Record<string, unknown>) => {
@@ -133,7 +149,9 @@ export const BackupRestoreDialog = ({
             : "Backup created with your unique PIN!"
         );
         setHasBackup(true);
-        localStorage.setItem("backup_pin", pin);
+        getPinStorageKey().then((key) => {
+          if (key) localStorage.setItem(key, pin);
+        });
         setSavedPin(pin);
       }
     } catch (err) {
@@ -191,7 +209,9 @@ export const BackupRestoreDialog = ({
       toast.success("Backup deleted successfully!");
       setHasBackup(false);
       setDeletePin("");
-      localStorage.removeItem("backup_pin");
+      getPinStorageKey().then((key) => {
+        if (key) localStorage.removeItem(key);
+      });
       setSavedPin(null);
     } catch (err) {
       console.error("Delete error:", err);
