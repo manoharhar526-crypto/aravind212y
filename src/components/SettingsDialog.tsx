@@ -103,7 +103,12 @@ export const SettingsDialog = ({
       });
 
       if (error || data?.error) {
-        toast.error(data?.error || "Failed to delete account");
+        const msg = data?.error || "Failed to delete account";
+        if (msg.includes("Incorrect password")) {
+          toast.error("The password you entered is incorrect. Please try again with the correct password.");
+        } else {
+          toast.error(msg);
+        }
         return;
       }
 
