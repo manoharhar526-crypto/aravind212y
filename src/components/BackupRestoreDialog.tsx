@@ -268,6 +268,7 @@ export const BackupRestoreDialog = ({
                       setPinError("");
                     }}
                     maxLength={64}
+                    type="password"
                     className="text-center text-lg font-mono tracking-wider"
                   />
                 </div>
