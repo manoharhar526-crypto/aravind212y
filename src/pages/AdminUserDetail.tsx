@@ -329,29 +329,58 @@ const AdminUserDetail = () => {
             <CheckCircle2 className="w-4 h-4 text-primary" />
             Habits ({detail.backup?.habits?.length || 0})
           </h2>
-          {detail.backup?.habits?.length ? (
-            <div className="space-y-2">
-              {detail.backup.habits.map((habit: any, i: number) => (
-                <Card key={i} className="p-3 text-sm space-y-1 border-muted">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {habit.color && (
-                        <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: habit.color }} />
-                      )}
-                      <span className="font-medium">{habit.name || `Habit ${i + 1}`}</span>
+          {detail.backup?.habits?.length ? (() => {
+            // Group habits by name across all months for a full history view
+            const habitsByName: Record<string, { name: string; totalDays: number; months: { month: string; days: number; completedDays: string[] }[] }> = {};
+            detail.backup.habits.forEach((habit: any) => {
+              const name = habit.name || "Unnamed";
+              const days = Array.isArray(habit.completedDays) ? habit.completedDays : [];
+              if (!habitsByName[name]) {
+                habitsByName[name] = { name, totalDays: 0, months: [] };
+              }
+              habitsByName[name].totalDays += days.length;
+              habitsByName[name].months.push({
+                month: habit.month || "Unknown",
+                days: days.length,
+                completedDays: days,
+              });
+            });
+            // Sort months within each habit
+            Object.values(habitsByName).forEach(h => {
+              h.months.sort((a, b) => a.month.localeCompare(b.month));
+            });
+            const groupedHabits = Object.values(habitsByName).sort((a, b) => b.totalDays - a.totalDays);
+
+            return (
+              <div className="space-y-3">
+                {/* Summary stats */}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>{detail.backup.habits.length} habit entries across {new Set(detail.backup.habits.map((h: any) => h.month)).size} months</span>
+                  <span>•</span>
+                  <span>{groupedHabits.length} unique habits</span>
+                </div>
+
+                {groupedHabits.map((group, i) => (
+                  <Card key={i} className="p-3 text-sm space-y-2 border-muted">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{group.name}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {group.totalDays} total days
+                      </Badge>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {Array.isArray(habit.completedDays) ? habit.completedDays.length : 0} days
-                    </Badge>
-                  </div>
-                  {habit.description && <p className="text-xs text-muted-foreground">{habit.description}</p>}
-                  {habit.createdAt && (
-                    <p className="text-[10px] text-muted-foreground">Created: {new Date(habit.createdAt).toLocaleDateString()}</p>
-                  )}
-                </Card>
-              ))}
-            </div>
-          ) : (
+                    {/* Monthly breakdown */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {group.months.map((m, j) => (
+                        <Badge key={j} variant="outline" className="text-[10px] font-normal">
+                          {m.month}: {m.days}d
+                        </Badge>
+                      ))}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            );
+          })() : (
             <p className="text-sm text-muted-foreground">No habits data</p>
           )}
         </Card>
