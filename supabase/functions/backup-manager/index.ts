@@ -295,7 +295,6 @@ Deno.serve(async (req) => {
           .insert({
             user_id: userId,
             pin_hash: newHash,
-            pin_code: "hashed",
             habits,
             tasks,
           });

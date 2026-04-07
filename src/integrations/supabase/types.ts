@@ -43,8 +43,8 @@ export type Database = {
           created_at: string
           habits: Json
           id: string
-          pin_code: string
-          pin_hash: string | null
+          pin_code: string | null
+          pin_hash: string
           tasks: Json
           updated_at: string
           user_id: string | null
@@ -53,8 +53,8 @@ export type Database = {
           created_at?: string
           habits?: Json
           id?: string
-          pin_code: string
-          pin_hash?: string | null
+          pin_code?: string | null
+          pin_hash: string
           tasks?: Json
           updated_at?: string
           user_id?: string | null
@@ -63,8 +63,8 @@ export type Database = {
           created_at?: string
           habits?: Json
           id?: string
-          pin_code?: string
-          pin_hash?: string | null
+          pin_code?: string | null
+          pin_hash?: string
           tasks?: Json
           updated_at?: string
           user_id?: string | null
