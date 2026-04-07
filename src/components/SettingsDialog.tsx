@@ -103,7 +103,23 @@ export const SettingsDialog = ({
       });
 
       if (error || data?.error) {
-        const msg = data?.error || "Failed to delete account";
+        // Extract error message - for non-2xx responses, the error context may contain the body
+        let msg = data?.error || "Failed to delete account";
+        try {
+          if (error && typeof error.message === "string") {
+            // Try to parse JSON from the error context
+            const jsonMatch = error.message.match(/\{.*\}/);
+            if (jsonMatch) {
+              const parsed = JSON.parse(jsonMatch[0]);
+              if (parsed.error) msg = parsed.error;
+            }
+          }
+          if (error && error.context && typeof error.context.json === "function") {
+            const body = await error.context.json();
+            if (body?.error) msg = body.error;
+          }
+        } catch {}
+        
         if (msg.includes("Incorrect password")) {
           toast.error("The password you entered is incorrect. Please try again with the correct password.");
         } else {
