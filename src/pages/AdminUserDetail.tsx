@@ -341,7 +341,7 @@ const AdminUserDetail = () => {
                       <span className="font-medium">{habit.name || `Habit ${i + 1}`}</span>
                     </div>
                     <Badge variant="secondary" className="text-xs">
-                      {Array.isArray(habit.completedDates) ? habit.completedDates.length : 0} days
+                      {Array.isArray(habit.completedDays) ? habit.completedDays.length : 0} days
                     </Badge>
                   </div>
                   {habit.description && <p className="text-xs text-muted-foreground">{habit.description}</p>}
