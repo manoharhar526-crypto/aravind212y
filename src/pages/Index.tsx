@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { BackupRestoreDialog } from "@/components/BackupRestoreDialog";
 import { CopyHabitsDialog } from "@/components/CopyHabitsDialog";
 import { InstallButton } from "@/components/InstallButton";
+import { InstallBanner } from "@/components/InstallBanner";
 
 const Index = () => {
   const { username, signOut } = useAuth();
@@ -283,6 +284,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <InstallBanner />
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
