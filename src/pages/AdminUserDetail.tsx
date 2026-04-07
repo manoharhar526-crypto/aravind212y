@@ -6,19 +6,34 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowLeft, Loader2, Key, Pencil, Shield, User, Mail,
   Clock, Calendar, CheckCircle2, ListTodo, Database,
-  Save, X, Eye, EyeOff, Lock, Trash2,
+  Save, X, Eye, EyeOff, Lock, Trash2, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Habit } from "@/types/habit";
+import { Task } from "@/types/task";
+import { HabitGrid } from "@/components/HabitGrid";
+import { StatsOverview } from "@/components/StatsOverview";
+import { CompletionLineChart } from "@/components/charts/CompletionLineChart";
+import { HabitPieChart } from "@/components/charts/HabitPieChart";
+import { HabitBarChart } from "@/components/charts/HabitBarChart";
+import { IndividualHabitChart } from "@/components/charts/IndividualHabitChart";
+import { TaskCompletionChart } from "@/components/charts/TaskCompletionChart";
+import { TaskProgressChart } from "@/components/charts/TaskProgressChart";
+import { HabitReportCard } from "@/components/HabitReportCard";
+import { TaskReportCard } from "@/components/TaskReportCard";
+import { GoalsOverview } from "@/components/GoalsOverview";
+import { DailyTasksView } from "@/components/DailyTasksView";
+import { getMonthName, getMonthKey, getHabitsForMonth } from "@/lib/habitUtils";
 
 interface UserFullDetail {
   profile: any;
@@ -40,6 +55,7 @@ const AdminUserDetail = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
+  const [viewMonth, setViewMonth] = useState<Date>(new Date());
 
   const adminAction = useCallback(async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("admin-manage", { body });
@@ -65,7 +81,6 @@ const AdminUserDetail = () => {
 
   useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
-  // Real-time: refresh user detail when their profile or backup changes
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
@@ -155,9 +170,34 @@ const AdminUserDetail = () => {
 
   const isAdmin = roles.includes("admin");
 
+  // Parse backup data into typed arrays for the user-facing components
+  const allHabits: Habit[] = (detail.backup?.habits || []).map((h: any) => ({
+    id: h.id || Math.random().toString(36).slice(2),
+    name: h.name || "Unnamed",
+    month: h.month || getMonthKey(viewMonth),
+    completedDays: Array.isArray(h.completedDays) ? h.completedDays : [],
+  }));
+
+  const allTasks: Task[] = (detail.backup?.tasks || []).map((t: any) => ({
+    id: t.id || Math.random().toString(36).slice(2),
+    title: t.title || t.name || "Untitled",
+    completed: !!t.completed,
+    type: t.type || "general",
+    day: t.day,
+    weekNumber: t.weekNumber,
+  }));
+
+  const currentMonthHabits = getHabitsForMonth(allHabits, viewMonth);
+
+  // Get all unique months from habits to show available months
+  const availableMonths = [...new Set(allHabits.map(h => h.month))].sort();
+
+  // No-op handlers for read-only view
+  const noop = () => {};
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto p-4 md:p-8 space-y-6">
+      <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -323,110 +363,133 @@ const AdminUserDetail = () => {
           </div>
         </Card>
 
-        {/* Habits */}
-        <Card className="p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-primary" />
-            Habits ({detail.backup?.habits?.length || 0})
-          </h2>
-          {detail.backup?.habits?.length ? (() => {
-            // Group habits by name across all months for a full history view
-            const habitsByName: Record<string, { name: string; totalDays: number; months: { month: string; days: number; completedDays: string[] }[] }> = {};
-            detail.backup.habits.forEach((habit: any) => {
-              const name = habit.name || "Unnamed";
-              const days = Array.isArray(habit.completedDays) ? habit.completedDays : [];
-              if (!habitsByName[name]) {
-                habitsByName[name] = { name, totalDays: 0, months: [] };
-              }
-              habitsByName[name].totalDays += days.length;
-              habitsByName[name].months.push({
-                month: habit.month || "Unknown",
-                days: days.length,
-                completedDays: days,
-              });
-            });
-            // Sort months within each habit
-            Object.values(habitsByName).forEach(h => {
-              h.months.sort((a, b) => a.month.localeCompare(b.month));
-            });
-            const groupedHabits = Object.values(habitsByName).sort((a, b) => b.totalDays - a.totalDays);
+        {/* User Data View — Same as user sees it */}
+        {detail.backup ? (
+          <div className="space-y-6">
+            {/* Month navigation */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">User Data</h2>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="font-medium min-w-32 text-center text-sm">
+                  {getMonthName(viewMonth)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
 
-            return (
-              <div className="space-y-3">
-                {/* Summary stats */}
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>{detail.backup.habits.length} habit entries across {new Set(detail.backup.habits.map((h: any) => h.month)).size} months</span>
-                  <span>•</span>
-                  <span>{groupedHabits.length} unique habits</span>
-                </div>
-
-                {groupedHabits.map((group, i) => (
-                  <Card key={i} className="p-3 text-sm space-y-2 border-muted">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{group.name}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {group.totalDays} total days
-                      </Badge>
-                    </div>
-                    {/* Monthly breakdown */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {group.months.map((m, j) => (
-                        <Badge key={j} variant="outline" className="text-[10px] font-normal">
-                          {m.month}: {m.days}d
-                        </Badge>
-                      ))}
-                    </div>
-                  </Card>
+            {/* Available months quick nav */}
+            {availableMonths.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {availableMonths.map(m => (
+                  <Badge
+                    key={m}
+                    variant={getMonthKey(viewMonth) === m ? "default" : "outline"}
+                    className="text-xs cursor-pointer"
+                    onClick={() => {
+                      const [y, mo] = m.split("-").map(Number);
+                      setViewMonth(new Date(y, mo - 1, 1));
+                    }}
+                  >
+                    {m}
+                  </Badge>
                 ))}
               </div>
-            );
-          })() : (
-            <p className="text-sm text-muted-foreground">No habits data</p>
-          )}
-        </Card>
+            )}
 
-        {/* Tasks */}
-        <Card className="p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <ListTodo className="w-4 h-4 text-primary" />
-            Tasks ({detail.backup?.tasks?.length || 0})
-          </h2>
-          {detail.backup?.tasks?.length ? (
-            <div className="space-y-2">
-              {detail.backup.tasks.map((task: any, i: number) => (
-                <Card key={i} className="p-3 text-sm space-y-1 border-muted">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{task.title || task.name || `Task ${i + 1}`}</span>
-                    {task.completed !== undefined && (
-                      <Badge variant={task.completed ? "default" : "secondary"} className="text-xs">
-                        {task.completed ? "Done" : "Pending"}
-                      </Badge>
-                    )}
+            <Tabs defaultValue="habits" className="w-full">
+              <TabsList className="grid w-full max-w-md grid-cols-3 mb-4">
+                <TabsTrigger value="habits" className="text-xs sm:text-sm">Habits</TabsTrigger>
+                <TabsTrigger value="goals" className="text-xs sm:text-sm">Goals</TabsTrigger>
+                <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="habits" className="space-y-6">
+                {/* Stats */}
+                <StatsOverview habits={currentMonthHabits} currentMonth={viewMonth} />
+
+                {/* Habit Grid */}
+                <Card className="overflow-hidden border-border">
+                  <div className="p-3 border-b border-border">
+                    <h3 className="font-semibold text-sm">
+                      Monthly Tracking Grid ({currentMonthHabits.length} habits)
+                    </h3>
                   </div>
-                  {task.description && <p className="text-xs text-muted-foreground">{task.description}</p>}
-                  {task.date && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />{task.date}
-                    </p>
-                  )}
-                  {task.category && (
-                    <Badge variant="outline" className="text-[10px]">{task.category}</Badge>
+                  <HabitGrid
+                    habits={currentMonthHabits}
+                    tasks={allTasks}
+                    currentMonth={viewMonth}
+                    onToggleDay={noop}
+                    onDeleteHabit={noop}
+                  />
+                  {currentMonthHabits.length === 0 && (
+                    <p className="text-sm text-muted-foreground p-4">No habits for this month</p>
                   )}
                 </Card>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No tasks data</p>
-          )}
-        </Card>
 
-        {/* Backup Info */}
-        {detail.backup && (
-          <Card className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Database className="w-3 h-3" />
-              Backup last synced: {new Date(detail.backup.updated_at).toLocaleString()}
-            </p>
+                {/* Charts */}
+                {currentMonthHabits.length > 0 && (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <CompletionLineChart habits={currentMonthHabits} currentMonth={viewMonth} />
+                    <HabitPieChart habits={currentMonthHabits} currentMonth={viewMonth} />
+                    <HabitBarChart habits={currentMonthHabits} currentMonth={viewMonth} />
+                    <IndividualHabitChart habits={currentMonthHabits} currentMonth={viewMonth} />
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="goals" className="space-y-6">
+                <GoalsOverview
+                  tasks={allTasks}
+                  currentMonth={viewMonth}
+                  onToggleTask={noop}
+                  onAddTask={noop}
+                  onDeleteTask={noop}
+                />
+                <DailyTasksView
+                  tasks={allTasks}
+                  currentMonth={viewMonth}
+                  onToggleTask={noop}
+                  onAddTask={noop}
+                  onDeleteTask={noop}
+                />
+              </TabsContent>
+
+              <TabsContent value="reports" className="space-y-6">
+                <HabitReportCard habits={currentMonthHabits} currentMonth={viewMonth} />
+                <TaskReportCard tasks={allTasks} />
+                <div className="grid md:grid-cols-2 gap-4">
+                  <TaskCompletionChart tasks={allTasks} />
+                  <TaskProgressChart tasks={allTasks} currentMonth={viewMonth} />
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            {/* Backup Info */}
+            <Card className="p-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Database className="w-3 h-3" />
+                Backup last synced: {new Date(detail.backup.updated_at).toLocaleString()}
+              </p>
+            </Card>
+          </div>
+        ) : (
+          <Card className="p-6 text-center text-muted-foreground">
+            <p>No backup data available for this user</p>
           </Card>
         )}
       </div>
