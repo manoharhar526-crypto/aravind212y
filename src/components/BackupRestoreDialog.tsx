@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -109,13 +109,20 @@ export const BackupRestoreDialog = ({
     }
   };
 
+  const pinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handlePinChange = (value: string) => {
     setBackupPin(value);
     setPinError("");
     setPinAvailable(null);
+
+    if (pinTimeoutRef.current) {
+      clearTimeout(pinTimeoutRef.current);
+      pinTimeoutRef.current = null;
+    }
+
     if (value.trim().length >= 4) {
-      const timeoutId = setTimeout(() => checkPinAvailability(value.trim()), 500);
-      return () => clearTimeout(timeoutId);
+      pinTimeoutRef.current = setTimeout(() => checkPinAvailability(value.trim()), 500);
     }
   };
 

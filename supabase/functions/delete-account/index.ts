@@ -78,7 +78,13 @@ Deno.serve(async (req) => {
       .delete()
       .eq("user_id", userId);
 
-    // 2. Delete user profile
+    // 2. Delete user roles
+    await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId);
+
+    // 3. Delete user profile
     await supabaseAdmin
       .from("profiles")
       .delete()
