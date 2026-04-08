@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,14 +57,20 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
     }
   };
 
+  const usernameTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleUsernameChange = (value: string) => {
     const cleaned = value.replace(/\s/g, "");
     setUsername(cleaned);
     setUsernameAvailable(null);
 
+    if (usernameTimeoutRef.current) {
+      clearTimeout(usernameTimeoutRef.current);
+      usernameTimeoutRef.current = null;
+    }
+
     if (cleaned.length >= 1) {
-      const timeoutId = setTimeout(() => checkUsernameAvailability(cleaned), 500);
-      return () => clearTimeout(timeoutId);
+      usernameTimeoutRef.current = setTimeout(() => checkUsernameAvailability(cleaned), 500);
     }
   };
 
