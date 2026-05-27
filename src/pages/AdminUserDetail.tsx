@@ -106,15 +106,8 @@ const AdminUserDetail = () => {
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
-  // Profile realtime
-  useEffect(() => {
-    if (!userId) return;
-    const ch = supabase
-      .channel(`admin-profile-${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `user_id=eq.${userId}` }, () => fetchProfile())
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [userId, fetchProfile]);
+  // Profile realtime auto-refresh disabled
+
 
   // ── READ sync data (habits/tasks) directly from user_sync_data ────────────
   const { getSyncData, getLastUpdated, refresh: refreshSync } = useRealtimeAdmin(userId);

@@ -33,28 +33,8 @@ export function useRealtimeAdmin(filterUserId?: string) {
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  // Live updates
-  useEffect(() => {
-    const ch = supabase
-      .channel("admin_sync_" + (filterUserId ?? "all"))
-      // @ts-ignore
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "user_sync_data",
-        ...(filterUserId ? { filter: `user_id=eq.${filterUserId}` } : {}),
-      }, (payload: any) => {
-        if (payload.eventType === "DELETE") {
-          setDataMap(prev => {
-            const next = { ...prev };
-            delete next[payload.old?.user_id];
-            return next;
-          });
-        } else if (payload.new?.user_id) {
-          setDataMap(prev => ({ ...prev, [payload.new.user_id]: payload.new }));
-        }
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [filterUserId]);
+  // Live updates disabled — data refreshes only on manual reload
+
 
   const getSyncData    = (uid: string) => dataMap[uid]?.payload     ?? null;
   const getLastUpdated = (uid: string) => dataMap[uid]?.updated_at  ?? null;
