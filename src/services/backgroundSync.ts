@@ -106,7 +106,7 @@ async function flush(userId: string): Promise<void> {
           .upsert(
             {
               user_id:     userId,
-              payload:     latest.payload as Json,
+              payload:     latest.payload as unknown as Json,
               sync_status: "synced",
               updated_at:  new Date().toISOString(),
             },
