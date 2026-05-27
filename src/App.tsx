@@ -45,7 +45,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (!user) { setIsAdmin(false); localStorage.removeItem(ADMIN_KEY); return; }
     supabase
-      .from("user_roles" as string)
+      .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .eq("role", "admin")
@@ -79,7 +79,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
     if (!user) { setIsAdmin(false); setChecked(true); return; }
 
     supabase
-      .from("user_roles" as string)
+      .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .eq("role", "admin")
