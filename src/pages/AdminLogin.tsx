@@ -21,7 +21,7 @@ const AdminLogin = () => {
   useEffect(() => {
     if (!user) return;
     supabase
-      .from("user_roles" as any)
+      .from("user_roles" as string)
       .select("role")
       .eq("user_id", user.id)
       .eq("role", "admin")

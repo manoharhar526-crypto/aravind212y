@@ -1,1 +1,0 @@
-ALTER TABLE public.profiles DROP CONSTRAINT username_format;

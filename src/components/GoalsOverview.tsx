@@ -1,6 +1,9 @@
 import { Task } from "@/types/task";
+import { CalendarNote } from "@/types/calendarNote";
 import { TaskSection } from "./TaskSection";
-import { getTasksByType, getWeeklyTasksByWeek, getWeeksInMonth } from "@/lib/taskUtils";
+import { CalendarView } from "./CalendarView";
+import { getTasksByType } from "@/lib/taskUtils";
+import { Calendar } from "lucide-react";
 
 interface GoalsOverviewProps {
   tasks: Task[];
@@ -8,22 +11,30 @@ interface GoalsOverviewProps {
   onToggleTask: (taskId: string) => void;
   onAddTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
+  onEditTask: (taskId: string, newTitle: string) => void;
+  calendarNotes: CalendarNote[];
+  onAddCalendarNote: (note: CalendarNote) => void;
+  onDeleteCalendarNote: (id: string) => void;
+  onEditCalendarNote: (id: string, updated: Partial<CalendarNote>) => void;
 }
 
 export const GoalsOverview = ({
   tasks,
-  currentMonth,
+  currentMonth: _currentMonth,
   onToggleTask,
   onAddTask,
   onDeleteTask,
+  onEditTask,
+  calendarNotes,
+  onAddCalendarNote,
+  onDeleteCalendarNote,
+  onEditCalendarNote,
 }: GoalsOverviewProps) => {
   const generalTasks = getTasksByType(tasks, "general");
   const monthlyTasks = getTasksByType(tasks, "monthly");
-  const weeksInMonth = getWeeksInMonth(currentMonth);
 
   return (
-    <div className="space-y-6">
-      {/* General & Monthly Goals Row */}
+    <div className="space-y-8">
       <div className="grid md:grid-cols-2 gap-4">
         <TaskSection
           title="General Goals"
@@ -32,6 +43,7 @@ export const GoalsOverview = ({
           onToggleTask={onToggleTask}
           onAddTask={onAddTask}
           onDeleteTask={onDeleteTask}
+          onEditTask={onEditTask}
         />
         <TaskSection
           title="Monthly Goals"
@@ -40,26 +52,24 @@ export const GoalsOverview = ({
           onToggleTask={onToggleTask}
           onAddTask={onAddTask}
           onDeleteTask={onDeleteTask}
+          onEditTask={onEditTask}
         />
       </div>
 
-      {/* Weekly Goals Grid */}
+      {/* Calendar section inside Goals */}
       <div>
-        <h3 className="font-semibold mb-3">Weekly Goals</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {Array.from({ length: weeksInMonth }, (_, i) => i + 1).map((weekNum) => (
-            <TaskSection
-              key={weekNum}
-              title={`Week ${weekNum}`}
-              tasks={getWeeklyTasksByWeek(tasks, weekNum)}
-              type="weekly"
-              weekNumber={weekNum}
-              onToggleTask={onToggleTask}
-              onAddTask={onAddTask}
-              onDeleteTask={onDeleteTask}
-            />
-          ))}
-        </div>
+        <h2 className="text-lg sm:text-xl font-semibold mb-1 flex items-center gap-2">
+          <Calendar className="w-5 h-5" /> Calendar
+        </h2>
+        <p className="text-xs text-muted-foreground mb-4">
+          Tap a day to add notes or reminders. You'll get a notification on that day.
+        </p>
+        <CalendarView
+          notes={calendarNotes}
+          onAddNote={onAddCalendarNote}
+          onDeleteNote={onDeleteCalendarNote}
+          onEditNote={onEditCalendarNote}
+        />
       </div>
     </div>
   );

@@ -9,6 +9,16 @@ interface HabitPieChartProps {
 }
 
 export const HabitPieChart = ({ habits, currentMonth }: HabitPieChartProps) => {
+  if (habits.length === 0) {
+    return (
+      <Card className="p-6 animate-slide-up bg-card border-border" style={{ animationDelay: "100ms" }}>
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Habit Distribution</h3>
+        <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
+          No habits to display yet
+        </div>
+      </Card>
+    );
+  }
   const COLORS = [
     "hsl(220, 25%, 25%)",    // Deep slate blue
     "hsl(260, 20%, 30%)",    // Muted purple

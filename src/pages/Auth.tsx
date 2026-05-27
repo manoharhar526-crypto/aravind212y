@@ -6,7 +6,7 @@ import { SignupForm } from "@/components/auth/SignupForm";
 import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { InstallButton } from "@/components/InstallButton";
+
 import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
@@ -14,26 +14,18 @@ const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Redirect authenticated users
-
-  // Redirect admin to admin panel after login
+  // Redirect authenticated users — use user_roles table (same as App.tsx)
   useEffect(() => {
-    if (user) {
-      const checkAdmin = async () => {
-        try {
-          const { data } = await supabase.functions.invoke("admin-manage", {
-            body: { action: "list_users" },
-          });
-          // If the call succeeds without error, user is admin
-          if (data?.users) {
-            navigate("/admin", { replace: true });
-          }
-        } catch {
-          // Not admin, stay on auth page
-        }
-      };
-      checkAdmin();
-    }
+    if (!user) return;
+    supabase
+      .from("user_roles" as string)
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle()
+      .then(({ data }) => {
+        navigate(data ? "/admin" : "/", { replace: true });
+      });
   }, [user, navigate]);
 
   return (
@@ -63,7 +55,6 @@ const Auth = () => {
         </Card>
 
         <div className="flex justify-center gap-2">
-          <InstallButton />
           <Button
             variant="default"
             size="sm"

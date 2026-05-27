@@ -4,6 +4,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent black flash on page transitions */
+html, body {
+  background-color: hsl(0, 0%, 8%);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+html.light, html.light body {
+  background-color: hsl(0, 0%, 98%);
+}
+
 @layer base {
   :root {
     --background: 0 0% 8%;
@@ -27,8 +39,8 @@
     --accent: 0 0% 25%;
     --accent-foreground: 0 0% 95%;
 
-    --destructive: 0 0% 70%;
-    --destructive-foreground: 0 0% 8%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 22%;
     --input: 0 0% 22%;
@@ -36,11 +48,11 @@
 
     --radius: 0.5rem;
 
-    --chart-1: 142 76% 46%;
-    --chart-2: 221 83% 53%;
-    --chart-3: 262 83% 58%;
-    --chart-4: 25 95% 53%;
-    --chart-5: 340 82% 52%;
+    --chart-1: 0 0% 85%;
+    --chart-2: 0 0% 68%;
+    --chart-3: 0 0% 52%;
+    --chart-4: 0 0% 36%;
+    --chart-5: 0 0% 20%;
 
     --sidebar-background: 0 0% 10%;
     --sidebar-foreground: 0 0% 90%;
@@ -50,6 +62,52 @@
     --sidebar-accent-foreground: 0 0% 90%;
     --sidebar-border: 0 0% 20%;
     --sidebar-ring: 0 0% 60%;
+  }
+
+  /* Light theme */
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 0 0% 15%;
+
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 0 0% 88%;
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 82%;
+    --input: 0 0% 85%;
+    --ring: 0 0% 20%;
+
+    --chart-1: 0 0% 75%;
+    --chart-2: 0 0% 58%;
+    --chart-3: 0 0% 42%;
+    --chart-4: 0 0% 28%;
+    --chart-5: 0 0% 14%;
+
+    --sidebar-background: 0 0% 96%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: 0 0% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 90%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 0 0% 82%;
+    --sidebar-ring: 0 0% 30%;
   }
 
   .dark {
@@ -74,8 +132,8 @@
     --accent: 0 0% 20%;
     --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 0% 70%;
-    --destructive-foreground: 0 0% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 18%;
     --input: 0 0% 18%;

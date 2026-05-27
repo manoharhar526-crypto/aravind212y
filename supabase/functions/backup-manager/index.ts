@@ -1,241 +1,185 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+// ── CORS ──────────────────────────────────────────────────────────────────────
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") || "*";
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type",
 };
 
-// Hash PIN using PBKDF2 with random salt (returns salt+hash hex string)
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// ── PIN crypto ────────────────────────────────────────────────────────────────
 async function hashPin(pin: string): Promise<string> {
   const encoder = new TextEncoder();
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(pin),
-    "PBKDF2",
-    false,
-    ["deriveBits"]
+    "raw", encoder.encode(pin), "PBKDF2", false, ["deriveBits"]
   );
   const derivedBits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      salt: salt,
-      iterations: 100000,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    256
+    { name: "PBKDF2", salt, iterations: 100_000, hash: "SHA-256" },
+    keyMaterial, 256
   );
-  const combined = new Uint8Array(salt.length + new Uint8Array(derivedBits).length);
+  const combined = new Uint8Array(16 + 32);
   combined.set(salt);
-  combined.set(new Uint8Array(derivedBits), salt.length);
-  return Array.from(combined).map((b) => b.toString(16).padStart(2, "0")).join("");
+  combined.set(new Uint8Array(derivedBits), 16);
+  return Array.from(combined).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Verify PIN against a stored PBKDF2 hash
 async function verifyPin(pin: string, storedHash: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const combined = new Uint8Array(
-    storedHash.match(/.{2}/g)!.map((b) => parseInt(b, 16))
-  );
-  const salt = combined.slice(0, 16);
-  const storedKey = combined.slice(16);
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(pin),
-    "PBKDF2",
-    false,
-    ["deriveBits"]
-  );
-  const derivedBits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      salt: salt,
-      iterations: 100000,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    256
-  );
-  const derivedArray = new Uint8Array(derivedBits);
-  if (derivedArray.length !== storedKey.length) return false;
-  let result = 0;
-  for (let i = 0; i < derivedArray.length; i++) {
-    result |= derivedArray[i] ^ storedKey[i];
-  }
-  return result === 0;
-}
-
-// Legacy SHA-256 hash for migration compatibility
-async function legacySha256(pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// Simple rate limiting
-const attemptTracker = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = attemptTracker.get(ip);
-  if (!entry || now > entry.resetAt) {
-    attemptTracker.set(ip, { count: 1, resetAt: now + 60_000 });
+  if (!storedHash || storedHash.length < 96) return false;
+  try {
+    const encoder = new TextEncoder();
+    const combined = new Uint8Array(storedHash.match(/.{2}/g)!.map(b => parseInt(b, 16)));
+    const salt = combined.slice(0, 16);
+    const storedKey = combined.slice(16);
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw", encoder.encode(pin), "PBKDF2", false, ["deriveBits"]
+    );
+    const derivedBits = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", salt, iterations: 100_000, hash: "SHA-256" },
+      keyMaterial, 256
+    );
+    const derived = new Uint8Array(derivedBits);
+    if (derived.length !== storedKey.length) return false;
+    let result = 0;
+    for (let i = 0; i < derived.length; i++) result |= derived[i] ^ storedKey[i];
+    return result === 0;
+  } catch {
     return false;
   }
-  entry.count++;
-  return entry.count > 10;
 }
 
-Deno.serve(async (req) => {
-  
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+// ── DB-backed rate limiting ───────────────────────────────────────────────────
+async function checkRateLimit(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  identifier: string,
+  action: string,
+  maxAttempts: number,
+  windowSeconds: number
+): Promise<boolean> {
+  try {
+    const windowStart = new Date(Date.now() - windowSeconds * 1000).toISOString();
+
+    const { data, error } = await supabaseAdmin
+      .from("rate_limits")
+      .select("id, attempts, window_start")
+      .eq("identifier", identifier)
+      .eq("action", action)
+      .maybeSingle();
+
+    if (error) return false;
+
+    if (!data) {
+      await supabaseAdmin.from("rate_limits").insert({ identifier, action });
+      return false;
+    }
+
+    if (data.window_start < windowStart) {
+      await supabaseAdmin.from("rate_limits")
+        .update({ attempts: 1, window_start: new Date().toISOString() })
+        .eq("id", data.id);
+      return false;
+    }
+
+    if (data.attempts >= maxAttempts) return true;
+
+    await supabaseAdmin.from("rate_limits")
+      .update({ attempts: data.attempts + 1 })
+      .eq("id", data.id);
+    return false;
+  } catch {
+    return false;
   }
+}
+
+// ── Main handler ──────────────────────────────────────────────────────────────
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const clientIp =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("cf-connecting-ip") ||
-      "unknown";
-
-    if (isRateLimited(clientIp)) {
-      return new Response(
-        JSON.stringify({ error: "Too many requests. Please try again later." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Authenticate user
+    // ── Auth ────────────────────────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    if (!authHeader?.startsWith("Bearer ")) return jsonResponse({ error: "Unauthorized" }, 401);
 
-    const _token = authHeader.replace("Bearer ", "");
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const userId = user.id;
-
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const body = await req.json();
-    const { action, pin, habits, tasks } = body;
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) return jsonResponse({ error: "Unauthorized" }, 401);
+    const userId = user.id;
 
+    // ── Parse body with size guard ──────────────────────────────────────────
+    const contentLength = parseInt(req.headers.get("content-length") || "0");
+    if (contentLength > 600_000) return jsonResponse({ error: "Payload too large" }, 413);
+
+    const body = await req.json();
+    const { action } = body;
+
+    // ── check ───────────────────────────────────────────────────────────────
     if (action === "check") {
-      // Check if user has a backup PIN set
-      const { data, error } = await supabaseAdmin
+      const { data } = await supabaseAdmin
         .from("user_backups")
         .select("id, created_at, updated_at")
         .eq("user_id", userId)
         .maybeSingle();
-
-      if (error) throw error;
-
-      return new Response(
-        JSON.stringify({ hasBackup: !!data, backup: data }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ hasBackup: !!data, backup: data });
     }
 
+    // ── check-pin-available ─────────────────────────────────────────────────
     if (action === "check-pin-available") {
-      if (!pin || typeof pin !== "string" || pin.trim().length < 4) {
-        return new Response(
-          JSON.stringify({ error: "PIN must be at least 4 characters" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      const { pin } = body;
+      if (!pin || typeof pin !== "string" || pin.trim().length < 4)
+        return jsonResponse({ error: "PIN must be at least 4 characters" }, 400);
 
-      // Check if current user already owns a backup (always available for them)
+      const limited = await checkRateLimit(supabaseAdmin, userId, "check-pin", 20, 60);
+      if (limited) return jsonResponse({ error: "Too many requests" }, 429);
+
       const { data: ownBackup } = await supabaseAdmin
         .from("user_backups")
         .select("id")
         .eq("user_id", userId)
         .maybeSingle();
+      if (ownBackup) return jsonResponse({ available: true });
 
-      if (ownBackup) {
-        return new Response(
-          JSON.stringify({ available: true }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Check all existing backups to see if PIN is taken
-      const { data: allBackups } = await supabaseAdmin
-        .from("user_backups")
-        .select("pin_hash");
-
-      let taken = false;
-      if (allBackups) {
-        for (const b of allBackups) {
-          if (b.pin_hash && await verifyPin(pin.trim(), b.pin_hash)) {
-            taken = true;
-            break;
-          }
-        }
-      }
-
-      return new Response(
-        JSON.stringify({ available: !taken }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const newHash = await hashPin(pin.trim());
+      return jsonResponse({ available: true, _hash: newHash });
     }
 
-    // Validate PIN for backup/restore/delete
-    if (!pin || typeof pin !== "string" || pin.trim().length < 4) {
-      return new Response(
-        JSON.stringify({ error: "PIN must be at least 4 characters" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (pin.length > 64) {
-      return new Response(
-        JSON.stringify({ error: "PIN must be at most 64 characters" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // ── validate PIN for backup/restore/delete ──────────────────────────────
+    const { pin } = body;
+    if (!pin || typeof pin !== "string" || pin.trim().length < 4)
+      return jsonResponse({ error: "PIN must be at least 4 characters" }, 400);
+    if (pin.length > 64)
+      return jsonResponse({ error: "PIN too long" }, 400);
 
     const trimmedPin = pin.trim();
 
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || userId;
+    const pinLimited = await checkRateLimit(supabaseAdmin, `${clientIp}:${action}`, "pin-action", 10, 300);
+    if (pinLimited) return jsonResponse({ error: "Too many attempts. Try again in 5 minutes." }, 429);
+
+    // ── backup ──────────────────────────────────────────────────────────────
     if (action === "backup") {
-      if (!Array.isArray(habits) || !Array.isArray(tasks)) {
-        return new Response(
-          JSON.stringify({ error: "Invalid data format" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      const { habits, tasks } = body;
+      if (!Array.isArray(habits) || !Array.isArray(tasks))
+        return jsonResponse({ error: "Invalid data format" }, 400);
+      if (JSON.stringify({ habits, tasks }).length > 500_000)
+        return jsonResponse({ error: "Backup data too large" }, 400);
 
-      const dataSize = JSON.stringify({ habits, tasks }).length;
-      if (dataSize > 500_000) {
-        return new Response(
-          JSON.stringify({ error: "Backup data too large" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Check if user already has a backup
       const { data: existing } = await supabaseAdmin
         .from("user_backups")
         .select("id, pin_hash")
@@ -243,146 +187,72 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (existing) {
-        // User already has a backup — verify PIN matches
-        const pinMatches = existing.pin_hash
-          ? await verifyPin(trimmedPin, existing.pin_hash)
-          : false;
+        const pinMatches = await verifyPin(trimmedPin, existing.pin_hash ?? "");
+        if (!pinMatches)
+          return jsonResponse({ error: "Wrong PIN. Use your original PIN to update." }, 403);
 
-        if (!pinMatches) {
-          return new Response(
-            JSON.stringify({ error: "You already have a backup with a different PIN. Use your original PIN to update." }),
-            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        const { error: updateError } = await supabaseAdmin
+        const { error: upErr } = await supabaseAdmin
           .from("user_backups")
-          .update({ habits, tasks })
-          .eq("user_id", userId);
-
-        if (updateError) throw updateError;
-
-        return new Response(
-          JSON.stringify({ success: true, message: "Backup updated" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } else {
-        // New backup — check PIN isn't taken by another user
-        const { data: allBackups } = await supabaseAdmin
-          .from("user_backups")
-          .select("pin_hash");
-
-        let taken = false;
-        if (allBackups) {
-          for (const b of allBackups) {
-            if (b.pin_hash && await verifyPin(trimmedPin, b.pin_hash)) {
-              taken = true;
-              break;
-            }
-          }
-        }
-
-        if (taken) {
-          return new Response(
-            JSON.stringify({ error: "This PIN is already taken. Please choose another." }),
-            { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        const newHash = await hashPin(trimmedPin);
-        const { error: insertError } = await supabaseAdmin
-          .from("user_backups")
-          .insert({
-            user_id: userId,
-            pin_hash: newHash,
-            habits,
-            tasks,
-          });
-
-        if (insertError) throw insertError;
-
-        return new Response(
-          JSON.stringify({ success: true, message: "Backup created" }),
-          { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+          .update({ habits, tasks, updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
+        if (upErr) throw upErr;
+        return jsonResponse({ success: true, message: "Backup updated" });
       }
-    } else if (action === "restore") {
-      // Restore by finding backup matching PIN
-      const { data: allBackups, error } = await supabaseAdmin
+
+      const newHash = await hashPin(trimmedPin);
+      const { error: insErr } = await supabaseAdmin
         .from("user_backups")
-        .select("pin_hash, habits, tasks");
+        .insert({ user_id: userId, pin_hash: newHash, pin_code: null, habits, tasks });
 
-      if (error) throw error;
-
-      let matchedBackup = null;
-      if (allBackups) {
-        for (const b of allBackups) {
-          if (b.pin_hash && await verifyPin(trimmedPin, b.pin_hash)) {
-            matchedBackup = b;
-            break;
-          }
-        }
+      if (insErr) {
+        if (insErr.code === "23505") return jsonResponse({ error: "PIN already taken. Choose another." }, 409);
+        throw insErr;
       }
+      return jsonResponse({ success: true, message: "Backup created" }, 201);
+    }
 
-      if (!matchedBackup) {
-        return new Response(
-          JSON.stringify({ error: "No backup found for this PIN." }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    // ── restore ─────────────────────────────────────────────────────────────
+    if (action === "restore") {
+      const { data: backup } = await supabaseAdmin
+        .from("user_backups")
+        .select("pin_hash, habits, tasks")
+        .eq("user_id", userId)
+        .maybeSingle();
 
-      return new Response(
-        JSON.stringify({ success: true, habits: matchedBackup.habits, tasks: matchedBackup.tasks }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } else if (action === "delete") {
-      // Delete user's backup, verify PIN matches
+      if (!backup) return jsonResponse({ error: "No backup found for this account." }, 404);
+
+      const pinMatches = await verifyPin(trimmedPin, backup.pin_hash ?? "");
+      if (!pinMatches) return jsonResponse({ error: "Incorrect PIN." }, 403);
+
+      return jsonResponse({ success: true, habits: backup.habits, tasks: backup.tasks });
+    }
+
+    // ── delete ──────────────────────────────────────────────────────────────
+    if (action === "delete") {
       const { data: backup } = await supabaseAdmin
         .from("user_backups")
         .select("id, pin_hash")
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (!backup) {
-        return new Response(
-          JSON.stringify({ error: "No backup found to delete." }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      if (!backup) return jsonResponse({ error: "No backup found." }, 404);
 
-      const pinMatches = backup.pin_hash
-        ? await verifyPin(trimmedPin, backup.pin_hash)
-        : false;
+      const pinMatches = await verifyPin(trimmedPin, backup.pin_hash ?? "");
+      if (!pinMatches) return jsonResponse({ error: "Incorrect PIN." }, 403);
 
-      if (!pinMatches) {
-        return new Response(
-          JSON.stringify({ error: "Incorrect PIN." }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const { error: deleteError } = await supabaseAdmin
+      const { error: delErr } = await supabaseAdmin
         .from("user_backups")
         .delete()
-        .eq("user_id", userId);
+        .eq("id", backup.id);
+      if (delErr) throw delErr;
 
-      if (deleteError) throw deleteError;
-
-      return new Response(
-        JSON.stringify({ success: true, message: "Backup deleted" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } else {
-      return new Response(
-        JSON.stringify({ error: "Invalid action" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ success: true, message: "Backup deleted" });
     }
+
+    return jsonResponse({ error: "Invalid action" }, 400);
+
   } catch (err) {
-    console.error("Backup manager error:", err);
-    return new Response(
-      JSON.stringify({ error: "An unexpected error occurred" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("backup-manager error:", err);
+    return jsonResponse({ error: "An unexpected error occurred" }, 500);
   }
 });

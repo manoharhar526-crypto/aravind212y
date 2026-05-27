@@ -1,15 +1,16 @@
 import { Habit } from "@/types/habit";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { getDaysInMonth, createDateString, isDayCompleted } from "@/lib/habitUtils";
+import { getDaysInMonth, isDayCompleted, calculateTotalStreak } from "@/lib/habitUtils";
 import { Flame, TrendingUp, Award, BarChart3 } from "lucide-react";
 
 interface HabitReportCardProps {
   habits: Habit[];
   currentMonth: Date;
+  frozenDates?: string[];
 }
 
-export const HabitReportCard = ({ habits, currentMonth }: HabitReportCardProps) => {
+export const HabitReportCard = ({ habits, currentMonth, frozenDates = [] }: HabitReportCardProps) => {
   const daysInMonth = getDaysInMonth(currentMonth);
   const today = new Date();
   const isCurrentMonth =
@@ -25,12 +26,8 @@ export const HabitReportCard = ({ habits, currentMonth }: HabitReportCardProps) 
     }
     const rate = daysElapsed > 0 ? Math.round((completed / daysElapsed) * 100) : 0;
 
-    // Streak
-    let streak = 0;
-    for (let d = daysElapsed; d >= 1; d--) {
-      if (isDayCompleted(habit, currentMonth, d)) streak++;
-      else break;
-    }
+    // Use cross-month streak (total active streak)
+    const streak = calculateTotalStreak(habit, frozenDates);
 
     return { habit, completed, rate, streak };
   });

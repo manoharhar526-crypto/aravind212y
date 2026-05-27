@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Pencil, Check } from "lucide-react";
 import { generateId } from "@/lib/habitUtils";
 
 interface TaskSectionProps {
@@ -16,6 +16,7 @@ interface TaskSectionProps {
   onToggleTask: (taskId: string) => void;
   onAddTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
+  onEditTask: (taskId: string, newTitle: string) => void;
   colorClass?: string;
 }
 
@@ -28,10 +29,13 @@ export const TaskSection = ({
   onToggleTask,
   onAddTask,
   onDeleteTask,
+  onEditTask,
   colorClass = "bg-card",
 }: TaskSectionProps) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   const handleAddTask = () => {
     if (newTaskTitle.trim()) {
@@ -46,6 +50,19 @@ export const TaskSection = ({
       setNewTaskTitle("");
       setIsAdding(false);
     }
+  };
+
+  const startEdit = (task: Task) => {
+    setEditingId(task.id);
+    setEditingTitle(task.title);
+  };
+
+  const commitEdit = () => {
+    if (editingId && editingTitle.trim()) {
+      onEditTask(editingId, editingTitle.trim());
+    }
+    setEditingId(null);
+    setEditingTitle("");
   };
 
   const completedCount = tasks.filter(t => t.completed).length;
@@ -77,33 +94,63 @@ export const TaskSection = ({
             onChange={(e) => setNewTaskTitle(e.target.value)}
             placeholder="New task..."
             className="h-8 text-sm"
-            onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAddTask();
+              if (e.key === "Escape") { setIsAdding(false); setNewTaskTitle(""); }
+            }}
             autoFocus
           />
-          <Button size="sm" className="h-8" onClick={handleAddTask}>
-            Add
-          </Button>
+          <Button size="sm" className="h-8" onClick={handleAddTask}>Add</Button>
         </div>
       )}
 
       <div className="space-y-2 max-h-48 overflow-y-auto">
         {tasks.map((task) => (
-          <div
-            key={task.id}
-            className="flex items-center gap-2 group text-sm"
-          >
+          <div key={task.id} className="flex items-center gap-2 group text-sm">
             <Checkbox
               checked={task.completed}
               onCheckedChange={() => onToggleTask(task.id)}
-              className="border-border"
+              className="border-border flex-shrink-0"
             />
-            <span className={`flex-1 ${task.completed ? "line-through text-muted-foreground" : ""}`}>
-              {task.title}
-            </span>
+            {editingId === task.id ? (
+              <Input
+                value={editingTitle}
+                onChange={(e) => setEditingTitle(e.target.value)}
+                className="h-7 text-sm flex-1 py-0"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitEdit();
+                  if (e.key === "Escape") { setEditingId(null); setEditingTitle(""); }
+                }}
+              />
+            ) : (
+              <span className={`flex-1 ${task.completed ? "line-through text-muted-foreground" : ""}`}>
+                {task.title}
+              </span>
+            )}
+            {editingId === task.id ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 flex-shrink-0"
+                onClick={commitEdit}
+              >
+                <Check className="w-3 h-3 text-green-500" />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 opacity-0 group-hover:opacity-100 focus:opacity-100 sm:transition-opacity touch-manipulation flex-shrink-0"
+                onClick={() => startEdit(task)}
+              >
+                <Pencil className="w-3 h-3 text-muted-foreground" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
-              className="h-5 w-5 opacity-0 group-hover:opacity-100 focus:opacity-100 sm:transition-opacity touch-manipulation"
+              className="h-5 w-5 opacity-0 group-hover:opacity-100 focus:opacity-100 sm:transition-opacity touch-manipulation flex-shrink-0"
               onClick={() => onDeleteTask(task.id)}
             >
               <X className="w-3 h-3" />
