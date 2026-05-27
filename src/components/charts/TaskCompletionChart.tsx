@@ -16,9 +16,7 @@ interface TaskCompletionChartProps {
 
 export const TaskCompletionChart = ({ tasks }: TaskCompletionChartProps) => {
   const generalTasks = getTasksByType(tasks, "general");
-  const weeklyTasks = getTasksByType(tasks, "weekly");
   const monthlyTasks = getTasksByType(tasks, "monthly");
-  const dailyTasks = getTasksByType(tasks, "daily");
 
   const data = [
     {
@@ -28,30 +26,18 @@ export const TaskCompletionChart = ({ tasks }: TaskCompletionChartProps) => {
       rate: calculateTaskCompletionRate(generalTasks),
     },
     {
-      name: "Weekly",
-      value: weeklyTasks.length,
-      completed: weeklyTasks.filter(t => t.completed).length,
-      rate: calculateTaskCompletionRate(weeklyTasks),
-    },
-    {
       name: "Monthly",
       value: monthlyTasks.length,
       completed: monthlyTasks.filter(t => t.completed).length,
       rate: calculateTaskCompletionRate(monthlyTasks),
     },
-    {
-      name: "Daily",
-      value: dailyTasks.length,
-      completed: dailyTasks.filter(t => t.completed).length,
-      rate: calculateTaskCompletionRate(dailyTasks),
-    },
   ].filter(d => d.value > 0);
 
-  const COLORS = ["hsl(220, 25%, 25%)", "hsl(260, 20%, 30%)", "hsl(200, 30%, 20%)", "hsl(280, 15%, 35%)"];
+  const COLORS = ["hsl(220, 25%, 25%)", "hsl(200, 30%, 20%)"];
 
   return (
     <Card className="p-6 border-border">
-      <h3 className="font-semibold mb-4">Task Distribution</h3>
+      <h3 className="font-semibold mb-4">Task Completion by Category</h3>
       <ResponsiveContainer width="100%" height={250}>
         <PieChart>
           <Pie
@@ -64,8 +50,8 @@ export const TaskCompletionChart = ({ tasks }: TaskCompletionChartProps) => {
             dataKey="value"
           >
             {data.map((_, index) => (
-              <Cell 
-                key={`cell-${index}`} 
+              <Cell
+                key={`cell-${index}`}
                 fill={COLORS[index % COLORS.length]}
                 stroke="hsl(var(--border))"
               />

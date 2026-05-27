@@ -2,7 +2,7 @@ import { Task } from "@/types/task";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { getTasksByType, calculateTaskCompletionRate } from "@/lib/taskUtils";
-import { Target, Calendar, CalendarDays, Clock } from "lucide-react";
+import { Target, Calendar } from "lucide-react";
 
 interface TaskReportCardProps {
   tasks: Task[];
@@ -10,9 +10,7 @@ interface TaskReportCardProps {
 
 export const TaskReportCard = ({ tasks }: TaskReportCardProps) => {
   const generalTasks = getTasksByType(tasks, "general");
-  const weeklyTasks = getTasksByType(tasks, "weekly");
   const monthlyTasks = getTasksByType(tasks, "monthly");
-  const dailyTasks = getTasksByType(tasks, "daily");
 
   const reports = [
     {
@@ -22,45 +20,34 @@ export const TaskReportCard = ({ tasks }: TaskReportCardProps) => {
       rate: calculateTaskCompletionRate(generalTasks),
     },
     {
-      title: "Monthly Tasks",
+      title: "Monthly Goals",
       icon: Calendar,
       tasks: monthlyTasks,
       rate: calculateTaskCompletionRate(monthlyTasks),
     },
-    {
-      title: "Weekly Tasks",
-      icon: CalendarDays,
-      tasks: weeklyTasks,
-      rate: calculateTaskCompletionRate(weeklyTasks),
-    },
-    {
-      title: "Daily Tasks",
-      icon: Clock,
-      tasks: dailyTasks,
-      rate: calculateTaskCompletionRate(dailyTasks),
-    },
   ];
 
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.completed).length;
-  const overallRate = calculateTaskCompletionRate(tasks);
+  const goalTasks = [...generalTasks, ...monthlyTasks];
+  const totalTasks = goalTasks.length;
+  const completedTasks = goalTasks.filter(t => t.completed).length;
+  const overallRate = calculateTaskCompletionRate(goalTasks);
 
   return (
     <div className="space-y-4">
       {/* Overall Summary */}
       <Card className="p-6 border-border">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-lg">Task Summary</h3>
+          <h3 className="font-semibold text-lg">Goals Summary</h3>
           <span className="text-2xl font-bold">{overallRate}%</span>
         </div>
         <Progress value={overallRate} className="h-3 mb-2" />
         <p className="text-sm text-muted-foreground">
-          {completedTasks} of {totalTasks} tasks completed
+          {completedTasks} of {totalTasks} goals completed
         </p>
       </Card>
 
       {/* Category Breakdown */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4">
         {reports.map((report) => {
           const Icon = report.icon;
           const completed = report.tasks.filter(t => t.completed).length;

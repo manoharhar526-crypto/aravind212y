@@ -2,26 +2,18 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import {
-  Loader2, ArrowLeft, Pencil, Trash2, Key, Shield, Eye, X,
-  Database, Calendar, CheckCircle2, ListTodo, Search,
-} from "lucide-react";
+import { Loader2, ArrowLeft, Pencil, Trash2, Key, Shield, Eye, Search } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { useRealtimeAdmin } from "@/hooks/useRealtimeAdmin";
 
 interface UserData {
   user_id: string;
@@ -31,15 +23,7 @@ interface UserData {
   roles: string[];
 }
 
-interface UserDetail {
-  profile: any;
-  backup: { habits: any[]; tasks: any[]; updated_at: string } | null;
-  email: string | null;
-  last_sign_in: string | null;
-}
-
 const AdminPanel = ({ onBack }: { onBack: () => void }) => {
-  const { signOut } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,65 +34,66 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const { getLastUpdated } = useRealtimeAdmin();
+
   const filteredUsers = users.filter(u =>
     u.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const [viewingUser, setViewingUser] = useState<string | null>(null);
-  const [userDetail, setUserDetail] = useState<UserDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
+  // ── Write operations still use edge function (needs service role) ──────────
   const adminAction = useCallback(async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("admin-manage", { body });
     if (error || data?.error) throw new Error(data?.error || "Request failed");
     return data;
   }, []);
 
+  // ── READ: query profiles + user_roles directly (RLS admin policies allow this) ──
   const fetchUsers = useCallback(async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
-      const data = await adminAction({ action: "list_users" });
-      setUsers(data.users || []);
-    } catch {
-      toast.error("Failed to fetch users");
+      // Get all profiles
+      const { data: profiles, error: profilesError } = await (supabase as any)
+        .from("profiles")
+        .select("user_id, username, created_at, updated_at")
+        .order("created_at", { ascending: false });
+
+      if (profilesError) throw new Error(profilesError.message);
+
+      // Get all roles
+      const { data: allRoles } = await (supabase as any)
+        .from("user_roles")
+        .select("user_id, role");
+
+      const rolesMap: Record<string, string[]> = {};
+      (allRoles ?? []).forEach((r: { user_id: string; role: string }) => {
+        if (!rolesMap[r.user_id]) rolesMap[r.user_id] = [];
+        rolesMap[r.user_id].push(r.role);
+      });
+
+      setUsers((profiles ?? []).map((p: any) => ({
+        user_id: p.user_id,
+        username: p.username,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+        roles: rolesMap[p.user_id] ?? [],
+      })));
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to fetch users");
     } finally {
       setLoading(false);
     }
-  }, [adminAction]);
+  }, []);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  // Real-time: re-fetch user list when profiles or backups change
+  // Realtime: re-fetch when profiles change
   useEffect(() => {
     const channel = supabase
       .channel("admin-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "profiles" },
-        () => fetchUsers(false)
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "user_backups" },
-        () => fetchUsers(false)
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchUsers(false))
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [fetchUsers]);
-
-  const viewUserData = async (userId: string) => {
-    setViewingUser(userId);
-    setDetailLoading(true);
-    try {
-      const data = await adminAction({ action: "get_user_data", target_user_id: userId });
-      setUserDetail(data);
-    } catch {
-      toast.error("Failed to load user data");
-      setViewingUser(null);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
 
   const handleUpdatePassword = async (userId: string) => {
     if (newPassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
@@ -118,11 +103,9 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
       toast.success("Password updated");
       setEditingPassword(null);
       setNewPassword("");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to update password");
-    } finally {
-      setActionLoading(false);
-    }
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to update password");
+    } finally { setActionLoading(false); }
   };
 
   const handleUpdateUsername = async (userId: string) => {
@@ -132,14 +115,11 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
       await adminAction({ action: "update_username", target_user_id: userId, new_username: newUsername });
       toast.success("Username updated");
       setEditingUsername(null);
-      // Optimistic local update instead of refetching
       setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, username: newUsername.trim() } : u));
       setNewUsername("");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to update username");
-    } finally {
-      setActionLoading(false);
-    }
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to update username");
+    } finally { setActionLoading(false); }
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -147,26 +127,18 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
     try {
       await adminAction({ action: "delete_user", target_user_id: userId });
       toast.success("User deleted");
-      // Optimistic local removal instead of refetching
       setUsers(prev => prev.filter(u => u.user_id !== userId));
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete user");
-    } finally {
-      setActionLoading(false);
-    }
+    } catch (e: unknown) {
+      toast.error((e as Error).message || "Failed to delete user");
+    } finally { setActionLoading(false); }
   };
-
-  const handleLogout = async () => { await signOut(); onBack(); };
-
-  const getUsernameForId = (id: string) => users.find(u => u.user_id === id)?.username || "User";
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
+            <Button variant="ghost" size="icon" onClick={onBack}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex items-center gap-2">
@@ -182,7 +154,6 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -193,7 +164,6 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
           />
         </div>
 
-        {/* Users List */}
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -216,10 +186,15 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Joined {new Date(user.created_at).toLocaleDateString()}
+                      {getLastUpdated(user.user_id) && (
+                        <span className="ml-2 text-green-500">
+                          · synced {new Date(getLastUpdated(user.user_id)!).toLocaleTimeString()}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/user/${user.user_id}`)} title="View full profile">
+                    <Button variant="ghost" size="icon" onClick={() => navigate(`/admin/user/${user.user_id}`)} title="View profile">
                       <Eye className="w-4 h-4" />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -12,10 +13,16 @@ export const usePWAInstall = () => {
   const [isInstallable, setIsInstallable] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
+    // On native app, always treat as "installed" — hide all PWA install UI
+    if (Capacitor.isNativePlatform()) {
+      setIsInstalled(true);
+      setIsInstallable(false);
+      return;
+    }
+
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
     setIsInstalled(isStandalone);
 
     const handler = (e: Event) => {
@@ -25,7 +32,6 @@ export const usePWAInstall = () => {
     };
 
     window.addEventListener("beforeinstallprompt", handler);
-
     window.addEventListener("appinstalled", () => {
       setIsInstalled(true);
       setIsInstallable(false);

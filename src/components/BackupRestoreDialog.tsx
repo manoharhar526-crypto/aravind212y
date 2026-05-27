@@ -1,18 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Download, Upload, Loader2, AlertCircle, Trash2, Check, X } from "lucide-react";
+import { Shield, Download, Upload, Trash2, Clock, Check } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  loadManualBackups, saveManualBackup, restoreManualBackup,
+  deleteManualBackup, type ManualBackup,
+} from "@/lib/appStorage";
 import type { Habit } from "@/types/habit";
 import type { Task } from "@/types/task";
 
@@ -22,429 +20,197 @@ interface BackupRestoreDialogProps {
   onRestore: (habits: Habit[], tasks: Task[]) => void;
 }
 
-const getPinStorageKey = async () => {
-  const { data } = await supabase.auth.getUser();
-  return data?.user ? `backup_pin_${data.user.id}` : null;
-};
-
-export const BackupRestoreDialog = ({
-  habits,
-  tasks,
-  onRestore,
-}: BackupRestoreDialogProps) => {
+export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreDialogProps) => {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState("backup");
-  const [loading, setLoading] = useState(false);
-  const [backupPin, setBackupPin] = useState("");
-  const [restorePin, setRestorePin] = useState("");
-  const [deletePin, setDeletePin] = useState("");
-  const [pinError, setPinError] = useState("");
-  const [hasBackup, setHasBackup] = useState(false);
-  const [checkingBackup, setCheckingBackup] = useState(false);
-  const [pinAvailable, setPinAvailable] = useState<boolean | null>(null);
-  const [checkingPin, setCheckingPin] = useState(false);
-  const [savedPin, setSavedPin] = useState<string | null>(null);
+  const [tab, setTab] = useState("manual");
+  const [manualBackups, setManualBackups] = useState<ManualBackup[]>([]);
+  const [newCode, setNewCode] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const [restoreCode, setRestoreCode] = useState("");
+  const [deleteCode, setDeleteCode] = useState("");
+  const [confirmDeleteCode, setConfirmDeleteCode] = useState<string | null>(null);
 
-  // Load saved PIN from localStorage (user-specific key)
-  useEffect(() => {
-    getPinStorageKey().then((key) => {
-      if (key) {
-        const stored = localStorage.getItem(key);
-        if (stored) setSavedPin(stored);
-        // Migrate old global key if exists
-        const oldPin = localStorage.getItem("backup_pin");
-        if (oldPin && !stored) {
-          localStorage.setItem(key, oldPin);
-          setSavedPin(oldPin);
-        }
-        localStorage.removeItem("backup_pin");
-      }
-    });
-  }, []);
-
-  const callBackupManager = async (body: Record<string, unknown>) => {
-    const { data, error } = await supabase.functions.invoke("backup-manager", {
-      body,
-    });
-
-    if (error) {
-      throw new Error(error.message || "Request failed");
-    }
-
-    return data;
+  const refreshData = () => {
+    setManualBackups(loadManualBackups());
   };
 
-  const checkBackupStatus = async () => {
-    setCheckingBackup(true);
+  useEffect(() => { if (open) refreshData(); }, [open]);
+
+  const handleCreateManualBackup = () => {
+    const code = newCode.trim();
+    if (code.length < 4) { toast.error("Backup code must be at least 4 characters"); return; }
+    const result = saveManualBackup(code, habits, tasks, newLabel.trim() || undefined);
+    if (!result.success) { toast.error(result.error); return; }
+    toast.success(`Backup created with code: ${code}`);
+    setNewCode("");
+    setNewLabel("");
+    refreshData();
+  };
+
+  const handleRestore = () => {
+    const code = restoreCode.trim();
+    if (code.length < 4) { toast.error("Enter a valid backup code"); return; }
+    const result = restoreManualBackup(code);
+    if (!result.success) { toast.error(result.error); return; }
+    onRestore(result.habits!, result.tasks!);
+    toast.success("Data restored successfully!");
+    setRestoreCode("");
+    setOpen(false);
+  };
+
+  const handleDelete = (code: string) => {
+    const ok = deleteManualBackup(code);
+    if (ok) { toast.success("Backup deleted"); refreshData(); }
+    else toast.error("Failed to delete backup");
+    setConfirmDeleteCode(null);
+  };
+
+  const formatDate = (iso: string) => {
     try {
-      const result = await callBackupManager({ action: "check" });
-      setHasBackup(result.hasBackup);
-    } catch (err) {
-      console.error("Failed to check backup status:", err);
-      // Don't block the UI - just assume no backup if check fails
-    } finally {
-      setCheckingBackup(false);
-    }
-  };
-
-  useEffect(() => {
-    if (open) {
-      checkBackupStatus();
-    }
-  }, [open]);
-
-  const checkPinAvailability = async (pin: string) => {
-    if (pin.length < 4) {
-      setPinAvailable(null);
-      return;
-    }
-    setCheckingPin(true);
-    try {
-      const result = await callBackupManager({ action: "check-pin-available", pin });
-      setPinAvailable(result.available);
-    } catch {
-      setPinAvailable(null);
-    } finally {
-      setCheckingPin(false);
-    }
-  };
-
-  const pinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handlePinChange = (value: string) => {
-    setBackupPin(value);
-    setPinError("");
-    setPinAvailable(null);
-
-    if (pinTimeoutRef.current) {
-      clearTimeout(pinTimeoutRef.current);
-      pinTimeoutRef.current = null;
-    }
-
-    if (value.trim().length >= 4) {
-      pinTimeoutRef.current = setTimeout(() => checkPinAvailability(value.trim()), 500);
-    }
-  };
-
-  const handleBackup = async () => {
-    const pin = savedPin || backupPin.trim();
-    if (pin.length < 4) {
-      setPinError("PIN must be at least 4 characters");
-      return;
-    }
-    if (!savedPin && pinAvailable === false) {
-      setPinError("This PIN is already taken");
-      return;
-    }
-
-    setLoading(true);
-    setPinError("");
-    try {
-      const result = await callBackupManager({
-        action: "backup",
-        pin,
-        habits: JSON.parse(JSON.stringify(habits)),
-        tasks: JSON.parse(JSON.stringify(tasks)),
-      });
-
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(
-          result.message === "Backup updated"
-            ? "Backup updated successfully!"
-            : "Backup created with your unique PIN!"
-        );
-        setHasBackup(true);
-        getPinStorageKey().then((key) => {
-          if (key) localStorage.setItem(key, pin);
-        });
-        setSavedPin(pin);
-      }
-    } catch (err) {
-      console.error("Backup error:", err);
-      toast.error("Failed to save backup. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRestore = async () => {
-    const pin = restorePin.trim();
-    if (pin.length < 4) {
-      toast.error("Please enter a valid PIN (at least 4 characters)");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await callBackupManager({ action: "restore", pin });
-
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-
-      onRestore(result.habits as Habit[], result.tasks as Task[]);
-      toast.success("Data restored successfully!");
-      setOpen(false);
-      setRestorePin("");
-    } catch (err) {
-      console.error("Restore error:", err);
-      toast.error("Failed to restore data. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    const pin = deletePin.trim();
-    if (pin.length < 4) {
-      toast.error("Please enter your PIN to confirm deletion");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await callBackupManager({ action: "delete", pin });
-
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Backup deleted successfully!");
-      setHasBackup(false);
-      setDeletePin("");
-      getPinStorageKey().then((key) => {
-        if (key) localStorage.removeItem(key);
-      });
-      setSavedPin(null);
-    } catch (err) {
-      console.error("Delete error:", err);
-      toast.error("Failed to delete backup.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
-    if (!isOpen) {
-      setBackupPin("");
-      setRestorePin("");
-      setDeletePin("");
-      setPinError("");
-      setPinAvailable(null);
-      setTab("backup");
-    }
+      return new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
+    } catch { return iso; }
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setNewCode(""); setNewLabel(""); setRestoreCode(""); setDeleteCode(""); setConfirmDeleteCode(null); setTab("manual"); } }}>
       <DialogTrigger asChild>
         <Button variant="outline" size="icon" className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3 sm:gap-1.5">
           <Shield className="w-4 h-4" />
           <span className="hidden sm:inline">Backup</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
             Backup & Restore
           </DialogTitle>
           <DialogDescription>
-            Choose a unique PIN (like a username) to save and restore your data across devices.
+            Create a manual backup with a code to save and restore your data across devices.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="backup" className="gap-1.5">
-              <Download className="w-3.5 h-3.5" />
-              Backup
-            </TabsTrigger>
-            <TabsTrigger value="restore" className="gap-1.5">
-              <Upload className="w-3.5 h-3.5" />
-              Restore
-            </TabsTrigger>
-            <TabsTrigger value="manage" className="gap-1.5">
-              <Trash2 className="w-3.5 h-3.5" />
-              Manage
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="manual" className="gap-1.5 text-xs"><Download className="w-3.5 h-3.5" />Manual Backup</TabsTrigger>
+            <TabsTrigger value="restore" className="gap-1.5 text-xs"><Upload className="w-3.5 h-3.5" />Restore</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="backup" className="space-y-4 mt-4">
-            <div className="space-y-4">
-              <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-2">
-                <p className="text-sm font-medium">What gets backed up:</p>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>✓ {habits.length} habit(s) with all completion data</li>
-                  <li>✓ {tasks.length} task(s) with status</li>
-                </ul>
-                {hasBackup && (
-                  <p className="text-xs text-primary font-medium mt-2">
-                    ✓ You already have a backup. Saving will update it.
-                  </p>
-                )}
+
+
+          {/* MANUAL BACKUP TAB */}
+          <TabsContent value="manual" className="space-y-4 mt-4">
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Create a named backup with a unique code. Use the code to restore your data on any device.
+              </p>
+
+              <div className="space-y-2">
+                <Input
+                  placeholder="Backup code (min 4 chars, e.g. aravind2025)"
+                  value={newCode}
+                  onChange={e => setNewCode(e.target.value)}
+                  maxLength={64}
+                  className="font-mono"
+                />
+                <Input
+                  placeholder="Label (optional, e.g. April checkpoint)"
+                  value={newLabel}
+                  onChange={e => setNewLabel(e.target.value)}
+                  maxLength={60}
+                />
+                <Button
+                  onClick={handleCreateManualBackup}
+                  disabled={newCode.trim().length < 4}
+                  className="w-full gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Create Backup
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  ⚠️ Write down your code! You need it to restore. Codes are unique — you can't reuse one.
+                </p>
               </div>
-              {hasBackup ? (
-                <div className="space-y-2">
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-                    <p className="text-sm font-medium text-primary">✓ Backup PIN is set and locked</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Your PIN cannot be changed. Use it to restore data on any device.
-                    </p>
-                  </div>
-                  <label className="text-sm font-medium">Your Backup PIN</label>
-                  {savedPin ? (
-                    <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2.5">
-                      <span className="flex-1 text-center text-lg font-mono tracking-[0.3em] text-foreground select-all">
-                        {savedPin}
-                      </span>
-                      <Check className="w-4 h-4 text-primary shrink-0" />
-                    </div>
-                  ) : (
-                    <>
-                      <Input
-                        placeholder="Enter your existing PIN to update..."
-                        value={backupPin}
-                        onChange={(e) => {
-                          setBackupPin(e.target.value);
-                          setPinError("");
-                        }}
-                        maxLength={64}
-                        type="password"
-                        autoComplete="off"
-                        className="text-center text-lg font-mono tracking-wider"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Enter your PIN to verify and update your backup.
-                      </p>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Choose a unique PIN</label>
-                  <div className="relative">
-                    <Input
-                      placeholder="Enter your PIN (min 4 chars)..."
-                      value={backupPin}
-                      onChange={(e) => handlePinChange(e.target.value)}
-                      maxLength={64}
-                      className="text-center text-lg font-mono tracking-wider pr-10"
-                    />
-                    {backupPin.trim().length >= 4 && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        {checkingPin ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                        ) : pinAvailable === true ? (
-                          <Check className="w-4 h-4 text-primary" />
-                        ) : pinAvailable === false ? (
-                          <X className="w-4 h-4 text-destructive" />
-                        ) : null}
+
+              {/* Saved manual backups list */}
+              {manualBackups.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground">Your saved backups:</p>
+                  {manualBackups.map(b => (
+                    <div key={b.code} className="flex items-center justify-between rounded border border-border bg-muted/20 px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-medium text-foreground">{b.code}</span>
+                          {b.label && <span className="text-xs text-muted-foreground truncate">— {b.label}</span>}
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">{formatDate(b.createdAt)}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{b.habits.length} habits · {b.tasks.length} tasks</div>
                       </div>
-                    )}
-                  </div>
-                  {pinError && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      {pinError}
-                    </p>
-                  )}
-                  {pinAvailable === false && !pinError && (
-                    <p className="text-xs text-destructive">This PIN is already taken by another user</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Your PIN is unique to you — like a username. Remember it to restore your data on any device.
-                  </p>
+                      <div className="flex-shrink-0 ml-2">
+                        {confirmDeleteCode === b.code ? (
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="destructive" className="h-7 px-2 text-xs" onClick={() => handleDelete(b.code)}>Delete</Button>
+                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setConfirmDeleteCode(null)}>Cancel</Button>
+                          </div>
+                        ) : (
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setConfirmDeleteCode(b.code)}>
+                            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
-              <Button
-                onClick={handleBackup}
-                disabled={loading || (!savedPin && (backupPin.trim().length < 4 || pinAvailable === false))}
-                className="w-full gap-2"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4" />
-                )}
-                {hasBackup ? "Update Backup" : "Save Backup"}
-              </Button>
             </div>
           </TabsContent>
 
+          {/* RESTORE TAB */}
           <TabsContent value="restore" className="space-y-4 mt-4">
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Enter your unique backup PIN to restore your habits and tasks.
+                Enter your manual backup code to restore your habits and tasks.
               </p>
               <Input
-                placeholder="Enter your PIN..."
-                value={restorePin}
-                onChange={(e) => setRestorePin(e.target.value)}
+                placeholder="Enter your backup code..."
+                value={restoreCode}
+                onChange={e => setRestoreCode(e.target.value)}
                 maxLength={64}
-                className="text-center text-lg font-mono tracking-wider"
+                className="font-mono"
               />
-              <p className="text-xs text-muted-foreground text-center">
-                ⚠️ This will replace your current data
-              </p>
-              <Button
-                onClick={handleRestore}
-                disabled={loading || restorePin.trim().length < 4}
-                className="w-full gap-2"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4" />
-                )}
-                Restore Data
+              <p className="text-xs text-muted-foreground text-center">⚠️ This will replace your current data</p>
+              <Button onClick={handleRestore} disabled={restoreCode.trim().length < 4} className="w-full gap-2">
+                <Upload className="w-4 h-4" />
+                Restore from Code
               </Button>
-            </div>
-          </TabsContent>
 
-          <TabsContent value="manage" className="space-y-4 mt-4">
-            <div className="space-y-3">
-              {checkingBackup ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : hasBackup ? (
-                <>
-                  <div className="rounded-lg border border-border bg-muted/50 p-4">
-                    <p className="text-sm font-medium text-primary">✓ You have a backup saved</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Enter your PIN below to permanently delete your backup.
-                    </p>
-                  </div>
-                  <Input
-                    placeholder="Enter your PIN to confirm..."
-                    value={deletePin}
-                    onChange={(e) => setDeletePin(e.target.value)}
-                    maxLength={64}
-                    className="text-center text-lg font-mono tracking-wider"
-                  />
-                  <Button
-                    onClick={handleDelete}
-                    disabled={loading || deletePin.trim().length < 4}
-                    variant="destructive"
-                    className="w-full gap-2"
-                  >
-                    {loading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                    Delete Backup
-                  </Button>
-                </>
-              ) : (
-                <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-                  <p className="text-sm text-muted-foreground">No backup found. Create one first in the Backup tab.</p>
+              {/* Quick restore from local backups */}
+              {manualBackups.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground">Or pick from your saved backups:</p>
+                  {manualBackups.map(b => (
+                    <button
+                      key={b.code}
+                      className="w-full text-left rounded border border-border bg-muted/20 hover:bg-muted/40 px-3 py-2 transition-colors"
+                      onClick={() => {
+                        const result = restoreManualBackup(b.code);
+                        if (!result.success) { toast.error(result.error); return; }
+                        onRestore(result.habits!, result.tasks!);
+                        toast.success(`Restored from backup: ${b.code}`);
+                        setOpen(false);
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-medium">{b.code}</span>
+                        <span className="text-xs text-muted-foreground">{b.habits.length}h · {b.tasks.length}t</span>
+                      </div>
+                      {b.label && <p className="text-xs text-muted-foreground mt-0.5">{b.label}</p>}
+                      <p className="text-xs text-muted-foreground">{formatDate(b.createdAt)}</p>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>

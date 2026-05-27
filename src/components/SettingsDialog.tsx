@@ -1,53 +1,56 @@
 import { useState, useEffect } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Settings, Bell, Trash2, UserX, Loader2, KeyRound } from "lucide-react";
+import { Settings, Bell, Trash2, UserX, Loader2, KeyRound, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  requestNotificationPermission,
-  sendNotification,
-  getNotificationStatus,
+  requestNotificationPermission, sendNotification,
+  getNotificationStatus, getNotificationStatusAsync, cancelAllNotifications,
 } from "@/lib/notificationUtils";
+import { Capacitor } from "@capacitor/core";
+import { useTheme } from "@/hooks/useTheme";
 
+const APP_VERSION = "v2.1.2.25";
 
 interface SettingsDialogProps {
   onResetData: () => void;
   reminderEnabled: boolean;
-  reminderTime: string;
+  morningTime: string;
+  eveningTime: string;
+  nightTime: string;
+  timezone: string;
   onReminderEnabledChange: (enabled: boolean) => void;
-  onReminderTimeChange: (time: string) => void;
+  onMorningTimeChange: (time: string) => void;
+  onEveningTimeChange: (time: string) => void;
+  onNightTimeChange: (time: string) => void;
+  onTimezoneChange: (tz: string) => void;
 }
 
 export const SettingsDialog = ({
   onResetData,
   reminderEnabled,
-  reminderTime,
+  morningTime,
+  eveningTime,
+  nightTime,
+  timezone,
   onReminderEnabledChange,
-  onReminderTimeChange,
+  onMorningTimeChange,
+  onEveningTimeChange,
+  onNightTimeChange,
+  onTimezoneChange,
 }: SettingsDialogProps) => {
-  const [notificationStatus, setNotificationStatus] = useState(getNotificationStatus());
+  const { theme, toggleTheme } = useTheme();
+  const [notificationStatus, setNotificationStatus] = useState<'granted' | 'denied' | 'default' | 'unsupported'>(getNotificationStatus());
   const [open, setOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -57,33 +60,37 @@ export const SettingsDialog = ({
   const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
-    setNotificationStatus(getNotificationStatus());
+    getNotificationStatusAsync().then(setNotificationStatus);
   }, [open]);
 
   const handleEnableReminders = async () => {
     const granted = await requestNotificationPermission();
-    setNotificationStatus(getNotificationStatus());
-
+    const status = await getNotificationStatusAsync();
+    setNotificationStatus(status);
     if (granted) {
       onReminderEnabledChange(true);
       toast.success("Reminders enabled!");
-      sendNotification("Habit Tracker", "Reminders are now enabled!");
+      await sendNotification("Habit Tracker", "Reminders are now enabled!");
     } else {
-      toast.error("Please allow notifications in your browser settings");
+      toast.error(Capacitor.isNativePlatform()
+        ? "Please allow notifications in your device settings"
+        : "Please allow notifications in your browser settings"
+      );
     }
   };
 
-  const handleToggleReminder = (checked: boolean) => {
+  const handleToggleReminder = async (checked: boolean) => {
     if (checked && notificationStatus !== "granted") {
-      handleEnableReminders();
+      await handleEnableReminders();
     } else {
       onReminderEnabledChange(checked);
+      if (!checked) await cancelAllNotifications();
     }
   };
 
-  const handleTestNotification = () => {
+  const handleTestNotification = async () => {
     if (notificationStatus === "granted") {
-      sendNotification("Test Reminder", "Don't forget to check your habits today!");
+      await sendNotification("Test Reminder", "Don't forget to check your habits today!");
       toast.success("Test notification sent!");
     } else {
       toast.error("Enable notifications first");
@@ -91,49 +98,32 @@ export const SettingsDialog = ({
   };
 
   const handleDeleteAccount = async () => {
-    if (deletePassword.length < 6) {
-      toast.error("Please enter your password");
-      return;
-    }
-
+    if (deletePassword.length < 6) { toast.error("Please enter your password"); return; }
     setDeleting(true);
     try {
       const { data, error } = await supabase.functions.invoke("delete-account", {
         body: { password: deletePassword },
       });
-
       if (error || data?.error) {
-        // Extract error message - for non-2xx responses, the error context may contain the body
         let msg = data?.error || "Failed to delete account";
         try {
           if (error && typeof error.message === "string") {
-            // Try to parse JSON from the error context
             const jsonMatch = error.message.match(/\{.*\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              if (parsed.error) msg = parsed.error;
-            }
+            if (jsonMatch) { const parsed = JSON.parse(jsonMatch[0]); if (parsed.error) msg = parsed.error; }
           }
           if (error && error.context && typeof error.context.json === "function") {
             const body = await error.context.json();
             if (body?.error) msg = body.error;
           }
-        } catch {}
-        
-        if (msg.includes("Incorrect password")) {
-          toast.error("The password you entered is incorrect. Please try again with the correct password.");
-        } else {
-          toast.error(msg);
-        }
+        } catch (e) { console.warn("Error parsing response:", e); }
+        toast.error(msg.includes("Incorrect password")
+          ? "The password you entered is incorrect. Please try again."
+          : msg);
         return;
       }
-
-      // Clear all local data
       onResetData();
       localStorage.clear();
       sessionStorage.clear();
-
-      // Sign out
       await supabase.auth.signOut();
       toast.success("Account deleted permanently");
       setOpen(false);
@@ -156,69 +146,106 @@ export const SettingsDialog = ({
       </DialogTrigger>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>
-            Configure reminders and manage your data
-          </DialogDescription>
+          <DialogTitle className="flex items-center justify-between">
+            <span>Settings</span>
+            <span className="text-xs font-normal text-muted-foreground">{APP_VERSION}</span>
+          </DialogTitle>
+          <DialogDescription>Configure reminders and manage your data</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Theme Toggle */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              {theme === "dark" ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
+              <h3 className="font-medium">Appearance</h3>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Theme</Label>
+              <Button variant="outline" size="sm" onClick={toggleTheme} className="gap-2">
+                {theme === "dark" ? <><Sun className="w-3.5 h-3.5" />Light Mode</> : <><Moon className="w-3.5 h-3.5" />Dark Mode</>}
+              </Button>
+            </div>
+          </div>
+
           {/* Reminders Section */}
-          <div className="space-y-4">
+          <div className="space-y-4 pt-2 border-t border-border">
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-muted-foreground" />
               <h3 className="font-medium">Daily Reminders</h3>
             </div>
 
             {notificationStatus === "unsupported" ? (
-              <p className="text-sm text-muted-foreground">
-                Your browser doesn't support notifications
-              </p>
+              <p className="text-sm text-muted-foreground">Your browser doesn't support notifications</p>
             ) : (
               <>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="reminder-toggle" className="text-sm">
-                    Enable daily reminder
-                  </Label>
-                  <Switch
-                    id="reminder-toggle"
-                    checked={reminderEnabled}
-                    onCheckedChange={handleToggleReminder}
-                  />
+                  <Label htmlFor="reminder-toggle" className="text-sm">Enable daily reminders</Label>
+                  <Switch id="reminder-toggle" checked={reminderEnabled} onCheckedChange={handleToggleReminder} />
                 </div>
 
                 {reminderEnabled && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Label htmlFor="reminder-time" className="text-sm min-w-24">
-                        Reminder time
-                      </Label>
-                      <Input
-                        id="reminder-time"
-                        type="time"
-                        value={reminderTime}
-                        onChange={(e) => onReminderTimeChange(e.target.value)}
-                        className="w-32"
-                      />
+                  <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
+                    <p className="text-xs font-medium text-muted-foreground">Notification times:</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">🌅 Morning</Label>
+                        <Input type="time" value={morningTime} onChange={e => onMorningTimeChange(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">🌆 Evening</Label>
+                        <Input type="time" value={eveningTime} onChange={e => onEveningTimeChange(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">🌙 Night</Label>
+                        <Input type="time" value={nightTime} onChange={e => onNightTimeChange(e.target.value)} className="h-8 text-xs" />
+                      </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleTestNotification}
-                      className="w-full"
-                    >
+                    <p className="text-xs text-muted-foreground">📅 Weekly summary every Sunday at 8 PM</p>
+                    <Button variant="outline" size="sm" onClick={handleTestNotification} className="w-full">
                       Test Notification
                     </Button>
                   </div>
                 )}
 
                 {notificationStatus === "denied" && (
-                  <p className="text-sm text-destructive">
-                    Notifications are blocked. Please enable them in browser settings.
+                  <p className="text-sm text-muted-foreground">
+                    Notifications are blocked. Please enable them in {Capacitor.isNativePlatform() ? "device" : "browser"} settings.
                   </p>
                 )}
               </>
             )}
+          </div>
+
+          {/* Timezone Section */}
+          <div className="space-y-4 pt-2 border-t border-border">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-medium">Clock Timezone</h3>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm">Timezone</Label>
+              <select
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                value={timezone}
+                onChange={e => onTimezoneChange(e.target.value)}
+              >
+                <option value="">Auto-detect (local)</option>
+                <option value="Asia/Kolkata">India (IST, UTC+5:30)</option>
+                <option value="America/New_York">New York (EST/EDT)</option>
+                <option value="America/Chicago">Chicago (CST/CDT)</option>
+                <option value="America/Denver">Denver (MST/MDT)</option>
+                <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                <option value="Europe/London">London (GMT/BST)</option>
+                <option value="Europe/Paris">Paris (CET/CEST)</option>
+                <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                <option value="Asia/Dubai">Dubai (GST, UTC+4)</option>
+                <option value="Asia/Singapore">Singapore (SGT, UTC+8)</option>
+                <option value="Asia/Tokyo">Tokyo (JST, UTC+9)</option>
+                <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+              </select>
+              <p className="text-xs text-muted-foreground">Controls the clock shown in the header.</p>
+            </div>
           </div>
 
           {/* Change Password Section */}
@@ -230,25 +257,11 @@ export const SettingsDialog = ({
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label htmlFor="current-pw" className="text-sm">Current Password</Label>
-                <Input
-                  id="current-pw"
-                  type="password"
-                  placeholder="Enter current password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  maxLength={128}
-                />
+                <Input id="current-pw" type="password" placeholder="Enter current password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} maxLength={128} />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="new-pw" className="text-sm">New Password</Label>
-                <Input
-                  id="new-pw"
-                  type="password"
-                  placeholder="Enter new password (min 6 chars)"
-                  value={newPasswordValue}
-                  onChange={(e) => setNewPasswordValue(e.target.value)}
-                  maxLength={128}
-                />
+                <Input id="new-pw" type="password" placeholder="Enter new password (min 6 chars)" value={newPasswordValue} onChange={e => setNewPasswordValue(e.target.value)} maxLength={128} />
               </div>
               <Button
                 className="w-full gap-2"
@@ -256,29 +269,15 @@ export const SettingsDialog = ({
                 onClick={async () => {
                   setChangingPassword(true);
                   try {
-                    // Verify current password by re-signing in
                     const { data: { user } } = await supabase.auth.getUser();
                     if (!user?.email) throw new Error("No user found");
-                    
-                    const { error: signInError } = await supabase.auth.signInWithPassword({
-                      email: user.email,
-                      password: currentPassword,
-                    });
-                    if (signInError) {
-                      toast.error("Current password is incorrect");
-                      return;
-                    }
-
+                    const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
+                    if (signInError) { toast.error("Current password is incorrect"); return; }
                     const { error } = await supabase.auth.updateUser({ password: newPasswordValue });
-                    if (error) {
-                      toast.error(error.message);
-                    } else {
-                      toast.success("Password changed successfully!");
-                      setCurrentPassword("");
-                      setNewPasswordValue("");
-                    }
-                  } catch (err: any) {
-                    toast.error(err.message || "Failed to change password");
+                    if (error) { toast.error(error.message); }
+                    else { toast.success("Password changed successfully!"); setCurrentPassword(""); setNewPasswordValue(""); }
+                  } catch (err: unknown) {
+                    toast.error((err as Error).message || "Failed to change password");
                   } finally {
                     setChangingPassword(false);
                   }
@@ -293,35 +292,24 @@ export const SettingsDialog = ({
           {/* Reset Data Section */}
           <div className="space-y-4 pt-4 border-t border-border">
             <div className="flex items-center gap-2">
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-4 w-4 text-muted-foreground" />
               <h3 className="font-medium">Reset Data</h3>
             </div>
-            <p className="text-sm text-muted-foreground">
-              This will permanently delete all your habits, tasks, and settings.
-            </p>
+            <p className="text-sm text-muted-foreground">This will permanently delete all your habits, tasks, and settings.</p>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="w-full">
-                  Reset All Data
-                </Button>
+                <Button variant="destructive" className="w-full">Reset All Data</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete all
-                    your habits, tasks, and settings from this device.
+                    This action cannot be undone. This will permanently delete all your habits, tasks, and settings from this device.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      onResetData();
-                      setOpen(false);
-                    }}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
+                  <AlertDialogAction onClick={() => { onResetData(); setOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                     Reset Everything
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -332,48 +320,19 @@ export const SettingsDialog = ({
           {/* Delete Account Section */}
           <div className="space-y-4 pt-4 border-t border-border">
             <div className="flex items-center gap-2">
-              <UserX className="h-4 w-4 text-destructive" />
-              <h3 className="font-medium text-destructive">Delete Account</h3>
+              <UserX className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-medium">Delete Account</h3>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Permanently delete your account and all data (local, cloud backups, profile). This cannot be undone.
-            </p>
+            <p className="text-sm text-muted-foreground">Permanently delete your account and all data. This cannot be undone.</p>
             {!showDeleteConfirm ? (
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                Delete My Account
-              </Button>
+              <Button variant="destructive" className="w-full" onClick={() => setShowDeleteConfirm(true)}>Delete My Account</Button>
             ) : (
-              <div className="space-y-3 rounded-lg border border-destructive/50 bg-destructive/5 p-4">
-                <p className="text-sm font-medium text-destructive">Enter your password to confirm:</p>
-                <Input
-                  type="password"
-                  placeholder="Your password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  maxLength={128}
-                  className="text-base"
-                />
+              <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+                <p className="text-sm font-medium">Enter your password to confirm:</p>
+                <Input type="password" placeholder="Your password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} maxLength={128} className="text-base" />
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      setShowDeleteConfirm(false);
-                      setDeletePassword("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="flex-1 gap-2"
-                    disabled={deleting || deletePassword.length < 6}
-                    onClick={handleDeleteAccount}
-                  >
+                  <Button variant="outline" className="flex-1" onClick={() => { setShowDeleteConfirm(false); setDeletePassword(""); }}>Cancel</Button>
+                  <Button variant="destructive" className="flex-1 gap-2" disabled={deleting || deletePassword.length < 6} onClick={handleDeleteAccount}>
                     {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
                     Confirm Delete
                   </Button>

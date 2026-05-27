@@ -9,6 +9,7 @@ interface DailyTasksViewProps {
   onToggleTask: (taskId: string) => void;
   onAddTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
+  onEditTask: (taskId: string, newTitle: string) => void;
 }
 
 export const DailyTasksView = ({
@@ -17,11 +18,12 @@ export const DailyTasksView = ({
   onToggleTask,
   onAddTask,
   onDeleteTask,
+  onEditTask,
 }: DailyTasksViewProps) => {
   const daysInMonth = getDaysInMonth(currentMonth);
   const today = new Date();
-  const isCurrentMonth = 
-    today.getMonth() === currentMonth.getMonth() && 
+  const isCurrentMonth =
+    today.getMonth() === currentMonth.getMonth() &&
     today.getFullYear() === currentMonth.getFullYear();
   const currentDay = isCurrentMonth ? today.getDate() : 1;
 
@@ -32,7 +34,6 @@ export const DailyTasksView = ({
         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
           const isToday = isCurrentMonth && day === currentDay;
           const dayOfWeek = getDayOfWeek(currentMonth, day);
-          
           return (
             <TaskSection
               key={day}
@@ -43,6 +44,7 @@ export const DailyTasksView = ({
               onToggleTask={onToggleTask}
               onAddTask={onAddTask}
               onDeleteTask={onDeleteTask}
+              onEditTask={onEditTask}
               colorClass={isToday ? "bg-accent border-2 border-foreground/30" : "bg-card"}
             />
           );

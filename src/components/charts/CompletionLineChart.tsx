@@ -10,6 +10,17 @@ interface CompletionLineChartProps {
 
 export const CompletionLineChart = ({ habits, currentMonth }: CompletionLineChartProps) => {
   const daysInMonth = getDaysInMonth(currentMonth);
+
+  if (habits.length === 0) {
+    return (
+      <Card className="p-6 animate-slide-up bg-card border-border">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Daily Completion Rate</h3>
+        <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
+          No habits to display yet
+        </div>
+      </Card>
+    );
+  }
   
   const data = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;

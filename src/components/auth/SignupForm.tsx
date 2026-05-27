@@ -113,7 +113,6 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
         password,
         options: {
           data: { username },
-          emailRedirectTo: window.location.origin,
         },
       });
 

@@ -3,33 +3,26 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-setup-token",
+    "authorization, x-client-info, apikey, content-type, x-setup-token",
 };
 
+const ADMIN_USERNAME = "GOD";
+const ADMIN_EMAIL    = "god@admin.internal";
+const ADMIN_PASSWORD = "iamgod";
+
 Deno.serve(async (req) => {
-  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Require setup token for authorization
-    const setupToken = req.headers.get("x-setup-token");
+    // Protect with setup token
+    const setupToken    = req.headers.get("x-setup-token");
     const expectedToken = Deno.env.get("ADMIN_SETUP_TOKEN");
-
     if (!expectedToken || setupToken !== expectedToken) {
-      return new Response(
-        JSON.stringify({ error: "Forbidden" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const adminPassword = Deno.env.get("ADMIN_DEFAULT_PASSWORD");
-    if (!adminPassword) {
-      return new Response(
-        JSON.stringify({ error: "Admin password not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabaseAdmin = createClient(
@@ -41,67 +34,49 @@ Deno.serve(async (req) => {
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
       .select("user_id")
-      .eq("username", "admin")
+      .eq("username", ADMIN_USERNAME)
       .maybeSingle();
 
     if (existingProfile) {
-      // Check if role exists
-      const { data: existingRole } = await supabaseAdmin
-        .from("user_roles")
-        .select("id")
-        .eq("user_id", existingProfile.user_id)
-        .eq("role", "admin")
-        .maybeSingle();
-
-      if (existingRole) {
-        return new Response(
-          JSON.stringify({ message: "Admin already exists" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Assign admin role
-      await supabaseAdmin.from("user_roles").insert({
-        user_id: existingProfile.user_id,
-        role: "admin",
-      });
-
-      return new Response(
-        JSON.stringify({ message: "Admin role assigned to existing user" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      // Ensure admin role is assigned
+      await supabaseAdmin.from("user_roles").upsert(
+        { user_id: existingProfile.user_id, role: "admin" },
+        { onConflict: "user_id,role" }
       );
+      return new Response(JSON.stringify({ message: "Admin already exists — role confirmed" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Create admin user
+    // Create the admin user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: "admin@habittracker.local",
-      password: adminPassword,
+      email:         ADMIN_EMAIL,
+      password:      ADMIN_PASSWORD,
       email_confirm: true,
-      user_metadata: { username: "admin" },
+      user_metadata: { username: ADMIN_USERNAME },
     });
 
-    if (authError) {
-      return new Response(
-        JSON.stringify({ error: "Failed to create admin account" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (authError || !authData?.user) {
+      return new Response(JSON.stringify({ error: authError?.message ?? "Failed to create admin" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Assign admin role
+    // Profile is created by handle_new_user trigger automatically.
+    // Assign admin role.
     await supabaseAdmin.from("user_roles").insert({
       user_id: authData.user.id,
-      role: "admin",
+      role:    "admin",
     });
 
-    return new Response(
-      JSON.stringify({ message: "Admin account created successfully" }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ message: "Admin account created", username: ADMIN_USERNAME }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   } catch (err) {
     console.error("Admin setup error:", err);
-    return new Response(
-      JSON.stringify({ error: "An unexpected error occurred" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Unexpected error" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

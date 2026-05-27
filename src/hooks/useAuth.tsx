@@ -1,6 +1,8 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
+import { STORAGE_KEYS } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
+import { cancelPending } from "@/services/backgroundSync";
 
 interface AuthContextType {
   user: User | null;
@@ -27,26 +29,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [username, setUsername] = useState<string | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener FIRST
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
 
-      // Fetch username when user logs in
       if (session?.user) {
-        setTimeout(() => {
-          fetchUsername(session.user.id);
-        }, 0);
+        setTimeout(() => fetchUsername(session.user.id), 0);
       } else {
         setUsername(null);
       }
     });
 
-    // THEN check for existing session
+    // Check for existing session — with a timeout fallback
+    // so offline users don't get stuck on loading screen
+    const timeoutId = setTimeout(() => {
+      if (mounted && loading) {
+        setLoading(false); // give up waiting after 3s
+      }
+    }, 3000);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      clearTimeout(timeoutId);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -54,26 +65,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session?.user) {
         fetchUsername(session.user.id);
       }
+    }).catch(() => {
+      if (mounted) setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUsername = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("username")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (data) {
-      setUsername(data.username);
-    }
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (data) setUsername(data.username);
+    } catch { /* offline, skip */ }
   };
 
   const signOut = async () => {
+    // Cancel any pending background sync BEFORE signing out so the user's
+    // data can't flush to Supabase after the session is gone
+    if (user?.id) cancelPending(user.id);
     await supabase.auth.signOut();
+    localStorage.removeItem(STORAGE_KEYS.IS_ADMIN);
     setUsername(null);
+    setUser(null);
+    setSession(null);
   };
 
   return (

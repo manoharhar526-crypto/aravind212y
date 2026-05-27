@@ -10,6 +10,17 @@ interface HabitBarChartProps {
 
 export const HabitBarChart = ({ habits, currentMonth }: HabitBarChartProps) => {
   const daysInMonth = getDaysInMonth(currentMonth);
+
+  if (habits.length === 0) {
+    return (
+      <Card className="p-6 animate-slide-up bg-card border-border" style={{ animationDelay: "200ms" }}>
+        <h3 className="text-lg font-semibold mb-4 text-foreground">Habit Completion Rates</h3>
+        <div className="h-80 flex items-center justify-center text-muted-foreground text-sm">
+          No habits to display yet
+        </div>
+      </Card>
+    );
+  }
   
   const COLORS = [
     "hsl(220, 25%, 25%)",    // Deep slate blue
@@ -66,7 +77,7 @@ export const HabitBarChart = ({ habits, currentMonth }: HabitBarChartProps) => {
                 borderRadius: "8px",
                 color: "hsl(var(--foreground))",
               }}
-              formatter={(value: number, name: string, props: any) => [
+              formatter={(value: number, name: string, props: { payload: { days: number; fullName: string } }) => [
                 `${value}% (${props.payload.days}/${daysInMonth} days)`,
                 props.payload.fullName,
               ]}
