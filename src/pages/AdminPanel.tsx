@@ -86,14 +86,8 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  // Realtime: re-fetch when profiles change
-  useEffect(() => {
-    const channel = supabase
-      .channel("admin-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchUsers(false))
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchUsers]);
+  // Realtime auto-refresh disabled — user can pull/refresh manually
+
 
   const handleUpdatePassword = async (userId: string) => {
     if (newPassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
