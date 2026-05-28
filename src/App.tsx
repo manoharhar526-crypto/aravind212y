@@ -149,6 +149,20 @@ const AdminPanelWrapper = () => {
   return <AdminPanel onBack={handleBack} />;
 };
 
+const AppRoutes = () => {
+  useAdminAutoLogout();
+  return (
+    <Routes>
+      <Route path="/" element={<ProtectedRoute><IndexWithKey /></ProtectedRoute>} />
+      <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+      <Route path="/admin-login" element={<AdminLogin />} />
+      <Route path="/admin" element={<AdminRoute><AdminPanelWrapper /></AdminRoute>} />
+      <Route path="/admin/user/:userId" element={<AdminRoute><AdminUserDetail /></AdminRoute>} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
 const App = () => (
   <ThemeProvider>
     <QueryClientProvider client={queryClient}>
@@ -157,42 +171,7 @@ const App = () => (
         <Sonner />
         <AuthProvider>
           <BrowserRouter>
-            <Routes>
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <IndexWithKey />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/auth"
-              element={
-                <AuthRoute>
-                  <Auth />
-                </AuthRoute>
-              }
-            />
-            <Route path="/admin-login" element={<AdminLogin />} />
-            <Route
-              path="/admin"
-              element={
-                <AdminRoute>
-                  <AdminPanelWrapper />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/admin/user/:userId"
-              element={
-                <AdminRoute>
-                  <AdminUserDetail />
-                </AdminRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+            <AppRoutes />
           </BrowserRouter>
         </AuthProvider>
       </TooltipProvider>
