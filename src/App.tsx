@@ -33,12 +33,30 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 import { STORAGE_KEYS } from "@/lib/constants";
 const ADMIN_KEY = STORAGE_KEYS.IS_ADMIN;
+const ADMIN_SESSION_KEY = "admin_session_active";
+
+// Auto-logout admin when app is closed and reopened.
+// sessionStorage clears on tab/app close, so a missing marker = fresh launch.
+const useAdminAutoLogout = () => {
+  const { user, signOut } = useAuth();
+  useEffect(() => {
+    if (!user) return;
+    const wasAdmin = localStorage.getItem(ADMIN_KEY) === "true";
+    const hasSession = sessionStorage.getItem(ADMIN_SESSION_KEY) === "true";
+    if (wasAdmin && !hasSession) {
+      // Fresh app open for a previously-admin user → force re-login
+      localStorage.removeItem(ADMIN_KEY);
+      signOut();
+    } else {
+      sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+    }
+  }, [user, signOut]);
+};
 
 // Only redirects if NOT admin
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(
-    // Check localStorage first so we don't flash redirect on reload
     () => localStorage.getItem(ADMIN_KEY) === "true" ? true : null
   );
 
@@ -50,11 +68,17 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
       .eq("user_id", user.id)
       .eq("role", "admin")
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // On network/query error, keep the cached admin status — don't bounce
+        if (error) return;
         const admin = !!data;
         setIsAdmin(admin);
-        if (admin) localStorage.setItem(ADMIN_KEY, "true");
-        else localStorage.removeItem(ADMIN_KEY);
+        if (admin) {
+          localStorage.setItem(ADMIN_KEY, "true");
+          sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+        } else {
+          localStorage.removeItem(ADMIN_KEY);
+        }
       });
   }, [user]);
 
@@ -70,7 +94,6 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
     () => localStorage.getItem(ADMIN_KEY) === "true" ? true : null
   );
   const [checked, setChecked] = useState(
-    // If we already know from localStorage, mark as checked
     () => localStorage.getItem(ADMIN_KEY) === "true"
   );
 
@@ -84,7 +107,12 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
       .eq("user_id", user.id)
       .eq("role", "admin")
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          // Keep cached state on error — don't bounce admin users to /
+          setChecked(true);
+          return;
+        }
         const admin = !!data;
         setIsAdmin(admin);
         setChecked(true);
@@ -101,6 +129,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 
   return <>{children}</>;
 };
+
 
 // Remounts Index whenever the logged-in user changes,
 // so useState initializers re-run and load the correct user's data.
