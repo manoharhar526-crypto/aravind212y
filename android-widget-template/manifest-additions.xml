@@ -1,0 +1,44 @@
+<!--
+  Paste these <receiver> blocks INSIDE the <application> tag of
+  android/app/src/main/AndroidManifest.xml (after the <activity> block).
+-->
+
+<receiver android:name=".widgets.TodayHabitsWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_today_habits"/>
+</receiver>
+
+<receiver android:name=".widgets.StreakWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_streak"/>
+</receiver>
+
+<receiver android:name=".widgets.ProgressWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_progress"/>
+</receiver>
+
+<receiver android:name=".widgets.DailyTasksWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_daily_tasks"/>
+</receiver>
+
+<receiver android:name=".widgets.WeeklyTasksWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_weekly_tasks"/>
+</receiver>
+
+<receiver android:name=".widgets.MonthlyTasksWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_monthly_tasks"/>
+</receiver>
+
+<receiver android:name=".widgets.NoteWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_note"/>
+</receiver>
+
+<receiver android:name=".widgets.QuickOpenWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_quick_open"/>
+</receiver>
