@@ -109,6 +109,13 @@ const Index = () => {
   // ── Background sync — silently keeps Supabase up-to-date ────────────────────
   useBackgroundSync({ userId, habits, tasks, calendarNotes, username });
 
+  // ── Widget sync — mirrors latest data to native SharedPreferences for Android home-screen widgets
+  useEffect(() => {
+    import("@/services/widgetSync").then(({ syncWidgetData }) => {
+      syncWidgetData({ habits, tasks, notes: calendarNotes, frozenDates });
+    }).catch(() => { /* ignore on web */ });
+  }, [habits, tasks, calendarNotes, frozenDates]);
+
   // Update clock every second
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
