@@ -82,7 +82,8 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     .map(t => ({ id: t.id, title: t.title, completed: t.completed }));
 
   // 7. Today's calendar note
-  const todaysNote = notes.find(n => n.date === today)?.text ?? "";
+  const noteHit = notes.find(n => n.date === today);
+  const todaysNote = noteHit ? `${noteHit.title}${noteHit.body ? " — " + noteHit.body : ""}` : "";
 
   await Promise.all([
     setItem("today_date", today),
