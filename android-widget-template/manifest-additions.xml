@@ -42,3 +42,45 @@
     <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
     <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_quick_open"/>
 </receiver>
+
+<!-- ── Added widgets ── -->
+
+<receiver android:name=".widgets.MonthGridWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_month_grid"/>
+</receiver>
+
+<receiver android:name=".widgets.SkipDaysWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_skip_days"/>
+</receiver>
+
+<receiver android:name=".widgets.AnalyticsWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_analytics"/>
+</receiver>
+
+<receiver android:name=".widgets.CalendarWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_calendar"/>
+</receiver>
+
+<receiver android:name=".widgets.AllTimeStatsWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_all_time_stats"/>
+</receiver>
+
+<receiver android:name=".widgets.HabitReportsWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_habit_reports"/>
+</receiver>
+
+<receiver android:name=".widgets.TaskReportsWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_task_reports"/>
+</receiver>
+
+<receiver android:name=".widgets.TaskAnalyticsWidget" android:exported="true">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_task_analytics"/>
+</receiver>
