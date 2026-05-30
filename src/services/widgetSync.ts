@@ -10,7 +10,13 @@ import { Preferences } from "@capacitor/preferences";
 import type { Habit } from "@/types/habit";
 import type { Task } from "@/types/task";
 import type { CalendarNote } from "@/types/calendarNote";
-import { calculateTotalStreak } from "@/lib/habitUtils";
+import {
+  calculateTotalStreak,
+  getAllTimeStats,
+  getCompletedDaysForMonth,
+  getDaysInMonth,
+  calculateCompletionRate,
+} from "@/lib/habitUtils";
 
 const GROUP = "HabitrackerWidget";
 
@@ -85,6 +91,72 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
   const noteHit = notes.find(n => n.date === today);
   const todaysNote = noteHit ? `${noteHit.title}${noteHit.body ? " — " + noteHit.body : ""}` : "";
 
+  // ─── Extended widgets ─────────────────────────────────────────────────────
+  const now = new Date();
+  const totalDaysInMonth = getDaysInMonth(now);
+
+  // 8. Monthly tracking grid — completed-day numbers per habit
+  const monthGrid = monthHabits.slice(0, 6).map(h => ({
+    name: h.name,
+    days: getCompletedDaysForMonth(h, now),
+    total: totalDaysInMonth,
+  }));
+
+  // 9. Skip days — habits with skipped count in this month
+  const monthPrefix = `${month}-`;
+  const skipDays = monthHabits
+    .map(h => ({
+      name: h.name,
+      count: (h.skippedDays ?? []).filter(d => d.startsWith(monthPrefix)).length,
+    }))
+    .filter(x => x.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+
+  // 10. Habit analytics — top habits by completion % this month
+  const analytics = monthHabits
+    .map(h => ({ name: h.name, pct: calculateCompletionRate(h, now, totalDaysInMonth) }))
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 6);
+
+  // 11. Calendar — current week (Sun→Sat), today + note markers
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  const noteSet = new Set(notes.map(n => n.date));
+  const calendarWeek = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return {
+      day: d.getDate(),
+      today: dStr === today,
+      hasNote: noteSet.has(dStr),
+    };
+  });
+  const calendarMonth = now.toLocaleString("default", { month: "long", year: "numeric" });
+
+  // 12. All-time stats
+  const at = getAllTimeStats(habits, frozenDates);
+
+  // 13. Habit reports — per-habit monthly summary
+  const habitReports = monthHabits.map(h => {
+    const completed = getCompletedDaysForMonth(h, now).length;
+    return {
+      name: h.name,
+      completed,
+      total: totalDaysInMonth,
+      rate: calculateCompletionRate(h, now, totalDaysInMonth),
+    };
+  }).slice(0, 6);
+
+  // 14. Task reports + analytics
+  const monthTasksAll = tasks.filter(t => !t.month || t.month === month);
+  const td = monthTasksAll.filter(t => t.type === "daily");
+  const tw = monthTasksAll.filter(t => t.type === "weekly");
+  const tm = monthTasksAll.filter(t => t.type === "monthly");
+  const doneOf = (xs: Task[]) => xs.filter(t => t.completed).length;
+  const pctOf = (xs: Task[]) => (xs.length ? Math.round((doneOf(xs) / xs.length) * 100) : 0);
+
   await Promise.all([
     setItem("today_date", today),
     setItem("habits_today", JSON.stringify(todaysHabits)),
@@ -97,6 +169,28 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     setItem("tasks_monthly", JSON.stringify(monthlyTasks)),
     setItem("note_today", todaysNote),
     setItem("last_sync", new Date().toISOString()),
+
+    // Extended
+    setItem("month_grid", JSON.stringify(monthGrid)),
+    setItem("skip_days", JSON.stringify(skipDays)),
+    setItem("analytics", JSON.stringify(analytics)),
+    setItem("calendar_week", JSON.stringify(calendarWeek)),
+    setItem("calendar_month", calendarMonth),
+    setItem("alltime_completions", String(at.totalCompletions)),
+    setItem("alltime_months", String(at.totalMonths)),
+    setItem("alltime_rate", String(at.allTimeRate)),
+    setItem("alltime_streak", String(at.longestStreak)),
+    setItem("alltime_best", at.bestHabit?.name ?? ""),
+    setItem("habit_reports", JSON.stringify(habitReports)),
+    setItem("task_rep_daily_done", String(doneOf(td))),
+    setItem("task_rep_daily_total", String(td.length)),
+    setItem("task_rep_weekly_done", String(doneOf(tw))),
+    setItem("task_rep_weekly_total", String(tw.length)),
+    setItem("task_rep_monthly_done", String(doneOf(tm))),
+    setItem("task_rep_monthly_total", String(tm.length)),
+    setItem("task_an_daily_pct", String(pctOf(td))),
+    setItem("task_an_weekly_pct", String(pctOf(tw))),
+    setItem("task_an_monthly_pct", String(pctOf(tm))),
   ]);
 
   // Broadcast intent so widgets refresh
