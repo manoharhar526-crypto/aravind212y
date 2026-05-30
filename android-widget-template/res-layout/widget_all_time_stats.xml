@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="12dp" android:background="#141414">
+    <TextView android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" android:paddingBottom="6dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:weightSum="2">
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/stat1_num" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+            <TextView android:id="@+id/stat1_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#888888" android:textSize="10sp" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/stat2_num" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+            <TextView android:id="@+id/stat2_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#888888" android:textSize="10sp" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:weightSum="2">
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/stat3_num" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+            <TextView android:id="@+id/stat3_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#888888" android:textSize="10sp" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/stat4_num" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+            <TextView android:id="@+id/stat4_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#888888" android:textSize="10sp" />
+        </LinearLayout>
+    </LinearLayout>
+    <TextView android:id="@+id/best_habit" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="#AAAAAA" android:textSize="11sp" android:paddingTop="6dp" android:gravity="center" android:singleLine="true" android:ellipsize="end" />
+</LinearLayout>
