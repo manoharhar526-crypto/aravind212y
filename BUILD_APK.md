@@ -18,18 +18,15 @@ npm run build
 # 3. Add Android (first time only)
 npx cap add android
 
-# 4. Copy app icons + install 8 home-screen widgets
+# 4. Copy app icons + auto-install all 16 home-screen widgets
+#    (this script also patches AndroidManifest.xml automatically — no manual edit needed)
 bash copy-icons.sh
 bash android-widget-template/install.sh
 
-# 5. Edit android/app/src/main/AndroidManifest.xml
-#    Paste the <receiver> blocks from android-widget-template/manifest-additions.xml
-#    inside the <application> tag (after the <activity> block).
-
-# 6. Sync
+# 5. Sync
 npx cap sync android
 
-# 7. Open Android Studio
+# 6. Open Android Studio
 npx cap open android
 ```
 
