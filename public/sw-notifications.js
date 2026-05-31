@@ -1,12 +1,39 @@
 // Service Worker for web push / scheduled notifications
+// IMPORTANT: This SW must NEVER cache page assets. Its sole purpose is
+// notifications. On every activation we wipe any caches that may have been
+// left behind by previous builds so users always get the latest website.
+
+const SW_VERSION = 'v3-2026-05-31';
+
+self.addEventListener('install', (event) => {
+  // Activate this SW immediately on update — don't wait for tabs to close.
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    // Nuke ALL caches — guarantees no stale HTML/JS/CSS is served.
+    try {
+      const names = await caches.keys();
+      await Promise.all(names.map((n) => caches.delete(n)));
+    } catch (e) { /* ignore */ }
+    await self.clients.claim();
+  })());
+});
+
+// Explicitly do NOT register a 'fetch' listener — without it, the browser
+// goes straight to the network for every request and updates show up instantly.
+
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SCHEDULE_NOTIFICATIONS') {
     const { notifications } = event.data;
-    // Store in IndexedDB-like cache via self storage
     self.__pendingNotifications = notifications || [];
   }
   if (event.data && event.data.type === 'CANCEL_NOTIFICATIONS') {
     self.__pendingNotifications = [];
+  }
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
 

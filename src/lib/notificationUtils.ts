@@ -14,6 +14,27 @@ const getSwReg = async (): Promise<ServiceWorkerRegistration | null> => {
   if (_swReg) return _swReg;
   try {
     _swReg = await navigator.serviceWorker.register('/sw-notifications.js', { scope: '/' });
+
+    // Reload page when a new SW takes control → users always see latest build
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+
+    // Check for SW updates on load and on focus
+    try { await _swReg.update(); } catch { /* ignore */ }
+    window.addEventListener('focus', () => { _swReg?.update().catch(() => {}); });
+
+    // One-time cleanup: wipe any caches left behind by older builds
+    if ('caches' in window) {
+      try {
+        const names = await caches.keys();
+        await Promise.all(names.map((n) => caches.delete(n)));
+      } catch { /* ignore */ }
+    }
+
     return _swReg;
   } catch {
     return null;
