@@ -31,6 +31,7 @@ import { TaskReportCard } from "@/components/TaskReportCard";
 import { HabitReportCard } from "@/components/HabitReportCard";
 import { DailyTasksView } from "@/components/DailyTasksView";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { HomeScreenWidgetsButton } from "@/components/HomeScreenWidgetsButton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -456,6 +457,7 @@ const Index = () => {
                 >
                   {reminderEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                 </Button>
+                <HomeScreenWidgetsButton compact />
                 <SettingsDialog
                   onResetData={handleResetData}
                   reminderEnabled={reminderEnabled}
@@ -504,6 +506,7 @@ const Index = () => {
                     <><BellOff className="w-4 h-4" /><span>Reminder Off</span></>
                   )}
                 </Button>
+                <HomeScreenWidgetsButton />
                 <SettingsDialog
                   onResetData={handleResetData}
                   reminderEnabled={reminderEnabled}
