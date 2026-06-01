@@ -3,32 +3,32 @@
   android/app/src/main/AndroidManifest.xml (after the <activity> block).
 -->
 
-<receiver android:name=".widgets.TodayHabitsWidget" android:exported="true">
+<receiver android:name="com.aravind.habittracker.widgets.TodayHabitsWidget" android:exported="true" android:label="@string/widget_today_habits">
     <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
     <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_today_habits"/>
 </receiver>
 
-<receiver android:name=".widgets.StreakWidget" android:exported="true">
+<receiver android:name="com.aravind.habittracker.widgets.StreakWidget" android:exported="true" android:label="@string/widget_streak">
     <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
     <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_streak"/>
 </receiver>
 
-<receiver android:name=".widgets.ProgressWidget" android:exported="true">
+<receiver android:name="com.aravind.habittracker.widgets.ProgressWidget" android:exported="true" android:label="@string/widget_progress">
     <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
     <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_progress"/>
 </receiver>
 
-<receiver android:name=".widgets.DailyTasksWidget" android:exported="true">
+<receiver android:name="com.aravind.habittracker.widgets.DailyTasksWidget" android:exported="true" android:label="@string/widget_daily_tasks">
     <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
     <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_daily_tasks"/>
 </receiver>
 
-<receiver android:name=".widgets.WeeklyTasksWidget" android:exported="true">
+<receiver android:name="com.aravind.habittracker.widgets.WeeklyTasksWidget" android:exported="true" android:label="@string/widget_weekly_tasks">
     <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
     <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_weekly_tasks"/>
 </receiver>
 
-<receiver android:name=".widgets.MonthlyTasksWidget" android:exported="true">
+<receiver android:name="com.aravind.habittracker.widgets.MonthlyTasksWidget" android:exported="true" android:label="@string/widget_monthly_tasks">
     <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
     <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_monthly_tasks"/>
 </receiver>
