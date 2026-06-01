@@ -65,29 +65,29 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_monthly_tasks"/>
         </receiver>
         
-        <receiver android:name=".widgets.NoteWidget" android:exported="true">
+        <receiver android:name="com.aravind.habittracker.widgets.NoteWidget" android:exported="true" android:label="@string/widget_note">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_note"/>
         </receiver>
         
-        <receiver android:name=".widgets.QuickOpenWidget" android:exported="true">
+        <receiver android:name="com.aravind.habittracker.widgets.QuickOpenWidget" android:exported="true" android:label="@string/widget_quick_open">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_quick_open"/>
         </receiver>
         
         <!-- ── Added widgets ── -->
         
-        <receiver android:name=".widgets.MonthGridWidget" android:exported="true">
+        <receiver android:name="com.aravind.habittracker.widgets.MonthGridWidget" android:exported="true" android:label="@string/widget_month_grid">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_month_grid"/>
         </receiver>
         
-        <receiver android:name=".widgets.SkipDaysWidget" android:exported="true">
+        <receiver android:name="com.aravind.habittracker.widgets.SkipDaysWidget" android:exported="true" android:label="@string/widget_skip_days">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_skip_days"/>
         </receiver>
         
-        <receiver android:name=".widgets.AnalyticsWidget" android:exported="true">
+        <receiver android:name="com.aravind.habittracker.widgets.AnalyticsWidget" android:exported="true" android:label="@string/widget_analytics">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_analytics"/>
         </receiver>
