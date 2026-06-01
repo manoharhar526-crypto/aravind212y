@@ -11,7 +11,10 @@
     "preview": "vite preview",
     "patch:android": "node capacitor-hooks/after-sync.cjs",
     "build:android": "vite build && cap sync android && node capacitor-hooks/after-sync.cjs",
-    "open:android": "cap open android"
+    "open:android": "cap open android",
+    "capacitor:sync:after": "node capacitor-hooks/after-sync.cjs",
+    "capacitor:copy:after": "node capacitor-hooks/after-sync.cjs",
+    "capacitor:update:after": "node capacitor-hooks/after-sync.cjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.0.0",
