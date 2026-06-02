@@ -15,6 +15,7 @@ import {
 } from "@/lib/appStorage";
 import { scheduleSmartNotifications, cancelAllNotifications, scheduleCalendarNoteNotifications } from "@/lib/notificationUtils";
 import { useBackgroundSync } from "@/hooks/useBackgroundSync";
+import { clearDebounce, enqueue, flushPending } from "@/services/backgroundSync";
 import { supabase } from "@/integrations/supabase/client";
 
 import { HabitGrid } from "@/components/HabitGrid";
@@ -430,6 +431,23 @@ const Index = () => {
     setTasks(restoredTasks);
   };
 
+  const handleSignOut = async () => {
+    if (userId) {
+      clearDebounce(userId);
+      enqueue(userId, {
+        habits,
+        tasks,
+        calendarNotes,
+        currentMonth: currentMonth.toISOString(),
+        frozenDates,
+        username,
+        savedAt: new Date().toISOString(),
+      });
+      await flushPending(userId);
+    }
+    await signOut();
+  };
+
   // FIX 7: Streak freeze toggle for a date
   const handleToggleFreeze = (dateStr: string) => {
     setFrozenDates(prev => {
@@ -535,7 +553,7 @@ const Index = () => {
                   onNightTimeChange={setNightTime}
                   onTimezoneChange={setTimezone}
                 />
-                <Button variant="ghost" size="icon" onClick={signOut} className="h-8 w-8 flex-shrink-0" title="Log out">
+                <Button variant="ghost" size="icon" onClick={handleSignOut} className="h-8 w-8 flex-shrink-0" title="Log out">
                   <LogOut className="w-4 h-4" />
                 </Button>
               </div>
@@ -583,7 +601,7 @@ const Index = () => {
                   onNightTimeChange={setNightTime}
                   onTimezoneChange={setTimezone}
                 />
-                <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5">
+                <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1.5">
                   <LogOut className="w-4 h-4" />
                   <span>Logout</span>
                 </Button>
