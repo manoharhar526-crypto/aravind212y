@@ -48,6 +48,7 @@ console.log("[widgets] copying widget sources into android/");
 copyAll(path.join(TEMPLATE, "kotlin"), PKG_DIR, ".kt");
 copyAll(path.join(TEMPLATE, "res-layout"), LAYOUT_DIR, ".xml");
 copyAll(path.join(TEMPLATE, "res-xml"), XML_DIR, ".xml");
+console.log("[widgets] copied Kotlin, layout, and widget-provider XML files ✓");
 
 const patchFile = (file, patcher) => {
   if (!fs.existsSync(file)) return;
@@ -113,11 +114,6 @@ if (!fs.existsSync(MANIFEST)) {
 }
 
 let manifest = fs.readFileSync(MANIFEST, "utf8");
-if (manifest.includes("HABITRACKER_WIDGETS_BEGIN")) {
-  console.log("[widgets] manifest already patched ✓");
-  process.exit(0);
-}
-
 const additions = fs.readFileSync(
   path.join(TEMPLATE, "manifest-additions.xml"),
   "utf8"
@@ -134,6 +130,16 @@ const block =
   "\n        <!-- HABITRACKER_WIDGETS_BEGIN -->\n" +
   receivers +
   "\n        <!-- HABITRACKER_WIDGETS_END -->\n    ";
+
+if (manifest.includes("HABITRACKER_WIDGETS_BEGIN")) {
+  manifest = manifest.replace(
+    /\n\s*<!-- HABITRACKER_WIDGETS_BEGIN -->[\s\S]*?<!-- HABITRACKER_WIDGETS_END -->\n\s*/,
+    block
+  );
+  fs.writeFileSync(MANIFEST, manifest);
+  console.log("[widgets] ✓ refreshed 16 widget receivers in AndroidManifest.xml");
+  process.exit(0);
+}
 
 if (!manifest.includes("</application>")) {
   console.error("[widgets] </application> tag not found in manifest");

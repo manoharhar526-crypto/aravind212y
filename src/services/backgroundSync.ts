@@ -25,7 +25,10 @@ export interface SyncPayload {
   habits:        Habit[];
   tasks:         Task[];
   calendarNotes: CalendarNote[];
+  currentMonth?: string;
+  frozenDates?:  string[];
   username?:     string | null;
+  savedAt?:      string;
 }
 
 interface QueueItem {
@@ -199,17 +202,25 @@ export function cancelPending(userId: string): void {
   saveQueue(loadQueue().filter(i => i.synced || i.userId !== userId));
 }
 
+export function clearDebounce(userId: string): void {
+  const timer = debounceTimers.get(userId);
+  if (timer) {
+    clearTimeout(timer);
+    debounceTimers.delete(userId);
+  }
+}
+
 /**
  * Immediately flush all (or one user's) pending queue items.
  * Called on 'online' event and app resume.
  */
-export function flushPending(userId?: string): void {
+export async function flushPending(userId?: string): Promise<void> {
   const q = loadQueue().filter(i => !i.synced);
   const ids = userId
     ? [userId]
     : [...new Set(q.map(i => i.userId))];
 
-  ids.forEach(id => flush(id));
+  await Promise.all(ids.map(id => flush(id)));
 }
 
 /**
