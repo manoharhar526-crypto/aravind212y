@@ -48,6 +48,7 @@ console.log("[widgets] copying widget sources into android/");
 copyAll(path.join(TEMPLATE, "kotlin"), PKG_DIR, ".kt");
 copyAll(path.join(TEMPLATE, "res-layout"), LAYOUT_DIR, ".xml");
 copyAll(path.join(TEMPLATE, "res-xml"), XML_DIR, ".xml");
+console.log("[widgets] copied Kotlin, layout, and widget-provider XML files ✓");
 
 const patchFile = (file, patcher) => {
   if (!fs.existsSync(file)) return;
@@ -114,7 +115,7 @@ if (!fs.existsSync(MANIFEST)) {
 
 let manifest = fs.readFileSync(MANIFEST, "utf8");
 if (manifest.includes("HABITRACKER_WIDGETS_BEGIN")) {
-  console.log("[widgets] manifest already patched ✓");
+  console.log("[widgets] manifest already patched with widget receivers ✓");
   process.exit(0);
 }
 
