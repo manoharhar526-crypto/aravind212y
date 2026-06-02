@@ -15,7 +15,7 @@ import {
 } from "@/lib/appStorage";
 import { scheduleSmartNotifications, cancelAllNotifications, scheduleCalendarNoteNotifications } from "@/lib/notificationUtils";
 import { useBackgroundSync } from "@/hooks/useBackgroundSync";
-import { clearDebounce, enqueue, flushPending } from "@/services/backgroundSync";
+import { cancelPending, clearDebounce, enqueue, flushPending } from "@/services/backgroundSync";
 import { supabase } from "@/integrations/supabase/client";
 
 import { HabitGrid } from "@/components/HabitGrid";
@@ -147,6 +147,7 @@ const Index = () => {
         const remoteSavedAt = Date.parse(payload.savedAt ?? data?.updated_at ?? "") || 0;
 
         if (remoteHasData && (!localHasData || remoteSavedAt >= localSavedAt)) {
+          cancelPending(userId);
           const restoredMonth = payload.currentMonth ? new Date(payload.currentMonth) : new Date();
           const safeMonth = isNaN(restoredMonth.getTime()) ? new Date() : restoredMonth;
           const nextHabits = remoteHabits ?? defaultHabits;
