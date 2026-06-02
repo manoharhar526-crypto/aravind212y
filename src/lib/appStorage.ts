@@ -16,6 +16,7 @@ type StoredStateV1 = {
   habits: Habit[];
   tasks: Task[];
   currentMonth: string;
+  savedAt?: string;
 };
 
 export type AppSettings = {
@@ -37,7 +38,7 @@ const defaultSettings: AppSettings = {
 };
 
 // ── App Data ──────────────────────────────────────────────────────────────────
-export const loadAppStorage = (userId?: string): { habits: Habit[]; tasks: Task[]; currentMonth: Date } | null => {
+export const loadAppStorage = (userId?: string): { habits: Habit[]; tasks: Task[]; currentMonth: Date; savedAt?: string } | null => {
   try {
     // Per-user key takes priority; fall back to legacy key only once (migration)
     const key = userId ? userStorageKey(userId) : STORAGE_KEY;
@@ -68,7 +69,7 @@ export const loadAppStorage = (userId?: string): { habits: Habit[]; tasks: Task[
     });
     const restoredMonth = parsed.currentMonth ? new Date(parsed.currentMonth) : new Date();
     const currentMonth  = isNaN(restoredMonth.getTime()) ? new Date() : restoredMonth;
-    return { habits: migratedHabits, tasks: parsed.tasks as Task[], currentMonth };
+    return { habits: migratedHabits, tasks: parsed.tasks as Task[], currentMonth, savedAt: parsed.savedAt };
   } catch (e) { console.warn("Storage error:", e); return null; }
 };
 
@@ -79,6 +80,7 @@ export const saveAppStorage = (state: { habits: Habit[]; tasks: Task[]; currentM
       habits:       state.habits,
       tasks:        state.tasks,
       currentMonth: state.currentMonth.toISOString(),
+      savedAt:      new Date().toISOString(),
     };
     window.localStorage.setItem(key, JSON.stringify(payload));
   } catch (e) { console.warn("Storage error:", e); }

@@ -25,7 +25,10 @@ export interface SyncPayload {
   habits:        Habit[];
   tasks:         Task[];
   calendarNotes: CalendarNote[];
+  currentMonth?: string;
+  frozenDates?:  string[];
   username?:     string | null;
+  savedAt?:      string;
 }
 
 interface QueueItem {

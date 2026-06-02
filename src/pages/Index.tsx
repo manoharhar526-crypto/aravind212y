@@ -15,6 +15,7 @@ import {
 } from "@/lib/appStorage";
 import { scheduleSmartNotifications, cancelAllNotifications, scheduleCalendarNoteNotifications } from "@/lib/notificationUtils";
 import { useBackgroundSync } from "@/hooks/useBackgroundSync";
+import { supabase } from "@/integrations/supabase/client";
 
 import { HabitGrid } from "@/components/HabitGrid";
 import { HabitCalendar } from "@/components/HabitCalendar";
@@ -31,7 +32,6 @@ import { TaskReportCard } from "@/components/TaskReportCard";
 import { HabitReportCard } from "@/components/HabitReportCard";
 import { DailyTasksView } from "@/components/DailyTasksView";
 import { SettingsDialog } from "@/components/SettingsDialog";
-import { HomeScreenWidgetsButton } from "@/components/HomeScreenWidgetsButton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -101,14 +101,80 @@ const Index = () => {
   const [showCopyDialog, setShowCopyDialog] = useState(false);
   const [pendingMonth, setPendingMonth] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [syncReady, setSyncReady] = useState(false);
+  const isFirstSave = useRef(true);
 
   // Habits & tasks for the current month
   const currentMonthHabits = getHabitsForMonth(habits, currentMonth);
   const currentMonthKey = getMonthKey(currentMonth);
   const currentMonthTasks = tasks.filter(t => !t.month || t.month === currentMonthKey);
 
-  // ── Background sync — silently keeps Supabase up-to-date ────────────────────
-  useBackgroundSync({ userId, habits, tasks, calendarNotes, username });
+  // ── Restore latest cloud data before enabling background sync ──────────────
+  useEffect(() => {
+    let cancelled = false;
+    setSyncReady(false);
+    isFirstSave.current = true;
+
+    if (!userId) {
+      setSyncReady(true);
+      return;
+    }
+
+    const local = loadAppStorage(userId);
+    const localNotes = loadCalendarNotes(userId);
+    const localHasData = !!local && (local.habits.length > 0 || local.tasks.length > 0 || localNotes.length > 0);
+    const localSavedAt = Date.parse(local?.savedAt ?? "") || 0;
+
+    Promise.resolve(supabase
+      .from("user_sync_data")
+      .select("payload, updated_at")
+      .eq("user_id", userId)
+      .maybeSingle())
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setSyncReady(localHasData);
+          return;
+        }
+
+        const payload = (data?.payload ?? {}) as any;
+        const remoteHabits = Array.isArray(payload.habits) ? (payload.habits as Habit[]) : null;
+        const remoteTasks = Array.isArray(payload.tasks) ? (payload.tasks as Task[]) : null;
+        const remoteNotes = Array.isArray(payload.calendarNotes) ? (payload.calendarNotes as CalendarNote[]) : null;
+        const remoteFrozenDates = Array.isArray(payload.frozenDates) ? (payload.frozenDates as string[]) : [];
+        const remoteHasData = !!remoteHabits?.length || !!remoteTasks?.length || !!remoteNotes?.length;
+        const remoteSavedAt = Date.parse(payload.savedAt ?? data?.updated_at ?? "") || 0;
+
+        if (remoteHasData && (!localHasData || remoteSavedAt >= localSavedAt)) {
+          const restoredMonth = payload.currentMonth ? new Date(payload.currentMonth) : new Date();
+          const safeMonth = isNaN(restoredMonth.getTime()) ? new Date() : restoredMonth;
+          const nextHabits = remoteHabits ?? defaultHabits;
+          const nextTasks = remoteTasks ?? defaultTasks;
+          const nextNotes = remoteNotes ?? [];
+
+          setHabits(nextHabits);
+          setTasks(nextTasks);
+          setCalendarNotes(nextNotes);
+          setCurrentMonth(safeMonth);
+          setFrozenDates(remoteFrozenDates);
+          saveAppStorage({ habits: nextHabits, tasks: nextTasks, currentMonth: safeMonth }, userId);
+          saveCalendarNotes(nextNotes, userId);
+          saveSettings({ ...loadSettings(userId), frozenDates: remoteFrozenDates }, userId);
+          scheduleCalendarNoteNotifications(nextNotes);
+          if (!localHasData) toast.success("Your saved data was restored");
+        }
+
+        setSyncReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setSyncReady(localHasData);
+      });
+
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  // ── Background sync — silently keeps cloud storage up-to-date ───────────────
+  useBackgroundSync({ enabled: syncReady, userId, habits, tasks, calendarNotes, currentMonth, frozenDates, username });
 
   // ── Widget sync — mirrors latest data to native SharedPreferences for Android home-screen widgets
   useEffect(() => {
@@ -124,7 +190,6 @@ const Index = () => {
   }, []);
 
   // Save app data on change — skip first render (data was just loaded from storage)
-  const isFirstSave = useRef(true);
   useEffect(() => {
     if (isFirstSave.current) { isFirstSave.current = false; return; }
     saveAppStorage({ habits, tasks, currentMonth }, userId);
@@ -457,7 +522,6 @@ const Index = () => {
                 >
                   {reminderEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                 </Button>
-                <HomeScreenWidgetsButton compact />
                 <SettingsDialog
                   onResetData={handleResetData}
                   reminderEnabled={reminderEnabled}
@@ -506,7 +570,6 @@ const Index = () => {
                     <><BellOff className="w-4 h-4" /><span>Reminder Off</span></>
                   )}
                 </Button>
-                <HomeScreenWidgetsButton />
                 <SettingsDialog
                   onResetData={handleResetData}
                   reminderEnabled={reminderEnabled}
