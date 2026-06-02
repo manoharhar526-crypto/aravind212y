@@ -4,6 +4,7 @@
     android:minHeight="110dp"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_progress"
+    android:previewLayout="@layout/widget_progress"
     android:resizeMode="horizontal|vertical"
     android:description="@string/widget_progress"
     android:widgetCategory="home_screen" />
