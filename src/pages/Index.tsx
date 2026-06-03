@@ -536,6 +536,7 @@ const Index = () => {
                     onClick={() => handleToggleFreeze(todayDateStr)}
                     className="h-8 w-8 flex-shrink-0"
                     title="Freeze today's streak"
+                    aria-label="Freeze today's streak"
                   >
                     <SnowflakeIcon className="w-4 h-4" />
                   </Button>
@@ -547,6 +548,7 @@ const Index = () => {
                   onClick={handleToggleReminder}
                   className="h-8 w-8 flex-shrink-0"
                   title={reminderEnabled ? "Reminders On" : "Reminders Off"}
+                  aria-label={reminderEnabled ? "Disable reminders" : "Enable reminders"}
                 >
                   {reminderEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                 </Button>
@@ -563,7 +565,7 @@ const Index = () => {
                   onNightTimeChange={setNightTime}
                   onTimezoneChange={setTimezone}
                 />
-                <Button variant="ghost" size="icon" onClick={handleSignOut} className="h-8 w-8 flex-shrink-0" title="Log out">
+                <Button variant="ghost" size="icon" onClick={handleSignOut} className="h-8 w-8 flex-shrink-0" title="Log out" aria-label="Log out">
                   <LogOut className="w-4 h-4" />
                 </Button>
               </div>
