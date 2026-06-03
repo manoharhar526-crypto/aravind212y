@@ -536,6 +536,7 @@ const Index = () => {
                     onClick={() => handleToggleFreeze(todayDateStr)}
                     className="h-8 w-8 flex-shrink-0"
                     title="Freeze today's streak"
+                    aria-label="Freeze today's streak"
                   >
                     <SnowflakeIcon className="w-4 h-4" />
                   </Button>
@@ -547,6 +548,7 @@ const Index = () => {
                   onClick={handleToggleReminder}
                   className="h-8 w-8 flex-shrink-0"
                   title={reminderEnabled ? "Reminders On" : "Reminders Off"}
+                  aria-label={reminderEnabled ? "Disable reminders" : "Enable reminders"}
                 >
                   {reminderEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                 </Button>
@@ -563,7 +565,7 @@ const Index = () => {
                   onNightTimeChange={setNightTime}
                   onTimezoneChange={setTimezone}
                 />
-                <Button variant="ghost" size="icon" onClick={handleSignOut} className="h-8 w-8 flex-shrink-0" title="Log out">
+                <Button variant="ghost" size="icon" onClick={handleSignOut} className="h-8 w-8 flex-shrink-0" title="Log out" aria-label="Log out">
                   <LogOut className="w-4 h-4" />
                 </Button>
               </div>
@@ -619,13 +621,13 @@ const Index = () => {
 
               {/* Month navigation */}
               <div className="flex items-center">
-                <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 sm:h-10 sm:w-10">
+                <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 sm:h-10 sm:w-10" aria-label="Previous month">
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
                 <span className="font-medium min-w-24 sm:min-w-36 text-center text-sm sm:text-base">
                   {getMonthName(currentMonth)}
                 </span>
-                <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8 sm:h-10 sm:w-10">
+                <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8 sm:h-10 sm:w-10" aria-label="Next month">
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
