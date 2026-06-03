@@ -496,6 +496,15 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Cloud-restore overlay */}
+      {userId && !syncReady && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" role="status" aria-live="polite">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+            <p className="text-sm text-muted-foreground">Syncing your data…</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
