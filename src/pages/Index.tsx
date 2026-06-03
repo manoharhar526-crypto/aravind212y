@@ -621,13 +621,13 @@ const Index = () => {
 
               {/* Month navigation */}
               <div className="flex items-center">
-                <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 sm:h-10 sm:w-10">
+                <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="h-8 w-8 sm:h-10 sm:w-10" aria-label="Previous month">
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
                 <span className="font-medium min-w-24 sm:min-w-36 text-center text-sm sm:text-base">
                   {getMonthName(currentMonth)}
                 </span>
-                <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8 sm:h-10 sm:w-10">
+                <Button variant="ghost" size="icon" onClick={handleNextMonth} className="h-8 w-8 sm:h-10 sm:w-10" aria-label="Next month">
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>

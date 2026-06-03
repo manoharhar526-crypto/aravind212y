@@ -82,6 +82,7 @@ export const TaskSection = ({
           size="icon"
           className="h-6 w-6"
           onClick={() => setIsAdding(!isAdding)}
+          aria-label={isAdding ? "Cancel adding task" : "Add task"}
         >
           <Plus className="w-4 h-4" />
         </Button>
@@ -134,6 +135,7 @@ export const TaskSection = ({
                 size="icon"
                 className="h-5 w-5 flex-shrink-0"
                 onClick={commitEdit}
+                aria-label="Save task"
               >
                 <Check className="w-3 h-3 text-green-500" />
               </Button>
@@ -143,6 +145,7 @@ export const TaskSection = ({
                 size="icon"
                 className="h-5 w-5 opacity-0 group-hover:opacity-100 focus:opacity-100 sm:transition-opacity touch-manipulation flex-shrink-0"
                 onClick={() => startEdit(task)}
+                aria-label="Edit task"
               >
                 <Pencil className="w-3 h-3 text-muted-foreground" />
               </Button>
@@ -152,6 +155,7 @@ export const TaskSection = ({
               size="icon"
               className="h-5 w-5 opacity-0 group-hover:opacity-100 focus:opacity-100 sm:transition-opacity touch-manipulation flex-shrink-0"
               onClick={() => onDeleteTask(task.id)}
+              aria-label="Delete task"
             >
               <X className="w-3 h-3" />
             </Button>

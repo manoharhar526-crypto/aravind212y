@@ -213,8 +213,8 @@ export const CalendarView = ({ notes, onAddNote, onDeleteNote, onEditNote }: Cal
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-medium text-sm">{note.title}</span>
                       <div className="flex gap-1 flex-shrink-0">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(note)}><Pencil className="w-3 h-3" /></Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { onDeleteNote(note.id); toast.success("Note deleted"); }}><X className="w-3 h-3" /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(note)} aria-label="Edit note"><Pencil className="w-3 h-3" /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { onDeleteNote(note.id); toast.success("Note deleted"); }} aria-label="Delete note"><X className="w-3 h-3" /></Button>
                       </div>
                     </div>
                     {note.body && <p className="text-xs text-muted-foreground">{note.body}</p>}
