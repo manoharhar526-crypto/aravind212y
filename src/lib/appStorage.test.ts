@@ -71,8 +71,8 @@ describe("appStorage — settings", () => {
 describe("appStorage — calendar notes", () => {
   it("starts empty and round-trips", () => {
     expect(loadCalendarNotes("u")).toEqual([]);
-    saveCalendarNotes([{ id: "n", date: "2026-06-01", text: "Hi" } as any], "u");
-    expect(loadCalendarNotes("u")[0].text).toBe("Hi");
+    saveCalendarNotes([{ id: "n", date: "2026-06-01", title: "Hi" }], "u");
+    expect(loadCalendarNotes("u")[0].title).toBe("Hi");
   });
 });
 
@@ -80,7 +80,7 @@ describe("appStorage — clearAllStorage", () => {
   it("clears all per-user keys", () => {
     saveAppStorage({ habits: [], tasks: [], currentMonth: new Date() }, "u");
     saveSettings({ ...loadSettings("u"), reminderEnabled: true }, "u");
-    saveCalendarNotes([{ id: "n", date: "2026-06-01", text: "Hi" } as any], "u");
+    saveCalendarNotes([{ id: "n", date: "2026-06-01", title: "Hi" }], "u");
     clearAllStorage("u");
     expect(loadAppStorage("u")).toBeNull();
     expect(loadSettings("u").reminderEnabled).toBe(false);
