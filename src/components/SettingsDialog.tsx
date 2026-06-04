@@ -154,23 +154,62 @@ export const SettingsDialog = ({
           <DialogDescription>Configure reminders and manage your data</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Theme Toggle */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              {theme === "dark" ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
-              <h3 className="font-medium">Appearance</h3>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">Theme</Label>
-              <Button variant="outline" size="sm" onClick={toggleTheme} className="gap-2">
-                {theme === "dark" ? <><Sun className="w-3.5 h-3.5" />Light Mode</> : <><Moon className="w-3.5 h-3.5" />Dark Mode</>}
-              </Button>
-            </div>
-          </div>
+        <Tabs defaultValue="general" className="py-2">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="general" className="text-xs">General</TabsTrigger>
+            <TabsTrigger value="reminders" className="text-xs">Reminders</TabsTrigger>
+            <TabsTrigger value="account" className="text-xs">Account</TabsTrigger>
+            <TabsTrigger value="data" className="text-xs">Data</TabsTrigger>
+          </TabsList>
 
-          {/* Reminders Section */}
-          <div className="space-y-4 pt-2 border-t border-border">
+          {/* General tab: Appearance + Timezone */}
+          <TabsContent value="general" className="space-y-6 pt-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                {theme === "dark" ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
+                <h3 className="font-medium">Appearance</h3>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Theme</Label>
+                <Button variant="outline" size="sm" onClick={toggleTheme} className="gap-2">
+                  {theme === "dark" ? <><Sun className="w-3.5 h-3.5" />Light Mode</> : <><Moon className="w-3.5 h-3.5" />Dark Mode</>}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-2 border-t border-border">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-medium">Clock Timezone</h3>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">Timezone</Label>
+                <select
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={timezone}
+                  onChange={e => onTimezoneChange(e.target.value)}
+                >
+                  <option value="">Auto-detect (local)</option>
+                  <option value="Asia/Kolkata">India (IST, UTC+5:30)</option>
+                  <option value="America/New_York">New York (EST/EDT)</option>
+                  <option value="America/Chicago">Chicago (CST/CDT)</option>
+                  <option value="America/Denver">Denver (MST/MDT)</option>
+                  <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                  <option value="Europe/London">London (GMT/BST)</option>
+                  <option value="Europe/Paris">Paris (CET/CEST)</option>
+                  <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                  <option value="Asia/Dubai">Dubai (GST, UTC+4)</option>
+                  <option value="Asia/Singapore">Singapore (SGT, UTC+8)</option>
+                  <option value="Asia/Tokyo">Tokyo (JST, UTC+9)</option>
+                  <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                </select>
+                <p className="text-xs text-muted-foreground">Controls the clock shown in the header.</p>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Reminders tab */}
+          <TabsContent value="reminders" className="space-y-4 pt-4">
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-muted-foreground" />
               <h3 className="font-medium">Daily Reminders</h3>
@@ -216,82 +255,76 @@ export const SettingsDialog = ({
                 )}
               </>
             )}
-          </div>
+          </TabsContent>
 
-          {/* Timezone Section */}
-          <div className="space-y-4 pt-2 border-t border-border">
-            <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-medium">Clock Timezone</h3>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-sm">Timezone</Label>
-              <select
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                value={timezone}
-                onChange={e => onTimezoneChange(e.target.value)}
-              >
-                <option value="">Auto-detect (local)</option>
-                <option value="Asia/Kolkata">India (IST, UTC+5:30)</option>
-                <option value="America/New_York">New York (EST/EDT)</option>
-                <option value="America/Chicago">Chicago (CST/CDT)</option>
-                <option value="America/Denver">Denver (MST/MDT)</option>
-                <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
-                <option value="Europe/London">London (GMT/BST)</option>
-                <option value="Europe/Paris">Paris (CET/CEST)</option>
-                <option value="Europe/Berlin">Berlin (CET/CEST)</option>
-                <option value="Asia/Dubai">Dubai (GST, UTC+4)</option>
-                <option value="Asia/Singapore">Singapore (SGT, UTC+8)</option>
-                <option value="Asia/Tokyo">Tokyo (JST, UTC+9)</option>
-                <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
-              </select>
-              <p className="text-xs text-muted-foreground">Controls the clock shown in the header.</p>
-            </div>
-          </div>
-
-          {/* Change Password Section */}
-          <div className="space-y-4 pt-4 border-t border-border">
-            <div className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-medium">Change Password</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label htmlFor="current-pw" className="text-sm">Current Password</Label>
-                <Input id="current-pw" type="password" placeholder="Enter current password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} maxLength={128} />
+          {/* Account tab: Change password + Delete account */}
+          <TabsContent value="account" className="space-y-6 pt-4">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-medium">Change Password</h3>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="new-pw" className="text-sm">New Password</Label>
-                <Input id="new-pw" type="password" placeholder="Enter new password (min 6 chars)" value={newPasswordValue} onChange={e => setNewPasswordValue(e.target.value)} maxLength={128} />
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="current-pw" className="text-sm">Current Password</Label>
+                  <Input id="current-pw" type="password" placeholder="Enter current password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} maxLength={128} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="new-pw" className="text-sm">New Password</Label>
+                  <Input id="new-pw" type="password" placeholder="Enter new password (min 6 chars)" value={newPasswordValue} onChange={e => setNewPasswordValue(e.target.value)} maxLength={128} />
+                </div>
+                <Button
+                  className="w-full gap-2"
+                  disabled={changingPassword || currentPassword.length < 6 || newPasswordValue.length < 6}
+                  onClick={async () => {
+                    setChangingPassword(true);
+                    try {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user?.email) throw new Error("No user found");
+                      const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
+                      if (signInError) { toast.error("Current password is incorrect"); return; }
+                      const { error } = await supabase.auth.updateUser({ password: newPasswordValue });
+                      if (error) { toast.error(error.message); }
+                      else { toast.success("Password changed successfully!"); setCurrentPassword(""); setNewPasswordValue(""); }
+                    } catch (err: unknown) {
+                      toast.error((err as Error).message || "Failed to change password");
+                    } finally {
+                      setChangingPassword(false);
+                    }
+                  }}
+                >
+                  {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                  Change Password
+                </Button>
               </div>
-              <Button
-                className="w-full gap-2"
-                disabled={changingPassword || currentPassword.length < 6 || newPasswordValue.length < 6}
-                onClick={async () => {
-                  setChangingPassword(true);
-                  try {
-                    const { data: { user } } = await supabase.auth.getUser();
-                    if (!user?.email) throw new Error("No user found");
-                    const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
-                    if (signInError) { toast.error("Current password is incorrect"); return; }
-                    const { error } = await supabase.auth.updateUser({ password: newPasswordValue });
-                    if (error) { toast.error(error.message); }
-                    else { toast.success("Password changed successfully!"); setCurrentPassword(""); setNewPasswordValue(""); }
-                  } catch (err: unknown) {
-                    toast.error((err as Error).message || "Failed to change password");
-                  } finally {
-                    setChangingPassword(false);
-                  }
-                }}
-              >
-                {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                Change Password
-              </Button>
             </div>
-          </div>
 
-          {/* Reset Data Section */}
-          <div className="space-y-4 pt-4 border-t border-border">
+            <div className="space-y-4 pt-4 border-t border-border">
+              <div className="flex items-center gap-2">
+                <UserX className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-medium">Delete Account</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">Permanently delete your account and all data. This cannot be undone.</p>
+              {!showDeleteConfirm ? (
+                <Button variant="destructive" className="w-full" onClick={() => setShowDeleteConfirm(true)}>Delete My Account</Button>
+              ) : (
+                <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+                  <p className="text-sm font-medium">Enter your password to confirm:</p>
+                  <Input type="password" placeholder="Your password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} maxLength={128} className="text-base" />
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => { setShowDeleteConfirm(false); setDeletePassword(""); }}>Cancel</Button>
+                    <Button variant="destructive" className="flex-1 gap-2" disabled={deleting || deletePassword.length < 6} onClick={handleDeleteAccount}>
+                      {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
+                      Confirm Delete
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Data tab: Reset */}
+          <TabsContent value="data" className="space-y-4 pt-4">
             <div className="flex items-center gap-2">
               <Trash2 className="h-4 w-4 text-muted-foreground" />
               <h3 className="font-medium">Reset Data</h3>
@@ -316,32 +349,9 @@ export const SettingsDialog = ({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
+          </TabsContent>
+        </Tabs>
 
-          {/* Delete Account Section */}
-          <div className="space-y-4 pt-4 border-t border-border">
-            <div className="flex items-center gap-2">
-              <UserX className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-medium">Delete Account</h3>
-            </div>
-            <p className="text-sm text-muted-foreground">Permanently delete your account and all data. This cannot be undone.</p>
-            {!showDeleteConfirm ? (
-              <Button variant="destructive" className="w-full" onClick={() => setShowDeleteConfirm(true)}>Delete My Account</Button>
-            ) : (
-              <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
-                <p className="text-sm font-medium">Enter your password to confirm:</p>
-                <Input type="password" placeholder="Your password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} maxLength={128} className="text-base" />
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => { setShowDeleteConfirm(false); setDeletePassword(""); }}>Cancel</Button>
-                  <Button variant="destructive" className="flex-1 gap-2" disabled={deleting || deletePassword.length < 6} onClick={handleDeleteAccount}>
-                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
-                    Confirm Delete
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </DialogContent>
     </Dialog>
   );
