@@ -3,9 +3,13 @@
  *
  * Silently syncs user data to Supabase in the background.
  *
+ * Queue store: IndexedDB (via idb-keyval) — survives larger payloads than the
+ * 5 MB localStorage cap and avoids blocking the main thread. Reads localStorage
+ * once on startup to migrate any pre-existing queue.
+ *
  * Flow:
  *   enqueue(userId, payload)
- *     → coalesces into per-user queue slot (localStorage)
+ *     → coalesces into per-user queue slot (IndexedDB)
  *     → debounces 1500 ms
  *     → UPSERT to user_sync_data
  *     → retries up to 3× with backoff on failure
@@ -13,6 +17,7 @@
  *     → flushes on app resume (visibilitychange)
  */
 
+import { get, set } from "idb-keyval";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import type { Habit } from "@/types/habit";
@@ -47,25 +52,43 @@ const DEBOUNCE_MS  = 1500;
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAYS = [2000, 5000, 10000]; // ms between successive retries
 
-// ── Queue helpers ─────────────────────────────────────────────────────────────
+// ── Queue helpers (IndexedDB-backed) ──────────────────────────────────────────
 
-function loadQueue(): QueueItem[] {
+let migrated = false;
+async function migrateLegacyOnce(): Promise<void> {
+  if (migrated) return;
+  migrated = true;
   try {
-    const raw = localStorage.getItem(QUEUE_KEY);
-    return raw ? (JSON.parse(raw) as QueueItem[]) : [];
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(QUEUE_KEY) : null;
+    if (!raw) return;
+    const existing = (await get<QueueItem[]>(QUEUE_KEY)) ?? [];
+    if (existing.length === 0) {
+      const parsed = JSON.parse(raw) as QueueItem[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        await set(QUEUE_KEY, parsed);
+      }
+    }
+    localStorage.removeItem(QUEUE_KEY);
+  } catch { /* ignore migration errors */ }
+}
+
+async function loadQueue(): Promise<QueueItem[]> {
+  await migrateLegacyOnce();
+  try {
+    return (await get<QueueItem[]>(QUEUE_KEY)) ?? [];
   } catch { return []; }
 }
 
-function saveQueue(q: QueueItem[]): void {
-  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch { /* quota exceeded */ }
+async function saveQueue(q: QueueItem[]): Promise<void> {
+  try { await set(QUEUE_KEY, q); } catch { /* quota / db error */ }
 }
 
-function clearSynced(): void {
-  saveQueue(loadQueue().filter(i => !i.synced));
+async function clearSynced(): Promise<void> {
+  const q = await loadQueue();
+  await saveQueue(q.filter(i => !i.synced));
 }
 
-// ── Per-user flush lock (BUG 1 FIX: per-user, not global) ────────────────────
-// Using a Set instead of a boolean so multiple users flush concurrently.
+// ── Per-user flush lock ──────────────────────────────────────────────────────
 const flushingUsers = new Set<string>();
 
 // ── Debounce timers (per user) ────────────────────────────────────────────────
@@ -74,22 +97,16 @@ const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 // ── Core flush ────────────────────────────────────────────────────────────────
 
 async function flush(userId: string): Promise<void> {
-  // BUG 1 FIX: per-user lock, not a single global boolean
   if (flushingUsers.has(userId)) return;
+  if (!navigator.onLine) return;
 
-  if (!navigator.onLine) {
-    // Will be retried when 'online' fires
-    return;
-  }
-
-  const queue = loadQueue().filter(i => !i.synced && i.userId === userId);
+  const queue = (await loadQueue()).filter(i => !i.synced && i.userId === userId);
   if (queue.length === 0) return;
 
   // Coalesce: use the latest queued snapshot for this user
   const latest = queue[queue.length - 1];
 
   flushingUsers.add(userId);
-
   let success = false;
 
   try {
@@ -100,10 +117,6 @@ async function flush(userId: string): Promise<void> {
       }
 
       try {
-        // BUG 2 FIX: The supabase client uses the anon key + user JWT from the
-        // active session. The UPSERT goes through RLS so it must be called with
-        // the user's own authenticated session — which supabase client already
-        // does automatically (reads session from localStorage).
         const { error } = await supabase
           .from("user_sync_data")
           .upsert(
@@ -118,23 +131,18 @@ async function flush(userId: string): Promise<void> {
 
         if (error) throw error;
 
-        // Mark all this user's items synced and clean up
-        saveQueue(
-          loadQueue().map(i => i.userId === userId ? { ...i, synced: true } : i)
-        );
-        clearSynced();
+        const q = await loadQueue();
+        await saveQueue(q.map(i => i.userId === userId ? { ...i, synced: true } : i));
+        await clearSynced();
         success = true;
         break;
 
       } catch (err: any) {
         console.warn(`[bgSync] attempt ${attempt + 1}/${MAX_ATTEMPTS} failed for ${userId}:`, err?.message ?? err);
 
-        // Increment attempt counter in queue
-        saveQueue(
-          loadQueue().map(i => i.id === latest.id ? { ...i, attempts: i.attempts + 1 } : i)
-        );
+        const q = await loadQueue();
+        await saveQueue(q.map(i => i.id === latest.id ? { ...i, attempts: i.attempts + 1 } : i));
 
-        // BUG 3 FIX: Don't retry on auth errors — session is gone, no point
         const isAuthError = err?.status === 401 || err?.code === "PGRST301";
         if (isAuthError) {
           console.warn("[bgSync] Auth error — skipping retries");
@@ -147,7 +155,6 @@ async function flush(userId: string): Promise<void> {
       console.error("[bgSync] All retries exhausted for userId:", userId);
     }
   } finally {
-    // BUG 1 FIX: Always release the lock, even if an unexpected error throws
     flushingUsers.delete(userId);
   }
 }
@@ -157,11 +164,12 @@ async function flush(userId: string): Promise<void> {
 /**
  * Enqueue a sync for userId. Debounces 1500ms then flushes.
  * Safe to call on every state change — rapid calls are coalesced.
+ * Queue persistence is async (IndexedDB) but fire-and-forget; the debounced
+ * flush awaits the actual queue read before sending to Supabase.
  */
 export function enqueue(userId: string, payload: SyncPayload): void {
   if (!userId) return;
 
-  // Build queue item
   const item: QueueItem = {
     id:         `${userId}_${Date.now()}`,
     userId,
@@ -171,11 +179,12 @@ export function enqueue(userId: string, payload: SyncPayload): void {
     synced:     false,
   };
 
-  // Coalesce: keep only synced items + one pending item per user (the latest)
-  const q = loadQueue().filter(i => i.synced || i.userId !== userId);
-  saveQueue([...q, item]);
+  // Coalesce: keep synced items + one pending item per user (the latest)
+  void (async () => {
+    const q = (await loadQueue()).filter(i => i.synced || i.userId !== userId);
+    await saveQueue([...q, item]);
+  })();
 
-  // Reset debounce timer
   const existing = debounceTimers.get(userId);
   if (existing) clearTimeout(existing);
 
@@ -183,14 +192,14 @@ export function enqueue(userId: string, payload: SyncPayload): void {
     userId,
     setTimeout(() => {
       debounceTimers.delete(userId);
-      flush(userId);
+      void flush(userId);
     }, DEBOUNCE_MS)
   );
 }
 
 /**
  * Cancel any pending debounce timer for a user and remove their unsynced
- * queue items. Call this on logout so stale data can't flush after session ends.
+ * queue items. Call this on logout.
  */
 export function cancelPending(userId: string): void {
   const timer = debounceTimers.get(userId);
@@ -198,8 +207,10 @@ export function cancelPending(userId: string): void {
     clearTimeout(timer);
     debounceTimers.delete(userId);
   }
-  // Remove unsynced items for this user from the queue
-  saveQueue(loadQueue().filter(i => i.synced || i.userId !== userId));
+  void (async () => {
+    const q = await loadQueue();
+    await saveQueue(q.filter(i => i.synced || i.userId !== userId));
+  })();
 }
 
 export function clearDebounce(userId: string): void {
@@ -215,39 +226,33 @@ export function clearDebounce(userId: string): void {
  * Called on 'online' event and app resume.
  */
 export async function flushPending(userId?: string): Promise<void> {
-  const q = loadQueue().filter(i => !i.synced);
-  const ids = userId
-    ? [userId]
-    : [...new Set(q.map(i => i.userId))];
-
+  const q = (await loadQueue()).filter(i => !i.synced);
+  const ids = userId ? [userId] : [...new Set(q.map(i => i.userId))];
   await Promise.all(ids.map(id => flush(id)));
 }
 
 /**
  * Count of unsynced items for a user (for optional UI indicator).
  */
-export function getPendingCount(userId: string): number {
-  return loadQueue().filter(i => !i.synced && i.userId === userId).length;
+export async function getPendingCount(userId: string): Promise<number> {
+  return (await loadQueue()).filter(i => !i.synced && i.userId === userId).length;
 }
 
 // ── Auto-retry on reconnect / app resume ─────────────────────────────────────
 
 if (typeof window !== "undefined") {
-  // BUG 4 FIX: also cancel any running debounce and flush immediately on 'online'
   window.addEventListener("online", () => {
     console.log("[bgSync] Back online — flushing pending queue");
-    // Cancel any pending debounce timers so we flush right now
     debounceTimers.forEach((timer, uid) => {
       clearTimeout(timer);
       debounceTimers.delete(uid);
     });
-    flushPending();
+    void flushPending();
   });
 
-  // Flush on app foreground (Capacitor / mobile tab switching)
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-      flushPending();
+      void flushPending();
     }
   });
 }
