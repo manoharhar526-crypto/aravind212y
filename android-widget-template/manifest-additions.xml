@@ -1,0 +1,82 @@
+<!-- Receivers copied into AndroidManifest.xml by capacitor-hooks/after-sync.cjs. -->
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.TodayHabitsWidget" android:exported="true" android:label="@string/widget_today_habits">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_today_habits"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.StreakWidget" android:exported="true" android:label="@string/widget_streak">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_streak"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.ProgressWidget" android:exported="true" android:label="@string/widget_progress">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_progress"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.DailyTasksWidget" android:exported="true" android:label="@string/widget_daily_tasks">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_daily_tasks"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.WeeklyTasksWidget" android:exported="true" android:label="@string/widget_weekly_tasks">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_weekly_tasks"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.MonthlyTasksWidget" android:exported="true" android:label="@string/widget_monthly_tasks">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_monthly_tasks"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.NoteWidget" android:exported="true" android:label="@string/widget_note">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_note"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.QuickOpenWidget" android:exported="true" android:label="@string/widget_quick_open">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_quick_open"/>
+</receiver>
+
+<!-- ── Added widgets ── -->
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.MonthGridWidget" android:exported="true" android:label="@string/widget_month_grid">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_month_grid"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.SkipDaysWidget" android:exported="true" android:label="@string/widget_skip_days">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_skip_days"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.AnalyticsWidget" android:exported="true" android:label="@string/widget_analytics">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_analytics"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.CalendarWidget" android:exported="true" android:label="@string/widget_calendar">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_calendar"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.AllTimeStatsWidget" android:exported="true" android:label="@string/widget_all_time_stats">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_all_time_stats"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.HabitReportsWidget" android:exported="true" android:label="@string/widget_habit_reports">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_habit_reports"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.TaskReportsWidget" android:exported="true" android:label="@string/widget_task_reports">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_task_reports"/>
+</receiver>
+
+<receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.TaskAnalyticsWidget" android:exported="true" android:label="@string/widget_task_analytics">
+    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+    <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_task_analytics"/>
+</receiver>
