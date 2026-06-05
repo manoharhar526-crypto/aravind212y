@@ -5,6 +5,7 @@
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_progress"
     android:previewLayout="@layout/widget_progress"
+    android:previewImage="@drawable/ic_launcher_background"
     android:resizeMode="horizontal|vertical"
     android:description="@string/widget_progress"
     android:widgetCategory="home_screen" />
