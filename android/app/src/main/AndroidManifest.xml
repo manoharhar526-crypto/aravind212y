@@ -33,7 +33,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
-    
         <!-- HABITRACKER_WIDGETS_BEGIN -->
         <receiver android:enabled="true" android:name="com.aravind.habittracker.widgets.TodayHabitsWidget" android:exported="true" android:label="@string/widget_today_habits">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
