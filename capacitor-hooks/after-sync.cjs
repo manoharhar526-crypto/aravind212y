@@ -57,6 +57,14 @@ const patchFile = (file, patcher) => {
   if (after !== before) fs.writeFileSync(file, after);
 };
 
+for (const f of fs.readdirSync(XML_DIR).filter((name) => name.startsWith("widget_info_") && name.endsWith(".xml"))) {
+  patchFile(path.join(XML_DIR, f), (s) =>
+    s.includes("android:previewImage")
+      ? s
+      : s.replace(/android:previewLayout="([^"]+)"/, 'android:previewLayout="$1"\n    android:previewImage="@drawable/ic_launcher_background"')
+  );
+}
+
 patchFile(VARIABLES_GRADLE, (s) =>
   s.includes("kotlinVersion")
     ? s
@@ -122,6 +130,7 @@ const additions = fs.readFileSync(
 const receivers = additions
   .replace(/<!--[\s\S]*?-->/, "")
   .trim()
+  .replace(/<receiver(?![^>]*android:icon=)/g, '<receiver android:icon="@mipmap/ic_launcher"')
   .split("\n")
   .map((l) => "        " + l)
   .join("\n");
@@ -132,6 +141,12 @@ const block =
   "\n        <!-- HABITRACKER_WIDGETS_END -->\n    ";
 
 if (manifest.includes("HABITRACKER_WIDGETS_BEGIN")) {
+  if (!manifest.includes("android:installLocation")) {
+    manifest = manifest.replace(
+      '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
+      '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n    android:installLocation="internalOnly">'
+    );
+  }
   manifest = manifest.replace(
     /\n\s*<!-- HABITRACKER_WIDGETS_BEGIN -->[\s\S]*?<!-- HABITRACKER_WIDGETS_END -->\n\s*/,
     block
@@ -144,6 +159,13 @@ if (manifest.includes("HABITRACKER_WIDGETS_BEGIN")) {
 if (!manifest.includes("</application>")) {
   console.error("[widgets] </application> tag not found in manifest");
   process.exit(1);
+}
+
+if (!manifest.includes("android:installLocation")) {
+  manifest = manifest.replace(
+    '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
+    '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n    android:installLocation="internalOnly">'
+  );
 }
 
 manifest = manifest.replace("</application>", block + "</application>");
