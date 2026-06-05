@@ -92,12 +92,9 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 // Redirects logged-in users away from auth page
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(
-    () => localStorage.getItem(ADMIN_KEY) === "true" ? true : null
-  );
-  const [checked, setChecked] = useState(
-    () => localStorage.getItem(ADMIN_KEY) === "true"
-  );
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [checked, setChecked] = useState(false);
+
 
   useEffect(() => {
     if (loading) return;
