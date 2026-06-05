@@ -6,10 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-setup-token",
 };
 
-const ADMIN_USERNAME = "GOD";
-const ADMIN_EMAIL    = "god@admin.internal";
-const ADMIN_PASSWORD = "iamgod";
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -25,6 +21,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Read admin identity from secrets — never hardcode credentials in source.
+    const ADMIN_USERNAME = Deno.env.get("ADMIN_USERNAME") ?? "admin";
+    const ADMIN_EMAIL    = Deno.env.get("ADMIN_EMAIL") ?? `${ADMIN_USERNAME}@admin.internal`;
+    const ADMIN_PASSWORD = Deno.env.get("ADMIN_DEFAULT_PASSWORD");
+
+    if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length < 8) {
+      return new Response(
+        JSON.stringify({ error: "ADMIN_DEFAULT_PASSWORD secret is not configured (min 8 chars)" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -38,7 +46,6 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingProfile) {
-      // Ensure admin role is assigned
       await supabaseAdmin.from("user_roles").upsert(
         { user_id: existingProfile.user_id, role: "admin" },
         { onConflict: "user_id,role" }
@@ -48,7 +55,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create the admin user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email:         ADMIN_EMAIL,
       password:      ADMIN_PASSWORD,
@@ -62,8 +68,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Profile is created by handle_new_user trigger automatically.
-    // Assign admin role.
     await supabaseAdmin.from("user_roles").insert({
       user_id: authData.user.id,
       role:    "admin",

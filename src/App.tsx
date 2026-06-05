@@ -56,12 +56,13 @@ const useAdminAutoLogout = () => {
 // Only redirects if NOT admin
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(
-    () => localStorage.getItem(ADMIN_KEY) === "true" ? true : null
-  );
+  // Always start as null (loading). Never trust localStorage as the source of
+  // truth for privilege gating — it is user-writable from DevTools.
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!user) { setIsAdmin(false); localStorage.removeItem(ADMIN_KEY); return; }
+    setIsAdmin(null);
     supabase
       .from("user_roles")
       .select("role")
@@ -69,11 +70,11 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
       .eq("role", "admin")
       .maybeSingle()
       .then(({ data, error }) => {
-        // On network/query error, keep the cached admin status — don't bounce
-        if (error) return;
+        if (error) { setIsAdmin(false); localStorage.removeItem(ADMIN_KEY); return; }
         const admin = !!data;
         setIsAdmin(admin);
         if (admin) {
+          // localStorage is only a UX hint for redirect destination; never a gate.
           localStorage.setItem(ADMIN_KEY, "true");
           sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
         } else {
@@ -87,15 +88,13 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+
 // Redirects logged-in users away from auth page
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(
-    () => localStorage.getItem(ADMIN_KEY) === "true" ? true : null
-  );
-  const [checked, setChecked] = useState(
-    () => localStorage.getItem(ADMIN_KEY) === "true"
-  );
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [checked, setChecked] = useState(false);
+
 
   useEffect(() => {
     if (loading) return;
