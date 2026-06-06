@@ -116,10 +116,24 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_task_analytics"/>
         </receiver>
+
+        <!-- Boot receiver — restores periodic widget refresh after device reboot -->
+        <receiver android:name="com.aravind.habittracker.widgets.BootReceiver" android:enabled="true" android:exported="true" android:directBootAware="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- AlarmManager target — fires every 30 min to refresh all widgets -->
+        <receiver android:name="com.aravind.habittracker.widgets.WidgetAlarmReceiver" android:enabled="true" android:exported="false"/>
         <!-- HABITRACKER_WIDGETS_END -->
     </application>
 
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 </manifest>

@@ -151,8 +151,15 @@ if (manifest.includes("HABITRACKER_WIDGETS_BEGIN")) {
     /\n\s*<!-- HABITRACKER_WIDGETS_BEGIN -->[\s\S]*?<!-- HABITRACKER_WIDGETS_END -->\n\s*/,
     block
   );
+  const ensurePerm2 = (name) => {
+    if (!manifest.includes(name)) {
+      manifest = manifest.replace("</manifest>", `    <uses-permission android:name="${name}" />\n</manifest>`);
+    }
+  };
+  ensurePerm2("android.permission.RECEIVE_BOOT_COMPLETED");
+  ensurePerm2("android.permission.WAKE_LOCK");
   fs.writeFileSync(MANIFEST, manifest);
-  console.log("[widgets] ✓ refreshed 16 widget receivers in AndroidManifest.xml");
+  console.log("[widgets] ✓ refreshed widget receivers + boot/alarm in AndroidManifest.xml");
   process.exit(0);
 }
 
@@ -168,6 +175,16 @@ if (!manifest.includes("android:installLocation")) {
   );
 }
 
+// Ensure boot + wake permissions for AlarmManager-driven widget refresh
+const ensurePerm = (name) => {
+  const tag = `<uses-permission android:name="${name}" />`;
+  if (!manifest.includes(name)) {
+    manifest = manifest.replace("</manifest>", `    ${tag}\n</manifest>`);
+  }
+};
+ensurePerm("android.permission.RECEIVE_BOOT_COMPLETED");
+ensurePerm("android.permission.WAKE_LOCK");
+
 manifest = manifest.replace("</application>", block + "</application>");
 fs.writeFileSync(MANIFEST, manifest);
-console.log("[widgets] ✓ injected 16 widget receivers into AndroidManifest.xml");
+console.log("[widgets] ✓ injected widget receivers + boot/alarm into AndroidManifest.xml");
