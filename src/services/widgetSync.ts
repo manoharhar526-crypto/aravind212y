@@ -192,3 +192,22 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     /* ignore */
   }
 };
+
+/**
+ * Drains habit-cell taps queued by the native `HabitToggleReceiver`.
+ * Called on app launch; returns the list of {habitId, date} the caller
+ * should apply to state (each toggles that day's completion).
+ */
+export const drainPendingWidgetToggles = async (): Promise<Array<{ habitId: string; date: string }>> => {
+  if (!Capacitor.isNativePlatform()) return [];
+  try {
+    await Preferences.configure({ group: GROUP });
+    const { value } = await Preferences.get({ key: "pending_toggles" });
+    if (!value) return [];
+    const arr = JSON.parse(value) as Array<{ habitId: string; date: string }>;
+    await Preferences.set({ key: "pending_toggles", value: "[]" });
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+};
