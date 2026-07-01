@@ -17,7 +17,7 @@ class TaskReportsWidget : AppWidgetProvider() {
                 "Weekly: ${WidgetData.getInt(ctx, "task_rep_weekly_done")}/${WidgetData.getInt(ctx, "task_rep_weekly_total")}")
             v.setTextViewText(R.id.monthly_line,
                 "Monthly: ${WidgetData.getInt(ctx, "task_rep_monthly_done")}/${WidgetData.getInt(ctx, "task_rep_monthly_total")}")
-            v.setOnClickPendingIntent(R.id.root, TodayHabitsWidget.openAppIntent(ctx))
+            v.setOnClickPendingIntent(R.id.root, WidgetData.openAppIntent(ctx))
             mgr.updateAppWidget(id, v)
         }
     }
