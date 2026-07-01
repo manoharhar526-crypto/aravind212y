@@ -160,18 +160,9 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
 
   await Promise.all([
     setItem("today_date", today),
-    setItem("habits_today", JSON.stringify(todaysHabits)),
-    setItem("streak", String(maxStreak)),
-    setItem("progress_done", String(doneCount)),
-    setItem("progress_total", String(totalCount)),
-    setItem("progress_pct", String(progressPct)),
-    setItem("tasks_daily", JSON.stringify(dailyTasks)),
-    setItem("tasks_weekly", JSON.stringify(weeklyTasks)),
-    setItem("tasks_monthly", JSON.stringify(monthlyTasks)),
-    setItem("note_today", todaysNote),
     setItem("last_sync", new Date().toISOString()),
 
-    // Extended
+    // The 7 supported widgets:
     setItem("month_grid", JSON.stringify(monthGrid)),
     setItem("skip_days", JSON.stringify(skipDays)),
     setItem("analytics", JSON.stringify(analytics)),
@@ -189,9 +180,6 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     setItem("task_rep_weekly_total", String(tw.length)),
     setItem("task_rep_monthly_done", String(doneOf(tm))),
     setItem("task_rep_monthly_total", String(tm.length)),
-    setItem("task_an_daily_pct", String(pctOf(td))),
-    setItem("task_an_weekly_pct", String(pctOf(tw))),
-    setItem("task_an_monthly_pct", String(pctOf(tm))),
   ]);
 
   // Broadcast intent so widgets refresh
