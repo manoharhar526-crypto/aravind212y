@@ -23,22 +23,13 @@ object WidgetRefreshScheduler {
     private const val ACTION = "com.aravind.habittracker.REFRESH_WIDGETS"
 
     private val PROVIDERS = arrayOf(
-        TodayHabitsWidget::class.java,
-        StreakWidget::class.java,
-        ProgressWidget::class.java,
-        DailyTasksWidget::class.java,
-        WeeklyTasksWidget::class.java,
-        MonthlyTasksWidget::class.java,
-        NoteWidget::class.java,
-        QuickOpenWidget::class.java,
         MonthGridWidget::class.java,
         SkipDaysWidget::class.java,
         AnalyticsWidget::class.java,
         CalendarWidget::class.java,
         AllTimeStatsWidget::class.java,
         HabitReportsWidget::class.java,
-        TaskReportsWidget::class.java,
-        TaskAnalyticsWidget::class.java
+        TaskReportsWidget::class.java
     )
 
     fun scheduleAll(ctx: Context) {
