@@ -95,8 +95,9 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
   const now = new Date();
   const totalDaysInMonth = getDaysInMonth(now);
 
-  // 8. Monthly tracking grid — completed-day numbers per habit
+  // 8. Monthly tracking grid — completed-day numbers per habit (id required for tap-to-toggle)
   const monthGrid = monthHabits.slice(0, 6).map(h => ({
+    id: h.id,
     name: h.name,
     days: getCompletedDaysForMonth(h, now),
     total: totalDaysInMonth,
