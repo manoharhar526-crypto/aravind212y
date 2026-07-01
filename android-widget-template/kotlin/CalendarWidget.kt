@@ -25,7 +25,7 @@ class CalendarWidget : AppWidgetProvider() {
                     v.setTextViewText(rid, text)
                 } else v.setTextViewText(rid, "")
             }
-            v.setOnClickPendingIntent(R.id.root, TodayHabitsWidget.openAppIntent(ctx))
+            v.setOnClickPendingIntent(R.id.root, WidgetData.openAppIntent(ctx))
             mgr.updateAppWidget(id, v)
         }
     }

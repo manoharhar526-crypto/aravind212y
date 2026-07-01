@@ -37,7 +37,7 @@ abstract class SimpleListWidget(
             }
             v.setTextViewText(R.id.title, label)
             v.setTextViewText(R.id.empty, if (arr.length() == 0) emptyMsg else "")
-            v.setOnClickPendingIntent(R.id.root, TodayHabitsWidget.openAppIntent(ctx))
+            v.setOnClickPendingIntent(R.id.root, WidgetData.openAppIntent(ctx))
             mgr.updateAppWidget(id, v)
         }
     }

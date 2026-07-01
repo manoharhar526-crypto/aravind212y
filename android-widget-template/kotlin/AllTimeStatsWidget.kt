@@ -20,7 +20,7 @@ class AllTimeStatsWidget : AppWidgetProvider() {
             v.setTextViewText(R.id.stat4_num, WidgetData.getInt(ctx, "alltime_streak").toString())
             v.setTextViewText(R.id.stat4_label, "best streak")
             v.setTextViewText(R.id.best_habit, "Best: " + WidgetData.getString(ctx, "alltime_best", "—"))
-            v.setOnClickPendingIntent(R.id.root, TodayHabitsWidget.openAppIntent(ctx))
+            v.setOnClickPendingIntent(R.id.root, WidgetData.openAppIntent(ctx))
             mgr.updateAppWidget(id, v)
         }
     }
