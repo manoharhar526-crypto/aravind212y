@@ -4,8 +4,7 @@
  * via the `capacitor:sync:after` / `capacitor:copy:after` / `capacitor:update:after`
  * npm script hooks declared in package.json.
  *
- * Copies all 16 Habitracker home-screen widget sources into the generated
- * android/ project and patches AndroidManifest.xml to register them.
+ * Copies all 7 Habitracker home-screen widget sources into the generated
  *
  * Safe to run repeatedly — re-copies files and skips manifest patch if
  * already applied. Silent no-op if android/ folder doesn't exist yet
