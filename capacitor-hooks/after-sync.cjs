@@ -94,25 +94,18 @@ patchFile(APP_GRADLE, (s) => {
 });
 
 patchFile(STRINGS_XML, (s) => {
-  if (s.includes('name="widget_today_habits"')) return s;
+  if (s.includes('name="widget_month_grid"') && !s.includes('name="widget_today_habits"')) return s;
+  // Strip any old widget label block, then re-emit the current 7 labels
+  let out = s.replace(/\s*<string name="widget_[^"]+">[^<]*<\/string>/g, "");
   const labels = `
-    <string name="widget_today_habits">Today&apos;s Habits</string>
-    <string name="widget_streak">Streak Counter</string>
-    <string name="widget_progress">Today&apos;s Progress</string>
-    <string name="widget_daily_tasks">Today&apos;s Tasks</string>
-    <string name="widget_weekly_tasks">Weekly Tasks</string>
-    <string name="widget_monthly_tasks">Monthly Tasks</string>
-    <string name="widget_note">Today&apos;s Note</string>
-    <string name="widget_quick_open">Quick Open</string>
     <string name="widget_month_grid">Monthly Tracking Grid</string>
     <string name="widget_skip_days">Habit Skip Days</string>
     <string name="widget_analytics">Habit Analytics</string>
     <string name="widget_calendar">Calendar</string>
     <string name="widget_all_time_stats">All-Time Statistics</string>
     <string name="widget_habit_reports">Habit Reports</string>
-    <string name="widget_task_reports">Task Reports</string>
-    <string name="widget_task_analytics">Task Analytics</string>`;
-  return s.replace("</resources>", `${labels}\n</resources>`);
+    <string name="widget_task_reports">Task Reports</string>`;
+  return out.replace("</resources>", `${labels}\n</resources>`);
 });
 
 // Patch AndroidManifest.xml
