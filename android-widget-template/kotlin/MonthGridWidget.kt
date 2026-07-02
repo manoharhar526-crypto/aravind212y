@@ -50,19 +50,19 @@ class MonthGridWidget : AppWidgetProvider() {
         // Wire the ListView to our RemoteViewsService (per-widget-id intent)
         val svc = Intent(ctx, MonthGridRemoteViewsService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
         }
+        svc.data = Uri.parse(svc.toUri(Intent.URI_INTENT_SCHEME))
         v.setRemoteAdapter(R.id.list, svc)
         v.setEmptyView(R.id.list, R.id.empty)
 
-        // Template intent for cell taps — MonthGridRemoteViewsService fills in the extras
+        // Template intent for cell taps — MonthGridRemoteViewsService fills in the extras.
+        // Must be MUTABLE so fillInIntent can inject habitId/date extras.
         val templateIntent = Intent(ctx, HabitToggleReceiver::class.java).apply {
             action = HabitToggleReceiver.ACTION
         }
         val templatePi = PendingIntent.getBroadcast(
             ctx, 0, templateIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                    or PendingIntent.FLAG_MUTABLE
+            PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         v.setPendingIntentTemplate(R.id.list, templatePi)
 
