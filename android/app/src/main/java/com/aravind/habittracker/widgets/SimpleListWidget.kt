@@ -51,43 +51,8 @@ abstract class SimpleListWidget(
     }
 }
 
-/**
- * Monthly Tracking Grid — each row is one habit. Tapping the row toggles
- * TODAY for that habit without opening the app.
- */
-class MonthGridWidget : SimpleListWidget(
-    "month_grid", "Monthly Tracking", R.layout.widget_month_grid
-) {
-    override fun formatRow(obj: JSONObject): String {
-        val name = obj.optString("name")
-        val daysArr = obj.optJSONArray("days") ?: JSONArray()
-        val totalDays = obj.optInt("total", 30)
-        val set = mutableSetOf<Int>()
-        for (i in 0 until daysArr.length()) set.add(daysArr.optInt(i))
-        val today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
-        val sb = StringBuilder()
-        for (d in 1..totalDays) {
-            val done = set.contains(d)
-            sb.append(when {
-                d == today && done -> "●"
-                d == today         -> "◉"
-                done               -> "▪"
-                else               -> "▫"
-            })
-        }
-        val done = set.size
-        return "$name  ($done/$totalDays)\n$sb\n👆 Tap to toggle today"
-    }
+/* MonthGridWidget is now a collection widget — see MonthGridWidget.kt */
 
-    override fun onRowBound(ctx: Context, v: RemoteViews, rowId: Int, obj: JSONObject) {
-        val habitId = obj.optString("id")
-        if (habitId.isBlank()) return
-        val cal = Calendar.getInstance()
-        val day = cal.get(Calendar.DAY_OF_MONTH)
-        val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.time)
-        v.setOnClickPendingIntent(rowId, HabitToggleReceiver.pendingIntent(ctx, habitId, dateStr, day))
-    }
-}
 
 class SkipDaysWidget : SimpleListWidget(
     "skip_days", "Skip Days", R.layout.widget_skip_days, "No skipped days"
