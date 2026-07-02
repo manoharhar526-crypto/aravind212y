@@ -9,21 +9,40 @@ import android.content.Intent
 
 /**
  * Fires when the user taps a habit cell in a home-screen widget.
- * Queues a pending toggle in SharedPreferences so the web app can apply
- * it on next launch, and optimistically updates the widget cache so the
- * cell flips instantly.
+ *
+ * If the tapped day is today or yesterday, we queue the toggle for the
+ * web app to persist + push to cloud, and optimistically flip the cached
+ * `month_grid` JSON so the cell state updates instantly.
+ *
+ * Otherwise (older / future days, or the habit-name label), we just open
+ * the app — matching the in-app rule that only current/previous day can
+ * be edited.
  */
 class HabitToggleReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
-        val habitId = intent.getStringExtra(EXTRA_HABIT_ID) ?: return
-        val date = intent.getStringExtra(EXTRA_DATE) ?: return
+        val habitId = intent.getStringExtra(EXTRA_HABIT_ID)
+        val date = intent.getStringExtra(EXTRA_DATE)
         val day = intent.getIntExtra(EXTRA_DAY, -1)
+        val toggleable = intent.getBooleanExtra(EXTRA_TOGGLEABLE, false)
+
+        if (!toggleable || habitId.isNullOrBlank() || date.isNullOrBlank() || day <= 0) {
+            // Not toggleable → just open the app on the matching screen
+            WidgetData.openAppIntent(ctx).send()
+            return
+        }
 
         WidgetData.queueToggle(ctx, habitId, date)
-        if (day > 0) WidgetData.optimisticToggleMonthGrid(ctx, habitId, day)
+        WidgetData.optimisticToggleMonthGrid(ctx, habitId, day)
 
-        // Refresh every widget so they reflect the new state
+        // Ask the ListView-based Monthly Grid widget to reload its rows
         val mgr = AppWidgetManager.getInstance(ctx)
+        val monthIds = mgr.getAppWidgetIds(ComponentName(ctx, MonthGridWidget::class.java))
+        if (monthIds.isNotEmpty()) {
+            mgr.notifyAppWidgetViewDataChanged(monthIds, com.aravind.habittracker.R.id.list)
+        }
+
+        // Trigger onUpdate on every other Habitracker widget so downstream
+        // stats reflect the new completion state.
         val classes = listOf(
             MonthGridWidget::class.java,
             SkipDaysWidget::class.java,
@@ -49,15 +68,17 @@ class HabitToggleReceiver : BroadcastReceiver() {
         const val EXTRA_HABIT_ID = "habitId"
         const val EXTRA_DATE = "date"
         const val EXTRA_DAY = "day"
+        const val EXTRA_TOGGLEABLE = "toggleable"
 
+        /** Legacy single-cell PendingIntent — kept for non-collection widgets. */
         fun pendingIntent(ctx: Context, habitId: String, date: String, day: Int): PendingIntent {
             val i = Intent(ctx, HabitToggleReceiver::class.java).apply {
                 action = ACTION
                 putExtra(EXTRA_HABIT_ID, habitId)
                 putExtra(EXTRA_DATE, date)
                 putExtra(EXTRA_DAY, day)
+                putExtra(EXTRA_TOGGLEABLE, true)
             }
-            // Unique request code per habit+day so PendingIntent extras don't collide
             val rc = (habitId.hashCode() * 31 + day)
             return PendingIntent.getBroadcast(
                 ctx, rc, i,

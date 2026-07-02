@@ -50,3 +50,8 @@
 
 <!-- AlarmManager target — fires every 30 min to refresh all widgets -->
 <receiver android:name="com.aravind.habittracker.widgets.WidgetAlarmReceiver" android:enabled="true" android:exported="false"/>
+
+<!-- Backing service for the Monthly Tracking Grid ListView (collection widget) -->
+<service android:name="com.aravind.habittracker.widgets.MonthGridRemoteViewsService"
+    android:permission="android.permission.BIND_REMOTEVIEWS"
+    android:exported="false"/>
