@@ -95,13 +95,21 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
   const now = new Date();
   const totalDaysInMonth = getDaysInMonth(now);
 
-  // 8. Monthly tracking grid — completed-day numbers per habit (id required for tap-to-toggle)
-  const monthGrid = monthHabits.slice(0, 6).map(h => ({
-    id: h.id,
-    name: h.name,
-    days: getCompletedDaysForMonth(h, now),
-    total: totalDaysInMonth,
-  }));
+  // 8. Monthly tracking grid — full 30/31 day cells per habit + skipped days
+  //    for tap-to-toggle in the native collection-widget UI.
+  const monthGrid = monthHabits.map(h => {
+    const skippedNums = (h.skippedDays ?? [])
+      .filter(d => d.startsWith(monthPrefix))
+      .map(d => parseInt(d.slice(-2), 10))
+      .filter(n => Number.isFinite(n));
+    return {
+      id: h.id,
+      name: h.name,
+      days: getCompletedDaysForMonth(h, now),
+      skipped: skippedNums,
+      total: totalDaysInMonth,
+    };
+  });
 
   // 9. Skip days — habits with skipped count in this month
   const monthPrefix = `${month}-`;
