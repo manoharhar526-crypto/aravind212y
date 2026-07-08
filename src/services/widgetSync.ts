@@ -122,6 +122,23 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
+  // Set of day numbers skipped by any habit this month (for full-month grid)
+  const skipDaySet = Array.from(
+    new Set(
+      monthHabits.flatMap(h =>
+        (h.skippedDays ?? [])
+          .filter(d => d.startsWith(monthPrefix))
+          .map(d => parseInt(d.slice(-2), 10))
+          .filter(n => Number.isFinite(n))
+      )
+    )
+  );
+
+  // Dates in current month that have a note (for calendar dot markers)
+  const calendarNotesThisMonth = notes
+    .map(n => n.date)
+    .filter(d => d.startsWith(monthPrefix));
+
   // 10. Habit analytics — top habits by completion % this month
   const analytics = monthHabits
     .map(h => ({ name: h.name, pct: calculateCompletionRate(h, now, totalDaysInMonth) }))
