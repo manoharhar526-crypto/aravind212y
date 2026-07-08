@@ -190,6 +190,8 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     // The 7 supported widgets:
     setItem("month_grid", JSON.stringify(monthGrid)),
     setItem("skip_days", JSON.stringify(skipDays)),
+    setItem("skip_days_set", JSON.stringify(skipDaySet)),
+    setItem("calendar_notes", JSON.stringify(calendarNotesThisMonth)),
     setItem("analytics", JSON.stringify(analytics)),
     setItem("calendar_week", JSON.stringify(calendarWeek)),
     setItem("calendar_month", calendarMonth),
