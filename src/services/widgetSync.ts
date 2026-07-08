@@ -122,6 +122,23 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
+  // Set of day numbers skipped by any habit this month (for full-month grid)
+  const skipDaySet = Array.from(
+    new Set(
+      monthHabits.flatMap(h =>
+        (h.skippedDays ?? [])
+          .filter(d => d.startsWith(monthPrefix))
+          .map(d => parseInt(d.slice(-2), 10))
+          .filter(n => Number.isFinite(n))
+      )
+    )
+  );
+
+  // Dates in current month that have a note (for calendar dot markers)
+  const calendarNotesThisMonth = notes
+    .map(n => n.date)
+    .filter(d => d.startsWith(monthPrefix));
+
   // 10. Habit analytics — top habits by completion % this month
   const analytics = monthHabits
     .map(h => ({ name: h.name, pct: calculateCompletionRate(h, now, totalDaysInMonth) }))
@@ -173,6 +190,8 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     // The 7 supported widgets:
     setItem("month_grid", JSON.stringify(monthGrid)),
     setItem("skip_days", JSON.stringify(skipDays)),
+    setItem("skip_days_set", JSON.stringify(skipDaySet)),
+    setItem("calendar_notes", JSON.stringify(calendarNotesThisMonth)),
     setItem("analytics", JSON.stringify(analytics)),
     setItem("calendar_week", JSON.stringify(calendarWeek)),
     setItem("calendar_month", calendarMonth),
