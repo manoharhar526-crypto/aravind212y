@@ -19,7 +19,7 @@ import android.os.SystemClock
  * Capacitor WebView is fully closed.
  */
 object WidgetRefreshScheduler {
-    private const val INTERVAL_MS = 30L * 60L * 1000L  // 30 minutes
+    private const val INTERVAL_MS = 15L * 60L * 1000L  // 15 minutes
     private const val ACTION = "com.aravind.habittracker.REFRESH_WIDGETS"
 
     private val PROVIDERS = arrayOf(
