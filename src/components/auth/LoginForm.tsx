@@ -98,13 +98,13 @@ export const LoginForm = ({ onSwitchToSignup }: LoginFormProps) => {
         Log In
       </Button>
       <p className="text-sm text-center text-muted-foreground">
-        Don't have an account?{" "}
+        &nbsp;Sign up
         <button
           type="button"
           onClick={onSwitchToSignup}
           className="text-primary hover:underline font-medium"
         >
-          Sign up
+          &nbsp;Sign up
         </button>
       </p>
     </form>

@@ -35,7 +35,7 @@ const Auth = () => {
           <h1 className="text-3xl font-bold tracking-tight">Habit Tracker</h1>
           {isLogin ? (
             <p className="text-muted-foreground text-sm">
-              Welcome back! Log in to continue.
+              sign up! before Log in.&nbsp; &nbsp;
             </p>
           ) : (
             <>
@@ -67,7 +67,7 @@ const Auth = () => {
         </div>
 
         <p className="text-xs text-center text-muted-foreground">
-          Build better habits, one day at a time.
+          {"\n"}
         </p>
       </div>
     </div>
