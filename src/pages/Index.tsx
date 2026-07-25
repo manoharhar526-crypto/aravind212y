@@ -47,6 +47,7 @@ import {
 import { toast } from "sonner";
 import { CopyHabitsDialog } from "@/components/CopyHabitsDialog";
 import { BackupRestoreDialog } from "@/components/BackupRestoreDialog";
+import { useAutoBackup } from "@/hooks/useAutoBackup";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,7 @@ const Index = () => {
 
   const [habits, setHabits] = useState<Habit[]>(stored?.habits ?? defaultHabits);
   const [tasks, setTasks] = useState<Task[]>(stored?.tasks ?? defaultTasks);
+  useAutoBackup(habits, tasks);
   const [calendarNotes, setCalendarNotes] = useState<CalendarNote[]>(() => loadCalendarNotes(userId));
 
   // FIX 1: currentMonth is now properly restored from localStorage

@@ -5,7 +5,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Download, Upload, Trash2, Clock, Check } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Shield, Download, Upload, Trash2, Clock, Check, Timer } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadManualBackups, saveManualBackup, restoreManualBackup,
@@ -13,6 +15,7 @@ import {
 } from "@/lib/appStorage";
 import type { Habit } from "@/types/habit";
 import type { Task } from "@/types/task";
+import { loadAutoBackupSettings, saveAutoBackupSettings, type AutoBackupSettings } from "@/hooks/useAutoBackup";
 
 interface BackupRestoreDialogProps {
   habits: Habit[];
@@ -29,12 +32,20 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
   const [restoreCode, setRestoreCode] = useState("");
   const [deleteCode, setDeleteCode] = useState("");
   const [confirmDeleteCode, setConfirmDeleteCode] = useState<string | null>(null);
+  const [autoSettings, setAutoSettings] = useState<AutoBackupSettings>(() => loadAutoBackupSettings());
 
   const refreshData = () => {
     setManualBackups(loadManualBackups());
+    setAutoSettings(loadAutoBackupSettings());
   };
 
   useEffect(() => { if (open) refreshData(); }, [open]);
+
+  const updateAuto = (patch: Partial<AutoBackupSettings>) => {
+    const next = { ...autoSettings, ...patch };
+    setAutoSettings(next);
+    saveAutoBackupSettings(next);
+  };
 
   const handleCreateManualBackup = () => {
     const code = newCode.trim();
@@ -91,9 +102,10 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="manual" className="gap-1.5 text-xs"><Download className="w-3.5 h-3.5" />Manual Backup</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="manual" className="gap-1.5 text-xs"><Download className="w-3.5 h-3.5" />Manual</TabsTrigger>
             <TabsTrigger value="restore" className="gap-1.5 text-xs"><Upload className="w-3.5 h-3.5" />Restore</TabsTrigger>
+            <TabsTrigger value="auto" className="gap-1.5 text-xs"><Timer className="w-3.5 h-3.5" />Auto</TabsTrigger>
           </TabsList>
 
 
@@ -211,6 +223,46 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                       <p className="text-xs text-muted-foreground">{formatDate(b.createdAt)}</p>
                     </button>
                   ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* AUTO BACKUP TAB */}
+          <TabsContent value="auto" className="space-y-4 mt-4">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Automatically create a backup once every day at your chosen time (IST). The app must be open at that time.
+              </p>
+
+              <div className="flex items-center justify-between rounded border border-border bg-muted/20 px-3 py-2">
+                <Label htmlFor="auto-enabled" className="text-sm">Enable auto backup</Label>
+                <Switch
+                  id="auto-enabled"
+                  checked={autoSettings.enabled}
+                  onCheckedChange={(v) => updateAuto({ enabled: v })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="auto-time" className="text-sm">Backup time (daily)</Label>
+                <Input
+                  id="auto-time"
+                  type="time"
+                  value={autoSettings.time}
+                  onChange={(e) => updateAuto({ time: e.target.value })}
+                  disabled={!autoSettings.enabled}
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Backups are saved with code <span className="font-mono">auto-YYYY-MM-DD</span>. You can restore them from the Restore tab.
+                </p>
+              </div>
+
+              {autoSettings.lastRun && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="w-3.5 h-3.5" />
+                  Last auto backup: {autoSettings.lastRun}
                 </div>
               )}
             </div>
