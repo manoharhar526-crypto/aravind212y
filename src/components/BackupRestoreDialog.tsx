@@ -5,7 +5,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Download, Upload, Trash2, Clock, Check } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Shield, Download, Upload, Trash2, Clock, Check, Timer } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadManualBackups, saveManualBackup, restoreManualBackup,
@@ -13,6 +15,7 @@ import {
 } from "@/lib/appStorage";
 import type { Habit } from "@/types/habit";
 import type { Task } from "@/types/task";
+import { loadAutoBackupSettings, saveAutoBackupSettings, type AutoBackupSettings } from "@/hooks/useAutoBackup";
 
 interface BackupRestoreDialogProps {
   habits: Habit[];
@@ -29,12 +32,20 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
   const [restoreCode, setRestoreCode] = useState("");
   const [deleteCode, setDeleteCode] = useState("");
   const [confirmDeleteCode, setConfirmDeleteCode] = useState<string | null>(null);
+  const [autoSettings, setAutoSettings] = useState<AutoBackupSettings>(() => loadAutoBackupSettings());
 
   const refreshData = () => {
     setManualBackups(loadManualBackups());
+    setAutoSettings(loadAutoBackupSettings());
   };
 
   useEffect(() => { if (open) refreshData(); }, [open]);
+
+  const updateAuto = (patch: Partial<AutoBackupSettings>) => {
+    const next = { ...autoSettings, ...patch };
+    setAutoSettings(next);
+    saveAutoBackupSettings(next);
+  };
 
   const handleCreateManualBackup = () => {
     const code = newCode.trim();
@@ -91,9 +102,10 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="manual" className="gap-1.5 text-xs"><Download className="w-3.5 h-3.5" />Manual Backup</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="manual" className="gap-1.5 text-xs"><Download className="w-3.5 h-3.5" />Manual</TabsTrigger>
             <TabsTrigger value="restore" className="gap-1.5 text-xs"><Upload className="w-3.5 h-3.5" />Restore</TabsTrigger>
+            <TabsTrigger value="auto" className="gap-1.5 text-xs"><Timer className="w-3.5 h-3.5" />Auto</TabsTrigger>
           </TabsList>
 
 
