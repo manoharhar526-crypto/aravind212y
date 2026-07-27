@@ -17,6 +17,7 @@ export const EDGE_FUNCTIONS = {
   ADMIN_MANAGE:   "admin-manage",
   AUTH_LOGIN:     "auth-login",
   DELETE_ACCOUNT: "delete-account",
+  SHARED_BACKUP:  "shared-backup",
 } as const;
 
 // ── Backup manager actions ───────────────────────────────────────────────────

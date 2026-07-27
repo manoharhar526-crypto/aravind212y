@@ -38,6 +38,36 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_backups: {
+        Row: {
+          code: string
+          created_at: string
+          habits: Json
+          label: string | null
+          owner_user_id: string
+          tasks: Json
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          habits?: Json
+          label?: string | null
+          owner_user_id: string
+          tasks?: Json
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          habits?: Json
+          label?: string | null
+          owner_user_id?: string
+          tasks?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_backups: {
         Row: {
           created_at: string
