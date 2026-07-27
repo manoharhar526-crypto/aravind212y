@@ -236,20 +236,76 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
           <TabsContent value="auto" className="space-y-4 mt-4">
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Automatically create a backup once every day at your chosen time (IST). The app must be open at that time.
+                Pick your own unique code (first come, first served). Auto backup saves your data to that code once a day so you can restore it on any device.
               </p>
+
+              {/* Code reservation */}
+              <div className="space-y-2 rounded border border-border bg-muted/20 px-3 py-3">
+                <Label className="text-sm">Your backup code</Label>
+                {autoSettings.code ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-sm font-medium break-all">{autoSettings.code}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => { updateAuto({ code: undefined }); setAutoCodeInput(""); }}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="e.g. aravind-2025 (4-64 chars, a-z 0-9 _ -)"
+                      value={autoCodeInput}
+                      onChange={e => setAutoCodeInput(e.target.value.toLowerCase())}
+                      maxLength={64}
+                      className="font-mono"
+                    />
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={busy || autoCodeInput.trim().length < 4}
+                      onClick={async () => {
+                        const code = autoCodeInput.trim().toLowerCase();
+                        setBusy(true);
+                        try {
+                          const res = await checkSharedCode(code);
+                          if (!res.available && !res.mine) {
+                            toast.error("Code already taken. Pick another.");
+                            return;
+                          }
+                          // Reserve immediately by writing current data
+                          await saveSharedBackup(code, habits, tasks, "Auto backup");
+                          updateAuto({ code });
+                          setAutoCodeInput("");
+                          toast.success(`Reserved code: ${code}`);
+                        } catch (e: any) {
+                          toast.error(e?.message ?? "Failed to reserve code");
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      Reserve code
+                    </Button>
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center justify-between rounded border border-border bg-muted/20 px-3 py-2">
                 <Label htmlFor="auto-enabled" className="text-sm">Enable auto backup</Label>
                 <Switch
                   id="auto-enabled"
                   checked={autoSettings.enabled}
+                  disabled={!autoSettings.code}
                   onCheckedChange={(v) => updateAuto({ enabled: v })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="auto-time" className="text-sm">Backup time (daily)</Label>
+                <Label htmlFor="auto-time" className="text-sm">Backup time (daily, IST)</Label>
                 <Input
                   id="auto-time"
                   type="time"
@@ -258,9 +314,6 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                   disabled={!autoSettings.enabled}
                   className="font-mono"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Backups are saved with code <span className="font-mono">auto-YYYY-MM-DD</span>. You can restore them from the Restore tab.
-                </p>
               </div>
 
               {autoSettings.lastRun && (
@@ -269,6 +322,43 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                   Last auto backup: {autoSettings.lastRun}
                 </div>
               )}
+
+              {/* Restore by any code */}
+              <div className="space-y-2 pt-3 border-t border-border">
+                <Label className="text-sm">Restore from any code</Label>
+                <p className="text-xs text-muted-foreground">
+                  Enter any code (yours or someone else's) to restore that backup on this device.
+                </p>
+                <Input
+                  placeholder="Enter code..."
+                  value={autoRestoreCode}
+                  onChange={e => setAutoRestoreCode(e.target.value.toLowerCase())}
+                  maxLength={64}
+                  className="font-mono"
+                />
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  disabled={busy || autoRestoreCode.trim().length < 4}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const res = await restoreSharedBackup(autoRestoreCode.trim().toLowerCase());
+                      onRestore(res.habits, res.tasks);
+                      toast.success("Data restored from code");
+                      setAutoRestoreCode("");
+                      setOpen(false);
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "Failed to restore");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  <Upload className="w-4 h-4" />
+                  Restore from Code
+                </Button>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
