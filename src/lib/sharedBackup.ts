@@ -13,8 +13,15 @@ export interface SharedBackupMeta {
 const invoke = async <T = any>(body: Record<string, unknown>): Promise<T> => {
   const { data, error } = await supabase.functions.invoke(EDGE_FUNCTIONS.SHARED_BACKUP, { body });
   if (error) {
-    // Prefer the server-provided error message when present
-    const serverMsg = (data as any)?.error;
+    // supabase-js hides the response body on non-2xx; pull it out of error.context
+    let serverMsg: string | undefined = (data as any)?.error;
+    try {
+      const ctx = (error as any).context;
+      if (ctx && typeof ctx.json === "function") {
+        const parsed = await ctx.json();
+        if (parsed?.error) serverMsg = parsed.error;
+      }
+    } catch { /* ignore */ }
     throw new Error(serverMsg || error.message || "Request failed");
   }
   if ((data as any)?.error) throw new Error((data as any).error);
