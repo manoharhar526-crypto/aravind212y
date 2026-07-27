@@ -34,6 +34,9 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
   const [deleteCode, setDeleteCode] = useState("");
   const [confirmDeleteCode, setConfirmDeleteCode] = useState<string | null>(null);
   const [autoSettings, setAutoSettings] = useState<AutoBackupSettings>(() => loadAutoBackupSettings());
+  const [autoCodeInput, setAutoCodeInput] = useState("");
+  const [autoRestoreCode, setAutoRestoreCode] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const refreshData = () => {
     setManualBackups(loadManualBackups());
