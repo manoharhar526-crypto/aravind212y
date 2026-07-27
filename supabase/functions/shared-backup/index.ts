@@ -30,13 +30,14 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const { data: { user }, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !user) return json({ error: "Unauthorized" }, 401);
+    // Fast local JWT verify (no network call to auth server)
+    const token = authHeader.slice("Bearer ".length);
+    const userClient = createClient(supabaseUrl, anonKey);
+    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claimsData?.claims?.sub) return json({ error: "Unauthorized" }, 401);
+    const user = { id: claimsData.claims.sub as string };
 
     const contentLength = parseInt(req.headers.get("content-length") || "0");
     if (contentLength > 800_000) return json({ error: "Payload too large" }, 413);
