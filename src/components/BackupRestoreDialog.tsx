@@ -271,12 +271,7 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                         const code = autoCodeInput.trim().toLowerCase();
                         setBusy(true);
                         try {
-                          const res = await checkSharedCode(code);
-                          if (!res.available && !res.mine) {
-                            toast.error("Code already taken. Pick another.");
-                            return;
-                          }
-                          // Reserve immediately by writing current data
+                          // Single roundtrip: save also enforces first-come ownership
                           await saveSharedBackup(code, habits, tasks, "Auto backup");
                           updateAuto({ code });
                           setAutoCodeInput("");
