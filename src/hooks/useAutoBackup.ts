@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { saveManualBackup } from "@/lib/appStorage";
+import { saveSharedBackup } from "@/lib/sharedBackup";
 import type { Habit } from "@/types/habit";
 import type { Task } from "@/types/task";
 
@@ -7,8 +7,9 @@ export const AUTO_BACKUP_SETTINGS_KEY = "autoBackupSettings";
 
 export interface AutoBackupSettings {
   enabled: boolean;
-  time: string; // "HH:MM" in IST
-  lastRun?: string; // "YYYY-MM-DD" IST
+  time: string;      // "HH:MM" in IST
+  code?: string;     // user's reserved shared-backup code
+  lastRun?: string;  // "YYYY-MM-DD" IST
 }
 
 export const loadAutoBackupSettings = (): AutoBackupSettings => {
@@ -38,20 +39,21 @@ const istNow = () => {
 
 export const useAutoBackup = (habits: Habit[], tasks: Task[]) => {
   useEffect(() => {
-    const check = () => {
+    const check = async () => {
       const s = loadAutoBackupSettings();
-      if (!s.enabled) return;
+      if (!s.enabled || !s.code) return;
       const { date, time } = istNow();
       if (s.lastRun === date) return;
       if (time < s.time) return;
-      const code = `auto-${date}`;
-      const result = saveManualBackup(code, habits, tasks, "Auto backup");
-      if (result.success || result.error?.toLowerCase().includes("exists")) {
+      try {
+        await saveSharedBackup(s.code, habits, tasks, "Auto backup");
         saveAutoBackupSettings({ ...s, lastRun: date });
+      } catch (err) {
+        console.warn("[autoBackup] failed:", err);
       }
     };
-    check();
-    const id = setInterval(check, 60_000);
+    void check();
+    const id = setInterval(() => void check(), 60_000);
     return () => clearInterval(id);
   }, [habits, tasks]);
 };
