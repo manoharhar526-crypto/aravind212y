@@ -38,6 +38,7 @@ const istNow = () => {
 };
 
 export const useAutoBackup = (habits: Habit[], tasks: Task[]) => {
+  // Scheduled daily backup (kept for users who set a time).
   useEffect(() => {
     const check = async () => {
       const s = loadAutoBackupSettings();
@@ -49,11 +50,26 @@ export const useAutoBackup = (habits: Habit[], tasks: Task[]) => {
         await saveSharedBackup(s.code, habits, tasks, "Auto backup");
         saveAutoBackupSettings({ ...s, lastRun: date });
       } catch (err) {
-        console.warn("[autoBackup] failed:", err);
+        console.warn("[autoBackup] scheduled failed:", err);
       }
     };
     void check();
     const id = setInterval(() => void check(), 60_000);
     return () => clearInterval(id);
+  }, [habits, tasks]);
+
+  // Continuous cloud sync: push every change (debounced) so all data lives in
+  // the cloud as soon as a reserved code exists — no waiting for the daily time.
+  useEffect(() => {
+    const s = loadAutoBackupSettings();
+    if (!s.enabled || !s.code) return;
+    const t = setTimeout(async () => {
+      try {
+        await saveSharedBackup(s.code!, habits, tasks, "Auto backup");
+      } catch (err) {
+        console.warn("[autoBackup] continuous failed:", err);
+      }
+    }, 3000);
+    return () => clearTimeout(t);
   }, [habits, tasks]);
 };
