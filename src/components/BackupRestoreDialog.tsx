@@ -364,6 +364,66 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                 </div>
               )}
 
+              {autoSettings.lastRun && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="w-3.5 h-3.5" />
+                  Last auto backup: {autoSettings.lastRun}
+                </div>
+              )}
+
+              {/* Cloud codes owned by this user (survive re-login / new device) */}
+              {cloudBackups.length > 0 && (
+                <div className="space-y-2 pt-3 border-t border-border">
+                  <Label className="text-sm">Your reserved codes</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Saved to your account — available on any device you log in to.
+                  </p>
+                  {cloudBackups.map(b => (
+                    <div key={b.code} className="flex items-center justify-between rounded border border-border bg-muted/20 px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono text-xs font-medium text-foreground break-all">{b.code}</div>
+                        {b.label && <div className="text-xs text-muted-foreground truncate">{b.label}</div>}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">{formatDate(b.updated_at)}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0 ml-2">
+                        {autoSettings.code !== b.code && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => { updateAuto({ code: b.code }); toast.success(`Using code: ${b.code}`); }}
+                          >
+                            Use
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          disabled={busy}
+                          onClick={async () => {
+                            setBusy(true);
+                            try {
+                              const res = await restoreSharedBackup(b.code);
+                              onRestore(res.habits, res.tasks);
+                              toast.success(`Restored from ${b.code}`);
+                              setOpen(false);
+                            } catch (e: any) {
+                              toast.error(e?.message ?? "Failed to restore");
+                            } finally { setBusy(false); }
+                          }}
+                        >
+                          Restore
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Restore by any code */}
               <div className="space-y-2 pt-3 border-t border-border">
                 <Label className="text-sm">Restore from any code</Label>
