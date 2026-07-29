@@ -364,12 +364,8 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                 </div>
               )}
 
-              {autoSettings.lastRun && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Check className="w-3.5 h-3.5" />
-                  Last auto backup: {autoSettings.lastRun}
-                </div>
-              )}
+
+
 
               {/* Cloud codes owned by this user (survive re-login / new device) */}
               {cloudBackups.length > 0 && (
