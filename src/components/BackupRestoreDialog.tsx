@@ -37,13 +37,29 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
   const [autoCodeInput, setAutoCodeInput] = useState("");
   const [autoRestoreCode, setAutoRestoreCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cloudBackups, setCloudBackups] = useState<SharedBackupMeta[]>([]);
 
   const refreshData = () => {
     setManualBackups(loadManualBackups());
     setAutoSettings(loadAutoBackupSettings());
   };
 
-  useEffect(() => { if (open) refreshData(); }, [open]);
+  const loadCloudCodes = async () => {
+    try {
+      const res = await listMySharedBackups();
+      const backups = res.backups ?? [];
+      setCloudBackups(backups);
+      // If no local auto code but user has cloud codes, adopt the most recent one
+      const local = loadAutoBackupSettings();
+      if (!local.code && backups.length > 0) {
+        const next = { ...local, code: backups[0].code };
+        saveAutoBackupSettings(next);
+        setAutoSettings(next);
+      }
+    } catch { /* offline / not signed in — ignore */ }
+  };
+
+  useEffect(() => { if (open) { refreshData(); loadCloudCodes(); } }, [open]);
 
   const updateAuto = (patch: Partial<AutoBackupSettings>) => {
     const next = { ...autoSettings, ...patch };
