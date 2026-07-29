@@ -16,7 +16,7 @@ import {
 import type { Habit } from "@/types/habit";
 import type { Task } from "@/types/task";
 import { loadAutoBackupSettings, saveAutoBackupSettings, type AutoBackupSettings } from "@/hooks/useAutoBackup";
-import { saveSharedBackup, restoreSharedBackup } from "@/lib/sharedBackup";
+import { saveSharedBackup, restoreSharedBackup, listMySharedBackups, type SharedBackupMeta } from "@/lib/sharedBackup";
 
 interface BackupRestoreDialogProps {
   habits: Habit[];
