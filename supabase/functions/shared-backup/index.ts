@@ -32,12 +32,10 @@ Deno.serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // Fast local JWT verify (no network call to auth server)
     const token = authHeader.slice("Bearer ".length);
-    const userClient = createClient(supabaseUrl, anonKey);
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims?.sub) return json({ error: "Unauthorized" }, 401);
-    const user = { id: claimsData.claims.sub as string };
+    const { data: userData, error: userErr } = await admin.auth.getUser(token);
+    if (userErr || !userData?.user?.id) return json({ error: "Unauthorized" }, 401);
+    const user = { id: userData.user.id };
 
     const contentLength = parseInt(req.headers.get("content-length") || "0");
     if (contentLength > 800_000) return json({ error: "Payload too large" }, 413);
