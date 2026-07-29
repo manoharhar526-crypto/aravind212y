@@ -116,7 +116,10 @@ Deno.serve(async (req) => {
         .eq("code", code)
         .maybeSingle();
       if (error) throw error;
-      if (!data) return json({ error: "No backup found for that code." }, 404);
+      // A missing user-entered code is an expected application result, not an
+      // Edge Function transport/runtime failure. Keep the response successful
+      // so clients can show the message without triggering a fatal 404 overlay.
+      if (!data) return json({ success: false, error: "No backup found for that code.", notFound: true });
       return json({
         success: true,
         habits: data.habits,

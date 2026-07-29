@@ -49,10 +49,18 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
       const res = await listMySharedBackups();
       const backups = res.backups ?? [];
       setCloudBackups(backups);
-      // If no local auto code but user has cloud codes, adopt the most recent one
+      // Reconcile device-only settings with the account source of truth. This
+      // prevents a previously cached/deleted code from appearing as reserved.
       const local = loadAutoBackupSettings();
-      if (!local.code && backups.length > 0) {
-        const next = { ...local, code: backups[0].code };
+      const localCodeExists = local.code
+        ? backups.some((backup) => backup.code === local.code?.trim().toLowerCase())
+        : false;
+      if (!localCodeExists) {
+        const next = {
+          ...local,
+          code: backups[0]?.code,
+          enabled: backups.length > 0 ? local.enabled : false,
+        };
         saveAutoBackupSettings(next);
         setAutoSettings(next);
       }
@@ -320,6 +328,7 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                           // Single roundtrip: save also enforces first-come ownership
                           await saveSharedBackup(code, habits, tasks, "Auto backup");
                           updateAuto({ code });
+                           await loadCloudCodes();
                           setAutoCodeInput("");
                           toast.success(`Reserved code: ${code}`);
                         } catch (e: any) {
