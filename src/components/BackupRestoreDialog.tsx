@@ -16,7 +16,7 @@ import {
 import type { Habit } from "@/types/habit";
 import type { Task } from "@/types/task";
 import { loadAutoBackupSettings, saveAutoBackupSettings, type AutoBackupSettings } from "@/hooks/useAutoBackup";
-import { checkSharedCode, saveSharedBackup, restoreSharedBackup } from "@/lib/sharedBackup";
+import { saveSharedBackup, restoreSharedBackup } from "@/lib/sharedBackup";
 
 interface BackupRestoreDialogProps {
   habits: Habit[];
@@ -51,26 +51,53 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
     saveAutoBackupSettings(next);
   };
 
-  const handleCreateManualBackup = () => {
-    const code = newCode.trim();
+  const handleCreateManualBackup = async () => {
+    const code = newCode.trim().toLowerCase();
     if (code.length < 4) { toast.error("Backup code must be at least 4 characters"); return; }
-    const result = saveManualBackup(code, habits, tasks, newLabel.trim() || undefined);
-    if (!result.success) { toast.error(result.error); return; }
-    toast.success(`Backup created with code: ${code}`);
-    setNewCode("");
-    setNewLabel("");
-    refreshData();
+    setBusy(true);
+    try {
+      await saveSharedBackup(code, habits, tasks, newLabel.trim() || undefined);
+      const result = saveManualBackup(code, habits, tasks, newLabel.trim() || undefined);
+      if (!result.success && !result.error?.toLowerCase().includes("exists")) {
+        toast.warning("Cloud backup created, but it could not be cached on this device");
+      } else {
+        toast.success(`Backup created with code: ${code}`);
+      }
+      setNewCode("");
+      setNewLabel("");
+      refreshData();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to create backup");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleRestore = () => {
-    const code = restoreCode.trim();
+  const restoreFromAnySource = async (rawCode: string) => {
+    const code = rawCode.trim().toLowerCase();
+    const local = restoreManualBackup(code);
+    if (local.success && local.habits && local.tasks) {
+      return { habits: local.habits, tasks: local.tasks };
+    }
+    const remote = await restoreSharedBackup(code);
+    return { habits: remote.habits, tasks: remote.tasks };
+  };
+
+  const handleRestore = async () => {
+    const code = restoreCode.trim().toLowerCase();
     if (code.length < 4) { toast.error("Enter a valid backup code"); return; }
-    const result = restoreManualBackup(code);
-    if (!result.success) { toast.error(result.error); return; }
-    onRestore(result.habits!, result.tasks!);
-    toast.success("Data restored successfully!");
-    setRestoreCode("");
-    setOpen(false);
+    setBusy(true);
+    try {
+      const result = await restoreFromAnySource(code);
+      onRestore(result.habits, result.tasks);
+      toast.success("Data restored successfully!");
+      setRestoreCode("");
+      setOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "No backup found for that code");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleDelete = (code: string) => {
@@ -137,7 +164,7 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                 />
                 <Button
                   onClick={handleCreateManualBackup}
-                  disabled={newCode.trim().length < 4}
+                  disabled={busy || newCode.trim().length < 4}
                   className="w-full gap-2"
                 >
                   <Download className="w-4 h-4" />
@@ -198,7 +225,7 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                 className="font-mono"
               />
               <p className="text-xs text-muted-foreground text-center">⚠️ This will replace your current data</p>
-              <Button onClick={handleRestore} disabled={restoreCode.trim().length < 4} className="w-full gap-2">
+              <Button onClick={handleRestore} disabled={busy || restoreCode.trim().length < 4} className="w-full gap-2">
                 <Upload className="w-4 h-4" />
                 Restore from Code
               </Button>
@@ -211,12 +238,15 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                     <button
                       key={b.code}
                       className="w-full text-left rounded border border-border bg-muted/20 hover:bg-muted/40 px-3 py-2 transition-colors"
-                      onClick={() => {
-                        const result = restoreManualBackup(b.code);
-                        if (!result.success) { toast.error(result.error); return; }
-                        onRestore(result.habits!, result.tasks!);
-                        toast.success(`Restored from backup: ${b.code}`);
-                        setOpen(false);
+                      onClick={async () => {
+                        try {
+                          const result = await restoreFromAnySource(b.code);
+                          onRestore(result.habits, result.tasks);
+                          toast.success(`Restored from backup: ${b.code}`);
+                          setOpen(false);
+                        } catch (e: any) {
+                          toast.error(e?.message ?? "Failed to restore backup");
+                        }
                       }}
                     >
                       <div className="flex items-center justify-between">
@@ -338,7 +368,7 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                   onClick={async () => {
                     setBusy(true);
                     try {
-                      const res = await restoreSharedBackup(autoRestoreCode.trim().toLowerCase());
+                      const res = await restoreFromAnySource(autoRestoreCode);
                       onRestore(res.habits, res.tasks);
                       toast.success("Data restored from code");
                       setAutoRestoreCode("");
