@@ -423,6 +423,26 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                         >
                           Restore
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                          disabled={busy}
+                          onClick={async () => {
+                            if (!confirm(`Delete cloud backup code "${b.code}"? This cannot be undone.`)) return;
+                            setBusy(true);
+                            try {
+                              await deleteSharedBackup(b.code);
+                              setCloudBackups(prev => prev.filter(x => x.code !== b.code));
+                              if (autoSettings.code === b.code) updateAuto({ code: undefined });
+                              toast.success(`Deleted ${b.code}`);
+                            } catch (e: any) {
+                              toast.error(e?.message ?? "Failed to delete");
+                            } finally { setBusy(false); }
+                          }}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   ))}
