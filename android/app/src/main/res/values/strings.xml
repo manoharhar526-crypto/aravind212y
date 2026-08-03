@@ -2,8 +2,8 @@
 <resources>
     <string name="app_name">Habitracker</string>
     <string name="title_activity_main">Habitracker</string>
-    <string name="package_name">com.aravind.habittracker</string>
-    <string name="custom_url_scheme">com.aravind.habittracker</string>
+    <string name="package_name">com.habitracker.app</string>
+    <string name="custom_url_scheme">com.habitracker.app</string>
     <string name="widget_month_grid">Monthly Tracking Grid</string>
     <string name="widget_skip_days">Habit Skip Days</string>
     <string name="widget_analytics">Habit Analytics</string>

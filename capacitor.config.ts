@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.aravind.habittracker',
+  appId: 'com.habitracker.app',
   appName: 'Habitracker',
   webDir: 'dist',
   server: {

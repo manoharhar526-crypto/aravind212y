@@ -1,4 +1,4 @@
-package com.aravind.habittracker.widgets
+package com.habitracker.app.widgets
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.RemoteViews
-import com.aravind.habittracker.R
+import com.habitracker.app.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -44,7 +44,7 @@ class MonthGridWidget : AppWidgetProvider() {
         val v = RemoteViews(ctx.packageName, R.layout.widget_month_grid)
 
         // Subtitle: current month name
-        val month = WidgetData.getString(ctx, "calendar_month", "")
+        val month = WidgetData.subtitle(ctx)
         v.setTextViewText(R.id.subtitle, month)
 
         // Wire the ListView to our RemoteViewsService (per-widget-id intent)

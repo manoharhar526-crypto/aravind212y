@@ -18,7 +18,11 @@ import {
   calculateCompletionRate,
 } from "@/lib/habitUtils";
 
-const GROUP = "HabitrackerWidget";
+// NOTE: we intentionally use the DEFAULT Capacitor Preferences group
+// (SharedPreferences file "CapacitorStorage"). `Preferences.configure()` is
+// global, so setting a custom group here also redirected the auth/localStorage
+// mirroring in nativeStorage.ts — which made widgets read an empty file and
+// render blank. The native widgets read "CapacitorStorage" directly.
 
 const todayStr = () => {
   const d = new Date();
@@ -29,7 +33,6 @@ const monthKey = () => todayStr().substring(0, 7);
 
 const setItem = async (key: string, value: string) => {
   try {
-    await Preferences.configure({ group: GROUP });
     await Preferences.set({ key, value });
   } catch {
     /* web fallback — ignore */
@@ -228,7 +231,6 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
 export const drainPendingWidgetToggles = async (): Promise<Array<{ habitId: string; date: string }>> => {
   if (!Capacitor.isNativePlatform()) return [];
   try {
-    await Preferences.configure({ group: GROUP });
     const { value } = await Preferences.get({ key: "pending_toggles" });
     if (!value) return [];
     const arr = JSON.parse(value) as Array<{ habitId: string; date: string }>;

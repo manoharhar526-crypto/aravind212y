@@ -35,46 +35,46 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
         <!-- HABITRACKER_WIDGETS_BEGIN -->
-        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.aravind.habittracker.widgets.MonthGridWidget" android:exported="true" android:label="@string/widget_month_grid">
+        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.habitracker.app.widgets.MonthGridWidget" android:exported="true" android:label="@string/widget_month_grid">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_month_grid"/>
         </receiver>
 
-        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.aravind.habittracker.widgets.SkipDaysWidget" android:exported="true" android:label="@string/widget_skip_days">
+        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.habitracker.app.widgets.SkipDaysWidget" android:exported="true" android:label="@string/widget_skip_days">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_skip_days"/>
         </receiver>
 
-        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.aravind.habittracker.widgets.AnalyticsWidget" android:exported="true" android:label="@string/widget_analytics">
+        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.habitracker.app.widgets.AnalyticsWidget" android:exported="true" android:label="@string/widget_analytics">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_analytics"/>
         </receiver>
 
-        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.aravind.habittracker.widgets.CalendarWidget" android:exported="true" android:label="@string/widget_calendar">
+        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.habitracker.app.widgets.CalendarWidget" android:exported="true" android:label="@string/widget_calendar">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_calendar"/>
         </receiver>
 
-        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.aravind.habittracker.widgets.AllTimeStatsWidget" android:exported="true" android:label="@string/widget_all_time_stats">
+        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.habitracker.app.widgets.AllTimeStatsWidget" android:exported="true" android:label="@string/widget_all_time_stats">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_all_time_stats"/>
         </receiver>
 
-        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.aravind.habittracker.widgets.HabitReportsWidget" android:exported="true" android:label="@string/widget_habit_reports">
+        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.habitracker.app.widgets.HabitReportsWidget" android:exported="true" android:label="@string/widget_habit_reports">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_habit_reports"/>
         </receiver>
 
-        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.aravind.habittracker.widgets.TaskReportsWidget" android:exported="true" android:label="@string/widget_task_reports">
+        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.habitracker.app.widgets.TaskReportsWidget" android:exported="true" android:label="@string/widget_task_reports">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_task_reports"/>
         </receiver>
 
         <!-- Tap-to-toggle broadcast receiver -->
-        <receiver android:name="com.aravind.habittracker.widgets.HabitToggleReceiver" android:enabled="true" android:exported="false"/>
+        <receiver android:name="com.habitracker.app.widgets.HabitToggleReceiver" android:enabled="true" android:exported="false"/>
 
         <!-- Boot receiver — restores periodic widget refresh after device reboot -->
-        <receiver android:name="com.aravind.habittracker.widgets.BootReceiver" android:enabled="true" android:exported="true" android:directBootAware="true">
+        <receiver android:name="com.habitracker.app.widgets.BootReceiver" android:enabled="true" android:exported="true" android:directBootAware="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
@@ -83,10 +83,10 @@
         </receiver>
 
         <!-- AlarmManager target — fires every 30 min to refresh all widgets -->
-        <receiver android:name="com.aravind.habittracker.widgets.WidgetAlarmReceiver" android:enabled="true" android:exported="false"/>
+        <receiver android:name="com.habitracker.app.widgets.WidgetAlarmReceiver" android:enabled="true" android:exported="false"/>
 
         <!-- Backing service for the Monthly Tracking Grid ListView (collection widget) -->
-        <service android:name="com.aravind.habittracker.widgets.MonthGridRemoteViewsService"
+        <service android:name="com.habitracker.app.widgets.MonthGridRemoteViewsService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false"/>
         <!-- HABITRACKER_WIDGETS_END -->
