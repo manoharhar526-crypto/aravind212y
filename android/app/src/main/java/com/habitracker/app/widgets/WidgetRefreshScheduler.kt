@@ -10,7 +10,7 @@ import android.os.Build
 import android.os.SystemClock
 
 /**
- * Schedules a 30-minute repeating AlarmManager broadcast that fires
+ * Schedules a 15-minute repeating AlarmManager broadcast that fires
  * APPWIDGET_UPDATE intents for every Habitracker widget provider.
  *
  * This is belt-and-suspenders on top of `android:updatePeriodMillis` —
