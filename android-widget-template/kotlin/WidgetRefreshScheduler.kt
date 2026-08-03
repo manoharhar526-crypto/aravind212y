@@ -10,7 +10,7 @@ import android.os.Build
 import android.os.SystemClock
 
 /**
- * Schedules a 30-minute repeating AlarmManager broadcast that fires
+ * Schedules a 15-minute repeating AlarmManager broadcast that fires
  * APPWIDGET_UPDATE intents for every Habitracker widget provider.
  *
  * This is belt-and-suspenders on top of `android:updatePeriodMillis` —
@@ -19,7 +19,7 @@ import android.os.SystemClock
  * Capacitor WebView is fully closed.
  */
 object WidgetRefreshScheduler {
-    private const val INTERVAL_MS = 30L * 60L * 1000L  // 30 minutes
+    private const val INTERVAL_MS = 15L * 60L * 1000L  // 15 minutes
     private const val ACTION = "com.habitracker.app.REFRESH_WIDGETS"
 
     private val PROVIDERS = arrayOf(
