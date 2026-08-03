@@ -41,7 +41,7 @@ android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ## App Details
-- App ID: com.aravind.habittracker
+- App ID: com.habitracker.app
 - App Name: Habitracker
 - Supabase URL: https://znkapwdqnyviudyxlofx.supabase.co
 

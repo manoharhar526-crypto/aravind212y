@@ -1,10 +1,10 @@
-package com.aravind.habittracker.widgets
+package com.habitracker.app.widgets
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.widget.RemoteViews
-import com.aravind.habittracker.R
+import com.habitracker.app.R
 
 class TaskReportsWidget : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {

@@ -1,4 +1,4 @@
-package com.aravind.habittracker.widgets
+package com.habitracker.app.widgets
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
@@ -6,7 +6,7 @@ import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
-import com.aravind.habittracker.R
+import com.habitracker.app.R
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat

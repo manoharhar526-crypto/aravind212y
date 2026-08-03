@@ -1,4 +1,4 @@
-package com.aravind.habittracker.widgets
+package com.habitracker.app.widgets
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -20,7 +20,7 @@ import android.os.SystemClock
  */
 object WidgetRefreshScheduler {
     private const val INTERVAL_MS = 30L * 60L * 1000L  // 30 minutes
-    private const val ACTION = "com.aravind.habittracker.REFRESH_WIDGETS"
+    private const val ACTION = "com.habitracker.app.REFRESH_WIDGETS"
 
     private val PROVIDERS = arrayOf(
         MonthGridWidget::class.java,

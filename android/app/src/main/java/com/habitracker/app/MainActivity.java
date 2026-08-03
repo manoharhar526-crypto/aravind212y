@@ -1,8 +1,8 @@
-package com.aravind.habittracker;
+package com.habitracker.app;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
-import com.aravind.habittracker.widgets.WidgetRefreshScheduler;
+import com.habitracker.app.widgets.WidgetRefreshScheduler;
 
 public class MainActivity extends BridgeActivity {
     @Override

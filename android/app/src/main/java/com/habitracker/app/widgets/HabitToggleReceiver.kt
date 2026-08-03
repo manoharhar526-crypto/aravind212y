@@ -1,4 +1,4 @@
-package com.aravind.habittracker.widgets
+package com.habitracker.app.widgets
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -38,7 +38,7 @@ class HabitToggleReceiver : BroadcastReceiver() {
         val mgr = AppWidgetManager.getInstance(ctx)
         val monthIds = mgr.getAppWidgetIds(ComponentName(ctx, MonthGridWidget::class.java))
         if (monthIds.isNotEmpty()) {
-            mgr.notifyAppWidgetViewDataChanged(monthIds, com.aravind.habittracker.R.id.list)
+            mgr.notifyAppWidgetViewDataChanged(monthIds, com.habitracker.app.R.id.list)
         }
 
         // Trigger onUpdate on every other Habitracker widget so downstream
@@ -64,7 +64,7 @@ class HabitToggleReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val ACTION = "com.aravind.habittracker.widgets.TOGGLE_HABIT"
+        const val ACTION = "com.habitracker.app.widgets.TOGGLE_HABIT"
         const val EXTRA_HABIT_ID = "habitId"
         const val EXTRA_DATE = "date"
         const val EXTRA_DAY = "day"
