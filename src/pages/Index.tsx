@@ -187,6 +187,33 @@ const Index = () => {
     }).catch(() => { /* ignore on web */ });
   }, [habits, tasks, calendarNotes, frozenDates]);
 
+  // ── Widget taps — apply completions queued by the native widget while the app was closed
+  useEffect(() => {
+    const applyQueued = () => {
+      import("@/services/widgetSync").then(async ({ drainPendingWidgetToggles }) => {
+        const queued = await drainPendingWidgetToggles();
+        if (!queued.length) return;
+        setHabits(prev =>
+          prev.map(habit => {
+            const dates = queued.filter(q => q.habitId === habit.id).map(q => q.date);
+            if (!dates.length) return habit;
+            let days = [...habit.completedDays];
+            for (const d of dates) {
+              days = days.includes(d) ? days.filter(x => x !== d) : [...days, d];
+            }
+            return { ...habit, completedDays: days.sort() };
+          }),
+        );
+      }).catch(() => { /* ignore on web */ });
+    };
+    applyQueued();
+    const onVisible = () => { if (document.visibilityState === "visible") applyQueued(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+
+
   // Update clock every second
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
