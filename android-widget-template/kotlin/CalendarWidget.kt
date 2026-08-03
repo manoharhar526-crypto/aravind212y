@@ -22,7 +22,7 @@ class CalendarWidget : AppWidgetProvider() {
     private fun build(ctx: Context): RemoteViews {
         val v = RemoteViews(ctx.packageName, R.layout.widget_calendar)
         v.setTextViewText(R.id.title, "Calendar")
-        v.setTextViewText(R.id.subtitle, WidgetData.getString(ctx, "calendar_month", ""))
+        v.setTextViewText(R.id.subtitle, WidgetData.subtitle(ctx))
 
         val cal = Calendar.getInstance()
         val today = cal.get(Calendar.DAY_OF_MONTH)

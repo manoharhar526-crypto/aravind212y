@@ -44,7 +44,7 @@ class MonthGridWidget : AppWidgetProvider() {
         val v = RemoteViews(ctx.packageName, R.layout.widget_month_grid)
 
         // Subtitle: current month name
-        val month = WidgetData.getString(ctx, "calendar_month", "")
+        val month = WidgetData.subtitle(ctx)
         v.setTextViewText(R.id.subtitle, month)
 
         // Wire the ListView to our RemoteViewsService (per-widget-id intent)

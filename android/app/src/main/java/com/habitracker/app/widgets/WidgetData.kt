@@ -40,7 +40,13 @@ object WidgetData {
         return try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
     }
 
-    /** True when the app has never synced data to native storage yet. */
+    /** Header subtitle: month name, or a hint when the app has never synced. */
+    fun subtitle(ctx: Context): String {
+        val m = getString(ctx, "calendar_month", "")
+        return if (m.isNotEmpty()) m else "Open app to sync"
+    }
+
+    /** True when the app has synced data to native storage at least once. */
     fun hasData(ctx: Context): Boolean =
         getString(ctx, "last_sync", "").isNotEmpty()
 

@@ -23,7 +23,7 @@ class SkipDaysWidget : AppWidgetProvider() {
     private fun build(ctx: Context): RemoteViews {
         val v = RemoteViews(ctx.packageName, R.layout.widget_skip_days)
         v.setTextViewText(R.id.title, "Habit Skip Days")
-        v.setTextViewText(R.id.subtitle, WidgetData.getString(ctx, "calendar_month", ""))
+        v.setTextViewText(R.id.subtitle, WidgetData.subtitle(ctx))
 
         val cal = Calendar.getInstance()
         val year = cal.get(Calendar.YEAR); val month = cal.get(Calendar.MONTH)
@@ -76,7 +76,7 @@ class AnalyticsWidget : AppWidgetProvider() {
         for (id in ids) {
             val v = RemoteViews(ctx.packageName, R.layout.widget_analytics)
             v.setTextViewText(R.id.title, "Habit Analytics")
-            v.setTextViewText(R.id.subtitle, WidgetData.getString(ctx, "calendar_month", ""))
+            v.setTextViewText(R.id.subtitle, WidgetData.subtitle(ctx))
             val arr = WidgetData.getJsonArray(ctx, "analytics")
             val rows = listOf(R.id.a1, R.id.a2, R.id.a3, R.id.a4, R.id.a5, R.id.a6)
             val names = listOf(R.id.a1_name, R.id.a2_name, R.id.a3_name, R.id.a4_name, R.id.a5_name, R.id.a6_name)
@@ -104,7 +104,7 @@ class HabitReportsWidget : AppWidgetProvider() {
         for (id in ids) {
             val v = RemoteViews(ctx.packageName, R.layout.widget_habit_reports)
             v.setTextViewText(R.id.title, "Habit Summary")
-            v.setTextViewText(R.id.subtitle, WidgetData.getString(ctx, "calendar_month", ""))
+            v.setTextViewText(R.id.subtitle, WidgetData.subtitle(ctx))
 
             val reports = WidgetData.getJsonArray(ctx, "habit_reports")
             val total = reports.length()
