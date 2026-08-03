@@ -174,7 +174,7 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
 
               <div className="space-y-2">
                 <Input
-                  placeholder="Backup code (min 4 chars, e.g. aravind2025)"
+                  placeholder="Backup code (min 4 chars, e.g. myhabits2026)"
                   value={newCode}
                   onChange={e => setNewCode(e.target.value)}
                   maxLength={64}
@@ -311,7 +311,7 @@ export const BackupRestoreDialog = ({ habits, tasks, onRestore }: BackupRestoreD
                 ) : (
                   <div className="space-y-2">
                     <Input
-                      placeholder="e.g. aravind-2025 (4-64 chars, a-z 0-9 _ -)"
+                      placeholder="e.g. my-habits-2026 (4-64 chars, a-z 0-9 _ -)"
                       value={autoCodeInput}
                       onChange={e => setAutoCodeInput(e.target.value.toLowerCase())}
                       maxLength={64}
