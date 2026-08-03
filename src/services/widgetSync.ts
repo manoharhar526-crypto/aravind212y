@@ -231,7 +231,6 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
 export const drainPendingWidgetToggles = async (): Promise<Array<{ habitId: string; date: string }>> => {
   if (!Capacitor.isNativePlatform()) return [];
   try {
-    await Preferences.configure({ group: GROUP });
     const { value } = await Preferences.get({ key: "pending_toggles" });
     if (!value) return [];
     const arr = JSON.parse(value) as Array<{ habitId: string; date: string }>;
