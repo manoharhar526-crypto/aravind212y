@@ -594,6 +594,13 @@ const Index = () => {
               </div>
             </div>
 
+            {/* Mobile clock — own full-width line, never truncated */}
+            <p className="sm:hidden text-base font-semibold text-foreground -mt-1">
+              {formatLocalDateTime(currentTime, timezone)}
+            </p>
+
+
+
             <div className="flex items-center justify-between sm:justify-end gap-2">
               {/* Desktop header buttons */}
               <div className="hidden sm:flex items-center gap-2">
