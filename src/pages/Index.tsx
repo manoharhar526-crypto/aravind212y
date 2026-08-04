@@ -556,16 +556,14 @@ const Index = () => {
               <div className="flex items-center gap-1 sm:hidden flex-shrink-0">
                 <Button
                   variant={todayFrozen ? "default" : "outline"}
-                  size="sm"
+                  size="icon"
                   onClick={() => handleToggleFreeze(todayDateStr)}
-                  className="h-10 px-3 gap-1.5 text-sm font-semibold flex-shrink-0"
+                  className="h-8 w-8 flex-shrink-0"
                   title="Freeze today's streak"
                   aria-label="Freeze today's streak"
                 >
-                  <SnowflakeIcon className="w-5 h-5" />
-                  <span>{todayFrozen ? "Frozen" : "Freeze"}</span>
+                  <SnowflakeIcon className="w-4 h-4" />
                 </Button>
-
 
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
@@ -603,15 +601,14 @@ const Index = () => {
                 {/* Streak freeze button — always available for today */}
                 <Button
                   variant={todayFrozen ? "default" : "outline"}
-                  size="lg"
+                  size="sm"
                   onClick={() => handleToggleFreeze(todayDateStr)}
-                  className="gap-2 text-base font-semibold"
+                  className="gap-1.5"
                   title="Freeze today's streak — a missed day won't break it"
                 >
-                  <SnowflakeIcon className="w-5 h-5" />
+                  <SnowflakeIcon className="w-4 h-4" />
                   <span>{todayFrozen ? "Frozen" : "Freeze Day"}</span>
                 </Button>
-
 
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
