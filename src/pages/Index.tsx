@@ -515,11 +515,7 @@ const Index = () => {
 
   const allTime = getAllTimeStats(habits, frozenDates);
 
-  // FIX 5: today's freeze button — only on today's date in current month
-  const today = new Date();
-  const isViewingCurrentMonth =
-    today.getMonth() === currentMonth.getMonth() &&
-    today.getFullYear() === currentMonth.getFullYear();
+  // Today's freeze state (always toggleable from the header)
   const todayDateStr = todayStr();
   const todayFrozen = frozenDates.includes(todayDateStr);
 
