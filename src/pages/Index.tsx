@@ -536,19 +536,19 @@ const Index = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 flex-shrink">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Habit Tracker</h1>
-                  {username && (
-                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground flex items-center gap-1 truncate max-w-[120px]">
-                      <User className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">{username}</span>
+                {username && (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <User className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                    <span className="text-lg sm:text-xl font-bold tracking-tight truncate">
+                      {username}
                     </span>
-                  )}
-                </div>
-                {/* FIX 5: clock uses user timezone */}
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                  </div>
+                )}
+                <p className="text-sm sm:text-base font-medium text-muted-foreground truncate">
                   {formatLocalDateTime(currentTime, timezone)}
                 </p>
+
+
 
               </div>
 
