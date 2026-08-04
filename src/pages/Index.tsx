@@ -603,14 +603,15 @@ const Index = () => {
                 {/* Streak freeze button — always available for today */}
                 <Button
                   variant={todayFrozen ? "default" : "outline"}
-                  size="sm"
+                  size="lg"
                   onClick={() => handleToggleFreeze(todayDateStr)}
-                  className="gap-1.5"
+                  className="gap-2 text-base font-semibold"
                   title="Freeze today's streak — a missed day won't break it"
                 >
-                  <SnowflakeIcon className="w-4 h-4" />
+                  <SnowflakeIcon className="w-5 h-5" />
                   <span>{todayFrozen ? "Frozen" : "Freeze Day"}</span>
                 </Button>
+
 
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
