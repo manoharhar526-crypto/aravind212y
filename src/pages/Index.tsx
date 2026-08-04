@@ -602,19 +602,18 @@ const Index = () => {
             <div className="flex items-center justify-between sm:justify-end gap-2">
               {/* Desktop header buttons */}
               <div className="hidden sm:flex items-center gap-2">
-                {/* FIX 7: Streak freeze button shown when viewing current month */}
-                {isViewingCurrentMonth && (
-                  <Button
-                    variant={todayFrozen ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleToggleFreeze(todayDateStr)}
-                    className="gap-1.5"
-                    title="Freeze today's streak — a missed day won't break it"
-                  >
-                    <SnowflakeIcon className="w-4 h-4" />
-                    <span>{todayFrozen ? "Frozen" : "Freeze Day"}</span>
-                  </Button>
-                )}
+                {/* Streak freeze button — always available for today */}
+                <Button
+                  variant={todayFrozen ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleToggleFreeze(todayDateStr)}
+                  className="gap-1.5"
+                  title="Freeze today's streak — a missed day won't break it"
+                >
+                  <SnowflakeIcon className="w-4 h-4" />
+                  <span>{todayFrozen ? "Frozen" : "Freeze Day"}</span>
+                </Button>
+
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
