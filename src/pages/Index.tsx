@@ -544,13 +544,12 @@ const Index = () => {
                     </span>
                   </div>
                 )}
-                <p className="text-sm sm:text-base font-medium text-muted-foreground truncate">
+                {/* Clock: full width on desktop next to name */}
+                <p className="hidden sm:block text-base font-medium text-muted-foreground">
                   {formatLocalDateTime(currentTime, timezone)}
                 </p>
-
-
-
               </div>
+
 
               {/* Mobile header buttons */}
               <div className="flex items-center gap-1 sm:hidden flex-shrink-0">
@@ -594,6 +593,13 @@ const Index = () => {
                 </Button>
               </div>
             </div>
+
+            {/* Mobile clock — own full-width line, never truncated */}
+            <p className="sm:hidden text-base font-semibold text-foreground -mt-1">
+              {formatLocalDateTime(currentTime, timezone)}
+            </p>
+
+
 
             <div className="flex items-center justify-between sm:justify-end gap-2">
               {/* Desktop header buttons */}
