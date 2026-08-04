@@ -558,18 +558,17 @@ const Index = () => {
 
               {/* Mobile header buttons */}
               <div className="flex items-center gap-1 sm:hidden flex-shrink-0">
-                {isViewingCurrentMonth && (
-                  <Button
-                    variant={todayFrozen ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => handleToggleFreeze(todayDateStr)}
-                    className="h-8 w-8 flex-shrink-0"
-                    title="Freeze today's streak"
-                    aria-label="Freeze today's streak"
-                  >
-                    <SnowflakeIcon className="w-4 h-4" />
-                  </Button>
-                )}
+                <Button
+                  variant={todayFrozen ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => handleToggleFreeze(todayDateStr)}
+                  className="h-8 w-8 flex-shrink-0"
+                  title="Freeze today's streak"
+                  aria-label="Freeze today's streak"
+                >
+                  <SnowflakeIcon className="w-4 h-4" />
+                </Button>
+
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
