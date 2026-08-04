@@ -515,11 +515,7 @@ const Index = () => {
 
   const allTime = getAllTimeStats(habits, frozenDates);
 
-  // FIX 5: today's freeze button — only on today's date in current month
-  const today = new Date();
-  const isViewingCurrentMonth =
-    today.getMonth() === currentMonth.getMonth() &&
-    today.getFullYear() === currentMonth.getFullYear();
+  // Today's freeze state (always toggleable from the header)
   const todayDateStr = todayStr();
   const todayFrozen = frozenDates.includes(todayDateStr);
 
@@ -558,18 +554,17 @@ const Index = () => {
 
               {/* Mobile header buttons */}
               <div className="flex items-center gap-1 sm:hidden flex-shrink-0">
-                {isViewingCurrentMonth && (
-                  <Button
-                    variant={todayFrozen ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => handleToggleFreeze(todayDateStr)}
-                    className="h-8 w-8 flex-shrink-0"
-                    title="Freeze today's streak"
-                    aria-label="Freeze today's streak"
-                  >
-                    <SnowflakeIcon className="w-4 h-4" />
-                  </Button>
-                )}
+                <Button
+                  variant={todayFrozen ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => handleToggleFreeze(todayDateStr)}
+                  className="h-8 w-8 flex-shrink-0"
+                  title="Freeze today's streak"
+                  aria-label="Freeze today's streak"
+                >
+                  <SnowflakeIcon className="w-4 h-4" />
+                </Button>
+
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
@@ -603,19 +598,18 @@ const Index = () => {
             <div className="flex items-center justify-between sm:justify-end gap-2">
               {/* Desktop header buttons */}
               <div className="hidden sm:flex items-center gap-2">
-                {/* FIX 7: Streak freeze button shown when viewing current month */}
-                {isViewingCurrentMonth && (
-                  <Button
-                    variant={todayFrozen ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleToggleFreeze(todayDateStr)}
-                    className="gap-1.5"
-                    title="Freeze today's streak — a missed day won't break it"
-                  >
-                    <SnowflakeIcon className="w-4 h-4" />
-                    <span>{todayFrozen ? "Frozen" : "Freeze Day"}</span>
-                  </Button>
-                )}
+                {/* Streak freeze button — always available for today */}
+                <Button
+                  variant={todayFrozen ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleToggleFreeze(todayDateStr)}
+                  className="gap-1.5"
+                  title="Freeze today's streak — a missed day won't break it"
+                >
+                  <SnowflakeIcon className="w-4 h-4" />
+                  <span>{todayFrozen ? "Frozen" : "Freeze Day"}</span>
+                </Button>
+
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
