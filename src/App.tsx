@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Widgets from "./pages/Widgets";
 import AdminLogin from "./pages/AdminLogin";
 import AdminPanel from "./pages/AdminPanel";
 import AdminUserDetail from "./pages/AdminUserDetail";
@@ -153,6 +154,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<ProtectedRoute><IndexWithKey /></ProtectedRoute>} />
+      <Route path="/widgets" element={<ProtectedRoute><Widgets key="widgets" /></ProtectedRoute>} />
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/admin-login" element={<AdminLogin />} />
       <Route path="/admin" element={<AdminRoute><AdminPanelWrapper /></AdminRoute>} />

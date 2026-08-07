@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { CalendarNote } from "@/types/calendarNote";
@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ChevronLeft, ChevronRight, Bell, BellOff, LogOut, User, Loader2,
-  Trophy, Calendar, CheckCircle2, Flame, SnowflakeIcon,
+  Trophy, Calendar, CheckCircle2, Flame, SnowflakeIcon, LayoutGrid,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CopyHabitsDialog } from "@/components/CopyHabitsDialog";
@@ -77,6 +77,7 @@ const formatLocalDateTime = (date: Date, timezone: string): string => {
 
 const Index = () => {
   const { username, signOut, user } = useAuth();
+  const navigate = useNavigate();
   const userId = user?.id;
   const [searchParams] = useSearchParams();
   const stored = loadAppStorage(userId);
@@ -566,6 +567,16 @@ const Index = () => {
 
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => navigate("/widgets")}
+                  className="h-8 w-8 flex-shrink-0"
+                  title="Widgets"
+                  aria-label="Widgets"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </Button>
+                <Button
                   variant={reminderEnabled ? "default" : "outline"}
                   size="icon"
                   onClick={handleToggleReminder}
@@ -617,6 +628,16 @@ const Index = () => {
                 </Button>
 
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/widgets")}
+                  className="gap-1.5"
+                  title="Widgets"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                  <span>Widgets</span>
+                </Button>
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
                   size="sm"
