@@ -77,6 +77,7 @@ const formatLocalDateTime = (date: Date, timezone: string): string => {
 
 const Index = () => {
   const { username, signOut, user } = useAuth();
+  const navigate = useNavigate();
   const userId = user?.id;
   const [searchParams] = useSearchParams();
   const stored = loadAppStorage(userId);
