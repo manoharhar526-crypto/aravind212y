@@ -55,6 +55,10 @@ export default function Widgets() {
     saveAppStorage({ habits: newHabits, tasks: newTasks, currentMonth }, userId);
   }, [currentMonth, userId]);
 
+  const isCompletedDay = (habitId: string, dateStr: string) => {
+    return habits.find((h) => h.id === habitId)?.completedDays.includes(dateStr) ?? false;
+  };
+
   const handleToggleHabitDay = (habitId: string, dateStr: string) => {
     const date = new Date(dateStr + "T00:00:00");
     const todayDate = new Date();
@@ -70,23 +74,19 @@ export default function Widgets() {
       return;
     }
 
+    const wasCompleted = isCompletedDay(habitId, dateStr);
     const newHabits = habits.map((h) => {
       if (h.id !== habitId) return h;
-      const completed = h.completedDays.includes(dateStr);
       return {
         ...h,
-        completedDays: completed
+        completedDays: wasCompleted
           ? h.completedDays.filter((d) => d !== dateStr)
           : [...h.completedDays, dateStr],
       };
     });
     setHabits(newHabits);
     persist(newHabits, tasks);
-    toast.success(completed(habitId, dateStr) ? "Habit unchecked" : "Habit completed");
-  };
-
-  const completed = (habitId: string, dateStr: string) => {
-    return habits.find((h) => h.id === habitId)?.completedDays.includes(dateStr) ?? false;
+    toast.success(wasCompleted ? "Habit unchecked" : "Habit completed");
   };
 
   const handleToggleTask = (taskId: string) => {
