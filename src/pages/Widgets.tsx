@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -7,20 +7,19 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  loadAppStorage, saveAppStorage, loadSettings, loadCalendarNotes, saveCalendarNotes,
+  loadAppStorage, saveAppStorage, loadSettings, loadCalendarNotes,
 } from "@/lib/appStorage";
 import {
-  getDaysInMonth, getHabitsForMonth, isDayCompleted, createDateString,
+  getDaysInMonth, getHabitsForMonth, createDateString,
   getCompletedDaysForMonth, calculateCompletionRate, getAllTimeStats, calculateTotalStreak,
 } from "@/lib/habitUtils";
-import { getTasksByType, calculateTaskCompletionRate } from "@/lib/taskUtils";
+import { getTasksByType } from "@/lib/taskUtils";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { CalendarNote } from "@/types/calendarNote";
 import {
   ArrowLeft, LayoutGrid, Calendar as CalendarIcon, BarChart3, PieChart,
-  Trophy, TrendingUp, Target, CheckCircle2, Flame, CalendarDays,
-  ListChecks, Ban, NotebookPen, X,
+  Trophy, CheckCircle2, Flame, ListChecks, Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 
