@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ChevronLeft, ChevronRight, Bell, BellOff, LogOut, User, Loader2,
-  Trophy, Calendar, CheckCircle2, Flame, SnowflakeIcon,
+  Trophy, Calendar, CheckCircle2, Flame, SnowflakeIcon, LayoutGrid,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CopyHabitsDialog } from "@/components/CopyHabitsDialog";
