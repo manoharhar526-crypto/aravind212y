@@ -567,6 +567,16 @@ const Index = () => {
 
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
                 <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => navigate("/widgets")}
+                  className="h-8 w-8 flex-shrink-0"
+                  title="Widgets"
+                  aria-label="Widgets"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </Button>
+                <Button
                   variant={reminderEnabled ? "default" : "outline"}
                   size="icon"
                   onClick={handleToggleReminder}
