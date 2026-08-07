@@ -39,12 +39,12 @@ export default function Widgets() {
   const settings = loadSettings(userId);
   const [habits, setHabits] = useState<Habit[]>(stored?.habits ?? []);
   const [tasks, setTasks] = useState<Task[]>(stored?.tasks ?? []);
-  const [notes, setNotes] = useState<CalendarNote[]>(loadCalendarNotes(userId));
-  const [currentMonth, setCurrentMonth] = useState<Date>(stored?.currentMonth ?? new Date());
+  const [notes] = useState<CalendarNote[]>(loadCalendarNotes(userId));
+  const [currentMonth] = useState<Date>(stored?.currentMonth ?? new Date());
   const [frozenDates] = useState<string[]>(settings.frozenDates ?? []);
 
   const today = todayStr();
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const totalDaysInMonth = getDaysInMonth(now);
 
