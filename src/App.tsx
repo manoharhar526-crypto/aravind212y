@@ -154,6 +154,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<ProtectedRoute><IndexWithKey /></ProtectedRoute>} />
+      <Route path="/widgets" element={<ProtectedRoute><Widgets key="widgets" /></ProtectedRoute>} />
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/admin-login" element={<AdminLogin />} />
       <Route path="/admin" element={<AdminRoute><AdminPanelWrapper /></AdminRoute>} />
