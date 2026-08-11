@@ -129,18 +129,6 @@ export default function Widgets() {
     [monthHabits, now, totalDaysInMonth]
   );
 
-  const skipDays = useMemo(
-    () =>
-      monthHabits
-        .map((h) => ({
-          name: h.name,
-          count: (h.skippedDays ?? []).filter((d) => d.startsWith(`${monthKey}-`)).length,
-        }))
-        .filter((x) => x.count > 0)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5),
-    [monthHabits, monthKey]
-  );
 
   const calendarWeek = useMemo(() => {
     const weekStart = new Date(now);
