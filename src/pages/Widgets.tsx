@@ -299,9 +299,10 @@ export default function Widgets() {
             onToggleSkipDay={handleToggleSkipDay}
           />
 
-          {/* 3. Habit Analytics */}
+          {/* 3. Habit Analytics + All-Time Statistics (combined) */}
           <Card className="p-4 border-border bg-card">
-            <WidgetHeader icon={BarChart3} title="Habit Analytics" subtitle="Top habits by completion" />
+            <WidgetHeader icon={BarChart3} title="Habit Analytics" subtitle="Performance & all-time stats" />
+
             {analytics.length === 0 ? (
               <div className="text-sm text-muted-foreground py-6 text-center">No habits to analyze</div>
             ) : (
@@ -317,6 +318,37 @@ export default function Widgets() {
                 ))}
               </div>
             )}
+
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Trophy className="h-3.5 w-3.5 text-muted-foreground" />
+                <p className="text-xs font-semibold">All-Time Statistics</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-2.5 rounded-md bg-muted/40">
+                  <p className="text-[10px] text-muted-foreground">Completions</p>
+                  <p className="text-xl font-bold">{allTime.totalCompletions}</p>
+                </div>
+                <div className="p-2.5 rounded-md bg-muted/40">
+                  <p className="text-[10px] text-muted-foreground">Months</p>
+                  <p className="text-xl font-bold">{allTime.totalMonths}</p>
+                </div>
+                <div className="p-2.5 rounded-md bg-muted/40">
+                  <p className="text-[10px] text-muted-foreground">Rate</p>
+                  <p className="text-xl font-bold">{allTime.allTimeRate}%</p>
+                </div>
+                <div className="p-2.5 rounded-md bg-muted/40">
+                  <p className="text-[10px] text-muted-foreground">Best Streak</p>
+                  <p className="text-xl font-bold">{allTime.longestStreak}</p>
+                </div>
+              </div>
+              {allTime.bestHabit && (
+                <div className="mt-3 p-2.5 rounded-md bg-primary/10">
+                  <p className="text-[10px] text-muted-foreground">Best Habit</p>
+                  <p className="text-sm font-semibold truncate">{allTime.bestHabit.name}</p>
+                </div>
+              )}
+            </div>
           </Card>
 
           {/* 4. Calendar — same component & behaviour as the app */}
@@ -327,34 +359,6 @@ export default function Widgets() {
             onEditNote={handleEditNote}
           />
 
-          {/* 5. All-Time Statistics */}
-          <Card className="p-4 border-border bg-card">
-            <WidgetHeader icon={Trophy} title="All-Time Statistics" subtitle="Across every tracked month" />
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-2.5 rounded-md bg-muted/40">
-                <p className="text-[10px] text-muted-foreground">Completions</p>
-                <p className="text-xl font-bold">{allTime.totalCompletions}</p>
-              </div>
-              <div className="p-2.5 rounded-md bg-muted/40">
-                <p className="text-[10px] text-muted-foreground">Months</p>
-                <p className="text-xl font-bold">{allTime.totalMonths}</p>
-              </div>
-              <div className="p-2.5 rounded-md bg-muted/40">
-                <p className="text-[10px] text-muted-foreground">Rate</p>
-                <p className="text-xl font-bold">{allTime.allTimeRate}%</p>
-              </div>
-              <div className="p-2.5 rounded-md bg-muted/40">
-                <p className="text-[10px] text-muted-foreground">Best Streak</p>
-                <p className="text-xl font-bold">{allTime.longestStreak}</p>
-              </div>
-            </div>
-            {allTime.bestHabit && (
-              <div className="mt-3 p-2.5 rounded-md bg-primary/10">
-                <p className="text-[10px] text-muted-foreground">Best Habit</p>
-                <p className="text-sm font-semibold truncate">{allTime.bestHabit.name}</p>
-              </div>
-            )}
-          </Card>
 
           {/* 6. Habit Reports */}
           <Card className="p-4 border-border bg-card">
