@@ -20,12 +20,11 @@ import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { CalendarNote } from "@/types/calendarNote";
 import {
-  ArrowLeft, LayoutGrid, Calendar as CalendarIcon, BarChart3, PieChart,
+  ArrowLeft, LayoutGrid, BarChart3, PieChart,
   Trophy, CheckCircle2, Flame, ListChecks,
 } from "lucide-react";
 import { toast } from "sonner";
 
-const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 const todayStr = () => {
   const d = new Date();
