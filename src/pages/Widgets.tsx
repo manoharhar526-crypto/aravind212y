@@ -7,8 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  loadAppStorage, saveAppStorage, loadSettings, loadCalendarNotes,
+  loadAppStorage, saveAppStorage, loadSettings, loadCalendarNotes, saveCalendarNotes,
 } from "@/lib/appStorage";
+import { CalendarView } from "@/components/CalendarView";
 import {
   getDaysInMonth, getHabitsForMonth, createDateString,
   getCompletedDaysForMonth, calculateCompletionRate, getAllTimeStats, calculateTotalStreak,
