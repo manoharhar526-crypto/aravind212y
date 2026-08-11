@@ -318,33 +318,13 @@ export default function Widgets() {
             )}
           </Card>
 
-          {/* 4. Calendar */}
-          <Card className="p-4 border-border bg-card">
-            <WidgetHeader icon={CalendarIcon} title="Calendar" subtitle={now.toLocaleString("default", { month: "long", year: "numeric" })} />
-            <div className="grid grid-cols-7 gap-2">
-              {calendarWeek.map((d, i) => (
-                <div key={i} className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] text-muted-foreground">{d.label}</span>
-                  <div
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium relative",
-                      d.today
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/50 text-foreground"
-                    )}
-                  >
-                    {d.day}
-                    {d.hasNote && (
-                      <span className="absolute bottom-1 w-1 h-1 rounded-full bg-orange-400" />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 text-[10px] text-muted-foreground flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400" /> Notes on that day
-            </div>
-          </Card>
+          {/* 4. Calendar — same component & behaviour as the app */}
+          <CalendarView
+            notes={notes}
+            onAddNote={handleAddNote}
+            onDeleteNote={handleDeleteNote}
+            onEditNote={handleEditNote}
+          />
 
           {/* 5. All-Time Statistics */}
           <Card className="p-4 border-border bg-card">
