@@ -286,22 +286,12 @@ export default function Widgets() {
             </div>
           </Card>
 
-          {/* 2. Habit Skip Days */}
-          <Card className="p-4 border-border bg-card">
-            <WidgetHeader icon={Ban} title="Habit Skip Days" subtitle="Days marked N/A this month" />
-            {skipDays.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-6 text-center">No skipped days</div>
-            ) : (
-              <div className="space-y-2">
-                {skipDays.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between p-2 rounded-md bg-muted/40">
-                    <span className="text-xs font-medium truncate max-w-[70%]">{item.name}</span>
-                    <Badge variant="secondary" className="text-[10px]">⊘ {item.count}</Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+          {/* 2. Habit Skip Days — same component & behaviour as the app */}
+          <HabitCalendar
+            habits={habits}
+            currentMonth={now}
+            onToggleSkipDay={handleToggleSkipDay}
+          />
 
           {/* 3. Habit Analytics */}
           <Card className="p-4 border-border bg-card">
