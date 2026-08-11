@@ -7,8 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  loadAppStorage, saveAppStorage, loadSettings, loadCalendarNotes,
+  loadAppStorage, saveAppStorage, loadSettings, loadCalendarNotes, saveCalendarNotes,
 } from "@/lib/appStorage";
+import { CalendarView } from "@/components/CalendarView";
 import {
   getDaysInMonth, getHabitsForMonth, createDateString,
   getCompletedDaysForMonth, calculateCompletionRate, getAllTimeStats, calculateTotalStreak,
@@ -19,12 +20,11 @@ import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { CalendarNote } from "@/types/calendarNote";
 import {
-  ArrowLeft, LayoutGrid, Calendar as CalendarIcon, BarChart3, PieChart,
+  ArrowLeft, LayoutGrid, BarChart3, PieChart,
   Trophy, CheckCircle2, Flame, ListChecks,
 } from "lucide-react";
 import { toast } from "sonner";
 
-const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 const todayStr = () => {
   const d = new Date();
@@ -40,7 +40,7 @@ export default function Widgets() {
   const settings = loadSettings(userId);
   const [habits, setHabits] = useState<Habit[]>(stored?.habits ?? []);
   const [tasks, setTasks] = useState<Task[]>(stored?.tasks ?? []);
-  const [notes] = useState<CalendarNote[]>(loadCalendarNotes(userId));
+  const [notes, setNotes] = useState<CalendarNote[]>(loadCalendarNotes(userId));
   const [currentMonth] = useState<Date>(stored?.currentMonth ?? new Date());
   const [frozenDates] = useState<string[]>(settings.frozenDates ?? []);
 
@@ -130,22 +130,23 @@ export default function Widgets() {
   );
 
 
-  const calendarWeek = useMemo(() => {
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-    const noteSet = new Set(notes.map((n) => n.date));
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(weekStart);
-      d.setDate(weekStart.getDate() + i);
-      const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      return {
-        day: d.getDate(),
-        label: DAY_LABELS[d.getDay()],
-        today: dStr === today,
-        hasNote: noteSet.has(dStr),
-      };
-    });
-  }, [now, notes, today]);
+  const handleAddNote = (note: CalendarNote) => {
+    const next = [...notes, note];
+    setNotes(next);
+    saveCalendarNotes(next, userId);
+  };
+
+  const handleDeleteNote = (id: string) => {
+    const next = notes.filter((n) => n.id !== id);
+    setNotes(next);
+    saveCalendarNotes(next, userId);
+  };
+
+  const handleEditNote = (id: string, updated: Partial<CalendarNote>) => {
+    const next = notes.map((n) => (n.id === id ? { ...n, ...updated } : n));
+    setNotes(next);
+    saveCalendarNotes(next, userId);
+  };
 
   const habitReports = useMemo(
     () =>
@@ -318,33 +319,13 @@ export default function Widgets() {
             )}
           </Card>
 
-          {/* 4. Calendar */}
-          <Card className="p-4 border-border bg-card">
-            <WidgetHeader icon={CalendarIcon} title="Calendar" subtitle={now.toLocaleString("default", { month: "long", year: "numeric" })} />
-            <div className="grid grid-cols-7 gap-2">
-              {calendarWeek.map((d, i) => (
-                <div key={i} className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] text-muted-foreground">{d.label}</span>
-                  <div
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium relative",
-                      d.today
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/50 text-foreground"
-                    )}
-                  >
-                    {d.day}
-                    {d.hasNote && (
-                      <span className="absolute bottom-1 w-1 h-1 rounded-full bg-orange-400" />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 text-[10px] text-muted-foreground flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400" /> Notes on that day
-            </div>
-          </Card>
+          {/* 4. Calendar — same component & behaviour as the app */}
+          <CalendarView
+            notes={notes}
+            onAddNote={handleAddNote}
+            onDeleteNote={handleDeleteNote}
+            onEditNote={handleEditNote}
+          />
 
           {/* 5. All-Time Statistics */}
           <Card className="p-4 border-border bg-card">
