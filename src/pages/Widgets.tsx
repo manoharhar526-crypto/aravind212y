@@ -20,7 +20,7 @@ import { Task } from "@/types/task";
 import { CalendarNote } from "@/types/calendarNote";
 import {
   ArrowLeft, LayoutGrid, Calendar as CalendarIcon, BarChart3, PieChart,
-  Trophy, CheckCircle2, Flame, ListChecks, Ban,
+  Trophy, CheckCircle2, Flame, ListChecks,
 } from "lucide-react";
 import { toast } from "sonner";
 
