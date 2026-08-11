@@ -14,12 +14,13 @@ import {
   getCompletedDaysForMonth, calculateCompletionRate, getAllTimeStats, calculateTotalStreak,
 } from "@/lib/habitUtils";
 import { getTasksByType } from "@/lib/taskUtils";
+import { HabitCalendar } from "@/components/HabitCalendar";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { CalendarNote } from "@/types/calendarNote";
 import {
   ArrowLeft, LayoutGrid, Calendar as CalendarIcon, BarChart3, PieChart,
-  Trophy, CheckCircle2, Flame, ListChecks, Ban,
+  Trophy, CheckCircle2, Flame, ListChecks,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -89,11 +90,27 @@ export default function Widgets() {
     toast.success(wasCompleted ? "Habit unchecked" : "Habit completed");
   };
 
+  const handleToggleSkipDay = (habitId: string, dateStr: string) => {
+    const newHabits = habits.map((h) => {
+      if (h.id !== habitId) return h;
+      const skipped = h.skippedDays ?? [];
+      return {
+        ...h,
+        skippedDays: skipped.includes(dateStr)
+          ? skipped.filter((d) => d !== dateStr)
+          : [...skipped, dateStr].sort(),
+      };
+    });
+    setHabits(newHabits);
+    persist(newHabits, tasks);
+  };
+
   const handleToggleTask = (taskId: string) => {
     const newTasks = tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t));
     setTasks(newTasks);
     persist(habits, newTasks);
   };
+
 
   // ─── Widget data helpers ────────────────────────────────────────────────────
 
@@ -112,18 +129,6 @@ export default function Widgets() {
     [monthHabits, now, totalDaysInMonth]
   );
 
-  const skipDays = useMemo(
-    () =>
-      monthHabits
-        .map((h) => ({
-          name: h.name,
-          count: (h.skippedDays ?? []).filter((d) => d.startsWith(`${monthKey}-`)).length,
-        }))
-        .filter((x) => x.count > 0)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5),
-    [monthHabits, monthKey]
-  );
 
   const calendarWeek = useMemo(() => {
     const weekStart = new Date(now);
@@ -286,22 +291,12 @@ export default function Widgets() {
             </div>
           </Card>
 
-          {/* 2. Habit Skip Days */}
-          <Card className="p-4 border-border bg-card">
-            <WidgetHeader icon={Ban} title="Habit Skip Days" subtitle="Days marked N/A this month" />
-            {skipDays.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-6 text-center">No skipped days</div>
-            ) : (
-              <div className="space-y-2">
-                {skipDays.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between p-2 rounded-md bg-muted/40">
-                    <span className="text-xs font-medium truncate max-w-[70%]">{item.name}</span>
-                    <Badge variant="secondary" className="text-[10px]">⊘ {item.count}</Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+          {/* 2. Habit Skip Days — same component & behaviour as the app */}
+          <HabitCalendar
+            habits={habits}
+            currentMonth={now}
+            onToggleSkipDay={handleToggleSkipDay}
+          />
 
           {/* 3. Habit Analytics */}
           <Card className="p-4 border-border bg-card">
