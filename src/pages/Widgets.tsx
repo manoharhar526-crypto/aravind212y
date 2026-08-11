@@ -90,11 +90,27 @@ export default function Widgets() {
     toast.success(wasCompleted ? "Habit unchecked" : "Habit completed");
   };
 
+  const handleToggleSkipDay = (habitId: string, dateStr: string) => {
+    const newHabits = habits.map((h) => {
+      if (h.id !== habitId) return h;
+      const skipped = h.skippedDays ?? [];
+      return {
+        ...h,
+        skippedDays: skipped.includes(dateStr)
+          ? skipped.filter((d) => d !== dateStr)
+          : [...skipped, dateStr].sort(),
+      };
+    });
+    setHabits(newHabits);
+    persist(newHabits, tasks);
+  };
+
   const handleToggleTask = (taskId: string) => {
     const newTasks = tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t));
     setTasks(newTasks);
     persist(habits, newTasks);
   };
+
 
   // ─── Widget data helpers ────────────────────────────────────────────────────
 
