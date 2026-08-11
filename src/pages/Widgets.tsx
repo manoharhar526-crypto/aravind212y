@@ -293,7 +293,7 @@ export default function Widgets() {
 
           {/* 2. Habit Skip Days — same component & behaviour as the app */}
           <HabitCalendar
-            habits={habits}
+            habits={monthHabits}
             currentMonth={now}
             onToggleSkipDay={handleToggleSkipDay}
           />
