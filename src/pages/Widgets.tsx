@@ -130,22 +130,23 @@ export default function Widgets() {
   );
 
 
-  const calendarWeek = useMemo(() => {
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-    const noteSet = new Set(notes.map((n) => n.date));
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(weekStart);
-      d.setDate(weekStart.getDate() + i);
-      const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      return {
-        day: d.getDate(),
-        label: DAY_LABELS[d.getDay()],
-        today: dStr === today,
-        hasNote: noteSet.has(dStr),
-      };
-    });
-  }, [now, notes, today]);
+  const handleAddNote = (note: CalendarNote) => {
+    const next = [...notes, note];
+    setNotes(next);
+    saveCalendarNotes(next, userId);
+  };
+
+  const handleDeleteNote = (id: string) => {
+    const next = notes.filter((n) => n.id !== id);
+    setNotes(next);
+    saveCalendarNotes(next, userId);
+  };
+
+  const handleEditNote = (id: string, updated: Partial<CalendarNote>) => {
+    const next = notes.map((n) => (n.id === id ? { ...n, ...updated } : n));
+    setNotes(next);
+    saveCalendarNotes(next, userId);
+  };
 
   const habitReports = useMemo(
     () =>
