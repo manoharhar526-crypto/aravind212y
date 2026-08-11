@@ -41,7 +41,7 @@ export default function Widgets() {
   const settings = loadSettings(userId);
   const [habits, setHabits] = useState<Habit[]>(stored?.habits ?? []);
   const [tasks, setTasks] = useState<Task[]>(stored?.tasks ?? []);
-  const [notes] = useState<CalendarNote[]>(loadCalendarNotes(userId));
+  const [notes, setNotes] = useState<CalendarNote[]>(loadCalendarNotes(userId));
   const [currentMonth] = useState<Date>(stored?.currentMonth ?? new Date());
   const [frozenDates] = useState<string[]>(settings.frozenDates ?? []);
 
