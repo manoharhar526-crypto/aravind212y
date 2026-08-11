@@ -14,6 +14,7 @@ import {
   getCompletedDaysForMonth, calculateCompletionRate, getAllTimeStats, calculateTotalStreak,
 } from "@/lib/habitUtils";
 import { getTasksByType } from "@/lib/taskUtils";
+import { HabitCalendar } from "@/components/HabitCalendar";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { CalendarNote } from "@/types/calendarNote";
