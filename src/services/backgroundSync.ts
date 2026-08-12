@@ -231,13 +231,6 @@ export async function flushPending(userId?: string): Promise<void> {
   await Promise.all(ids.map(id => flush(id)));
 }
 
-/**
- * Count of unsynced items for a user (for optional UI indicator).
- */
-export async function getPendingCount(userId: string): Promise<number> {
-  return (await loadQueue()).filter(i => !i.synced && i.userId === userId).length;
-}
-
 // ── Auto-retry on reconnect / app resume ─────────────────────────────────────
 
 if (typeof window !== "undefined") {
