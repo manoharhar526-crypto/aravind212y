@@ -54,17 +54,6 @@ const Auth = () => {
           )}
         </Card>
 
-        <div className="flex justify-center gap-2">
-          <Button
-            variant="default"
-            size="sm"
-            className="gap-1.5 font-semibold"
-            onClick={() => navigate("/admin-login")}
-          >
-            <Shield className="w-4 h-4" />
-            Admin Access
-          </Button>
-        </div>
 
         <p className="text-xs text-center text-muted-foreground">
           {"\n"}

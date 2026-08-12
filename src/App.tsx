@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Widgets from "./pages/Widgets";
-import AdminLogin from "./pages/AdminLogin";
+
 import AdminPanel from "./pages/AdminPanel";
 import AdminUserDetail from "./pages/AdminUserDetail";
 import NotFound from "./pages/NotFound";
@@ -85,7 +85,8 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   if (loading || isAdmin === null) return <LoadingScreen />;
-  if (!user || !isAdmin) return <Navigate to="/admin-login" replace />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
@@ -156,7 +157,7 @@ const AppRoutes = () => {
       <Route path="/" element={<ProtectedRoute><IndexWithKey /></ProtectedRoute>} />
       <Route path="/widgets" element={<ProtectedRoute><Widgets key="widgets" /></ProtectedRoute>} />
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
-      <Route path="/admin-login" element={<AdminLogin />} />
+      <Route path="/admin-login" element={<Navigate to="/auth" replace />} />
       <Route path="/admin" element={<AdminRoute><AdminPanelWrapper /></AdminRoute>} />
       <Route path="/admin/user/:userId" element={<AdminRoute><AdminUserDetail /></AdminRoute>} />
       <Route path="*" element={<NotFound />} />

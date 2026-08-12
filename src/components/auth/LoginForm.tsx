@@ -45,7 +45,12 @@ export const LoginForm = ({ onSwitchToSignup }: LoginFormProps) => {
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         });
-        toast.success("Welcome back!");
+        if (data.is_admin) {
+          toast.success("Welcome, Admin!");
+          navigate("/admin", { replace: true });
+        } else {
+          toast.success("Welcome back!");
+        }
       }
     } catch (err) {
       console.error("Login error:", err);
