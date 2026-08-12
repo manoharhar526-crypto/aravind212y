@@ -18,7 +18,7 @@ npm run build
 # 3. Add Android (first time only)
 npx cap add android
 
-# 4. Copy app icons + auto-install all 16 home-screen widgets
+# 4. Copy app icons + auto-install all 7 home-screen widgets
 #    (this script also patches AndroidManifest.xml automatically — no manual edit needed)
 bash copy-icons.sh
 bash android-widget-template/install.sh
