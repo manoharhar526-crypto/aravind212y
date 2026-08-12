@@ -18,7 +18,7 @@ npm run build
 # 3. Add Android (first time only)
 npx cap add android
 
-# 4. Copy app icons + auto-install all 16 home-screen widgets
+# 4. Copy app icons + auto-install all 7 home-screen widgets
 #    (this script also patches AndroidManifest.xml automatically — no manual edit needed)
 bash copy-icons.sh
 bash android-widget-template/install.sh
@@ -45,27 +45,18 @@ android/app/build/outputs/apk/debug/app-debug.apk
 - App Name: Habitracker
 - Supabase URL: https://znkapwdqnyviudyxlofx.supabase.co
 
-## Home-Screen Widgets (16 included)
+## Home-Screen Widgets (7 included)
 
 After installing the APK, **long-press your home screen → Widgets → Habitracker**
-and you'll see all 16 widgets:
+and you'll see all 7 widgets:
 
-1. **Today's Habits** — list with ✓ for done
-2. **Streak Counter** — current best streak
-3. **Today's Progress** — "X/Y done" + bar + %
-4. **Today's Tasks** — daily tasks for today
-5. **Weekly Tasks** — this week's tasks
-6. **Monthly Tasks** — this month's tasks
-7. **Today's Note** — calendar note for today
-8. **Quick Open** — 1×1 launcher
-9. **Monthly Tracking Grid** — per-habit filled/empty squares for this month
-10. **Habit Skip Days** — habits + skipped-day count this month
-11. **Habit Analytics** — top habits by completion % this month
-12. **Calendar** — current week with today + note markers
-13. **All-Time Statistics** — completions, months, overall %, best streak, best habit
-14. **Habit Reports** — per-habit monthly completion summary
-15. **Task Reports** — daily / weekly / monthly done-vs-total
-16. **Task Analytics** — daily / weekly / monthly completion bars
+1. **Monthly Tracking Grid** — per-habit filled/empty squares for this month (tap a day to toggle)
+2. **Habit Skip Days** — habits + skipped-day count this month
+3. **Habit Analytics** — top habits by completion % this month
+4. **Calendar** — current month with today + note markers
+5. **All-Time Statistics** — completions, months, overall %, best streak, best habit
+6. **Habit Reports** — per-habit monthly completion summary
+7. **Task Reports** — daily / weekly / monthly done-vs-total
 
-Widgets refresh every 30 minutes and whenever you change something in the app.
+Widgets refresh every 15 minutes and whenever you change something in the app.
 See `android-widget-template/README.md` for details.
