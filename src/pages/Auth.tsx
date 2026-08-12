@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SignupForm } from "@/components/auth/SignupForm";
-import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface LoginFormProps {
   onSwitchToSignup: () => void;
@@ -15,6 +16,7 @@ export const LoginForm = ({ onSwitchToSignup }: LoginFormProps) => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
