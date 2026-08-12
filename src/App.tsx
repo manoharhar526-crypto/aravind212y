@@ -142,9 +142,12 @@ const IndexWithKey = () => {
 const AdminPanelWrapper = () => {
   const navigate = useNavigate();
 
-  // Don't sign the user out when pressing Back — just navigate away
-  const handleBack = () => {
-    navigate("/", { replace: true });
+  // Leaving the admin panel signs the admin out instead of dropping
+  // them into the regular habit tracker page.
+  const handleBack = async () => {
+    localStorage.removeItem(ADMIN_KEY);
+    await supabase.auth.signOut();
+    navigate("/auth", { replace: true });
   };
 
   return <AdminPanel onBack={handleBack} />;
