@@ -28,9 +28,6 @@ const invoke = async <T = any>(body: Record<string, unknown>): Promise<T> => {
   return data as T;
 };
 
-export const checkSharedCode = (code: string) =>
-  invoke<{ available: boolean; mine?: boolean }>({ action: "check", code });
-
 export const saveSharedBackup = (
   code: string,
   habits: Habit[],
