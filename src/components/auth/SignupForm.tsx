@@ -82,8 +82,8 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters");
       return;
     }
 
@@ -178,7 +178,7 @@ export const SignupForm = ({ onSwitchToLogin }: SignupFormProps) => {
           <Input
             id="signup-password"
             type={showPassword ? "text" : "password"}
-            placeholder="Create a password (min 6 chars)"
+            placeholder="Create a strong password (min 8 chars)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             maxLength={128}
