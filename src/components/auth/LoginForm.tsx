@@ -48,8 +48,8 @@ export const LoginForm = ({ onSwitchToSignup }: LoginFormProps) => {
           refresh_token: data.session.refresh_token,
         });
         if (data.is_admin) {
-          toast.success("Welcome, Admin!");
-          navigate("/admin", { replace: true });
+          toast.success("Admin verified — enter the secret code");
+          navigate("/admin-gate", { replace: true });
         } else {
           toast.success("Welcome back!");
         }
