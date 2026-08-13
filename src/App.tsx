@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Widgets from "./pages/Widgets";
 
 import AdminPanel from "./pages/AdminPanel";
+import AdminGate from "./pages/AdminGate";
 import AdminUserDetail from "./pages/AdminUserDetail";
 import NotFound from "./pages/NotFound";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +33,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-import { STORAGE_KEYS } from "@/lib/constants";
+import { STORAGE_KEYS, ADMIN_GATE_SESSION_KEY } from "@/lib/constants";
 const ADMIN_KEY = STORAGE_KEYS.IS_ADMIN;
 const ADMIN_SESSION_KEY = "admin_session_active";
 
@@ -47,6 +48,7 @@ const useAdminAutoLogout = () => {
     if (wasAdmin && !hasSession) {
       // Fresh app open for a previously-admin user → force re-login
       localStorage.removeItem(ADMIN_KEY);
+      sessionStorage.removeItem(ADMIN_GATE_SESSION_KEY);
       signOut();
     } else {
       sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
@@ -87,6 +89,34 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading || isAdmin === null) return <LoadingScreen />;
   if (!user) return <Navigate to="/auth" replace />;
   if (!isAdmin) return <Navigate to="/" replace />;
+  // Admins must additionally pass the secret-code gate once per session.
+  if (sessionStorage.getItem(ADMIN_GATE_SESSION_KEY) !== "true")
+    return <Navigate to="/admin-gate" replace />;
+  return <>{children}</>;
+};
+
+// Admin-only route for the secret-code gate itself (no gate check).
+const AdminGateRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    setIsAdmin(null);
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle()
+      .then(({ data, error }) => setIsAdmin(!error && !!data));
+  }, [user]);
+
+  if (loading || isAdmin === null) return <LoadingScreen />;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
+  if (sessionStorage.getItem(ADMIN_GATE_SESSION_KEY) === "true")
+    return <Navigate to="/admin" replace />;
   return <>{children}</>;
 };
 
@@ -125,7 +155,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading || (user && !checked)) return <LoadingScreen />;
 
   if (user && checked) {
-    return <Navigate to={isAdmin ? "/admin" : "/"} replace />;
+    return <Navigate to={isAdmin ? "/admin-gate" : "/"} replace />;
   }
 
   return <>{children}</>;
@@ -146,6 +176,7 @@ const AdminPanelWrapper = () => {
   // them into the regular habit tracker page.
   const handleBack = async () => {
     localStorage.removeItem(ADMIN_KEY);
+    sessionStorage.removeItem(ADMIN_GATE_SESSION_KEY);
     await supabase.auth.signOut();
     navigate("/auth", { replace: true });
   };
@@ -161,6 +192,7 @@ const AppRoutes = () => {
       <Route path="/widgets" element={<ProtectedRoute><Widgets key="widgets" /></ProtectedRoute>} />
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/admin-login" element={<Navigate to="/auth" replace />} />
+      <Route path="/admin-gate" element={<AdminGateRoute><AdminGate /></AdminGateRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminPanelWrapper /></AdminRoute>} />
       <Route path="/admin/user/:userId" element={<AdminRoute><AdminUserDetail /></AdminRoute>} />
       <Route path="*" element={<NotFound />} />

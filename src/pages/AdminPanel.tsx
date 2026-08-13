@@ -14,6 +14,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useRealtimeAdmin } from "@/hooks/useRealtimeAdmin";
+import { ResetSecretCodeDialog } from "@/components/admin/ResetSecretCodeDialog";
+
 
 interface UserData {
   user_id: string;
@@ -140,12 +142,14 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
               <h1 className="text-2xl font-bold">Admin Panel</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Badge variant="secondary" className="text-xs">{users.length} users</Badge>
+            <ResetSecretCodeDialog />
             <Button variant="outline" size="sm" onClick={() => fetchUsers()} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
             </Button>
           </div>
+
         </div>
 
         <div className="relative">
