@@ -1,87 +1,109 @@
 package com.habitracker.app.widgets
 
 import android.app.PendingIntent
-import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 
 /**
- * Fires when the user taps a habit cell in a home-screen widget.
+ * Single broadcast entry point for every interactive widget tap.
  *
- * If the tapped day is today or yesterday, we queue the toggle for the
- * web app to persist + push to cloud, and optimistically flip the cached
- * `month_grid` JSON so the cell state updates instantly.
+ * Operations (`EXTRA_OP`):
+ *  • OP_TOGGLE     — flip habit completion for a date (today or earlier)
+ *  • OP_SKIP       — flip a per-habit skip day (marks the day N/A)
+ *  • OP_WEEK       — shift the Monthly Tracking Grid week window (±1, 0 = today)
+ *  • OP_SKIP_HABIT — cycle the habit shown by the Habit Skip Days widget
+ *  • OP_OPEN       — just open the app (optionally at a given date)
  *
- * Otherwise (older / future days, or the habit-name label), we just open
- * the app — matching the in-app rule that only current/previous day can
- * be edited.
+ * Toggles are queued in SharedPreferences and drained by the web app, while the
+ * cached widget JSON is flipped optimistically so the tap feels instant.
  */
 class HabitToggleReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
+        val op = intent.getStringExtra(EXTRA_OP) ?: OP_TOGGLE
         val habitId = intent.getStringExtra(EXTRA_HABIT_ID)
         val date = intent.getStringExtra(EXTRA_DATE)
         val day = intent.getIntExtra(EXTRA_DAY, -1)
-        val toggleable = intent.getBooleanExtra(EXTRA_TOGGLEABLE, false)
 
-        if (!toggleable || habitId.isNullOrBlank() || date.isNullOrBlank() || day <= 0) {
-            // Not toggleable → just open the app on the matching screen
-            WidgetData.openAppIntent(ctx).send()
-            return
-        }
+        when (op) {
+            OP_WEEK -> {
+                val delta = intent.getIntExtra(EXTRA_DELTA, 0)
+                val next = if (delta == 0) 0 else
+                    (WidgetData.weekOffset(ctx) + delta).coerceIn(-26, 26)
+                WidgetData.setWeekOffset(ctx, next)
+            }
 
-        WidgetData.queueToggle(ctx, habitId, date)
-        WidgetData.optimisticToggleMonthGrid(ctx, habitId, day)
+            OP_SKIP_HABIT -> {
+                val delta = intent.getIntExtra(EXTRA_DELTA, 1)
+                val count = WidgetData.getJsonArray(ctx, "month_grid").length()
+                if (count > 0) {
+                    val cur = WidgetData.getInt(ctx, WidgetData.KEY_SKIP_HABIT, 0)
+                    val next = ((cur + delta) % count + count) % count
+                    WidgetData.putString(ctx, WidgetData.KEY_SKIP_HABIT, next.toString())
+                }
+            }
 
-        // Ask the ListView-based Monthly Grid widget to reload its rows
-        val mgr = AppWidgetManager.getInstance(ctx)
-        val monthIds = mgr.getAppWidgetIds(ComponentName(ctx, MonthGridWidget::class.java))
-        if (monthIds.isNotEmpty()) {
-            mgr.notifyAppWidgetViewDataChanged(monthIds, com.habitracker.app.R.id.list)
-        }
+            OP_TOGGLE -> {
+                if (habitId.isNullOrBlank() || date.isNullOrBlank() || day <= 0) {
+                    WidgetData.openAppIntent(ctx).send(); return
+                }
+                WidgetData.queueToggle(ctx, habitId, date)
+                WidgetData.optimisticToggle(ctx, habitId, day, "days")
+            }
 
-        // Trigger onUpdate on every other Habitracker widget so downstream
-        // stats reflect the new completion state.
-        val classes = listOf(
-            MonthGridWidget::class.java,
-            SkipDaysWidget::class.java,
-            AnalyticsWidget::class.java,
-            HabitReportsWidget::class.java,
-            AllTimeStatsWidget::class.java,
-            CalendarWidget::class.java,
-            TaskReportsWidget::class.java
-        )
-        for (c in classes) {
-            val ids = mgr.getAppWidgetIds(ComponentName(ctx, c))
-            if (ids.isNotEmpty()) {
-                val i = Intent(ctx, c)
-                i.action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
-                i.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
-                ctx.sendBroadcast(i)
+            OP_SKIP -> {
+                if (habitId.isNullOrBlank() || date.isNullOrBlank() || day <= 0) {
+                    WidgetData.openAppIntent(ctx).send(); return
+                }
+                WidgetData.queueSkip(ctx, habitId, date)
+                WidgetData.optimisticToggle(ctx, habitId, day, "skipped")
+            }
+
+            else -> {
+                if (!date.isNullOrBlank()) WidgetData.putString(ctx, WidgetData.KEY_NAV_DATE, date)
+                WidgetData.openAppIntent(ctx).send()
+                return
             }
         }
+
+        WidgetData.refreshAll(ctx)
     }
 
     companion object {
         const val ACTION = "com.habitracker.app.widgets.TOGGLE_HABIT"
+        const val EXTRA_OP = "op"
         const val EXTRA_HABIT_ID = "habitId"
         const val EXTRA_DATE = "date"
         const val EXTRA_DAY = "day"
+        const val EXTRA_DELTA = "delta"
         const val EXTRA_TOGGLEABLE = "toggleable"
 
-        /** Legacy single-cell PendingIntent — kept for non-collection widgets. */
-        fun pendingIntent(ctx: Context, habitId: String, date: String, day: Int): PendingIntent {
+        const val OP_TOGGLE = "toggle"
+        const val OP_SKIP = "skip"
+        const val OP_WEEK = "week"
+        const val OP_SKIP_HABIT = "skipHabit"
+        const val OP_OPEN = "open"
+
+        /** Direct PendingIntent for non-collection widgets. */
+        fun pi(
+            ctx: Context,
+            requestCode: Int,
+            op: String,
+            habitId: String? = null,
+            date: String? = null,
+            day: Int = -1,
+            delta: Int = 0
+        ): PendingIntent {
             val i = Intent(ctx, HabitToggleReceiver::class.java).apply {
-                action = ACTION
+                action = "$ACTION.$op.$requestCode"
+                putExtra(EXTRA_OP, op)
                 putExtra(EXTRA_HABIT_ID, habitId)
                 putExtra(EXTRA_DATE, date)
                 putExtra(EXTRA_DAY, day)
-                putExtra(EXTRA_TOGGLEABLE, true)
+                putExtra(EXTRA_DELTA, delta)
             }
-            val rc = (habitId.hashCode() * 31 + day)
             return PendingIntent.getBroadcast(
-                ctx, rc, i,
+                ctx, requestCode, i,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
         }
