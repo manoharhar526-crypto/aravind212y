@@ -11,9 +11,11 @@ import org.json.JSONObject
 import java.util.Calendar
 
 /**
- * Skip Days widget — full-month grid, skipped days shown in amber.
- * Data source: SharedPreferences key `skip_days_set` (JSONArray of day numbers
- * skipped this month across all habits, written by widgetSync.ts).
+ * Habit Skip Days — one habit at a time (‹ › cycles habits), full-month grid.
+ * Tapping any day up to today toggles that habit's skip day, exactly like the
+ * app's skip calendar. Skipped days don't count against completion rate.
+ *
+ * Data source: `month_grid` (per-habit `days` + `skipped` day numbers).
  */
 class SkipDaysWidget : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
@@ -25,45 +27,80 @@ class SkipDaysWidget : AppWidgetProvider() {
         v.setTextViewText(R.id.title, "Habit Skip Days")
         v.setTextViewText(R.id.subtitle, WidgetData.subtitle(ctx))
 
+        val habits = WidgetData.getJsonArray(ctx, "month_grid")
+        val idx = if (habits.length() == 0) 0
+            else WidgetData.getInt(ctx, WidgetData.KEY_SKIP_HABIT, 0)
+                .coerceIn(0, habits.length() - 1)
+        val habit: JSONObject? = habits.optJSONObject(idx)
+        val habitId = habit?.optString("id") ?: ""
+
+        v.setTextViewText(
+            R.id.skip_habit,
+            habit?.optString("name")?.ifBlank { "No habits" } ?: "Open app to sync"
+        )
+        v.setOnClickPendingIntent(
+            R.id.skip_prev,
+            HabitToggleReceiver.pi(ctx, 201, HabitToggleReceiver.OP_SKIP_HABIT, delta = -1)
+        )
+        v.setOnClickPendingIntent(
+            R.id.skip_next,
+            HabitToggleReceiver.pi(ctx, 202, HabitToggleReceiver.OP_SKIP_HABIT, delta = 1)
+        )
+        v.setOnClickPendingIntent(R.id.title, WidgetData.openAppIntent(ctx))
+
         val cal = Calendar.getInstance()
-        val year = cal.get(Calendar.YEAR); val month = cal.get(Calendar.MONTH)
+        val today = cal.get(Calendar.DAY_OF_MONTH)
+        val year = cal.get(Calendar.YEAR)
+        val month = cal.get(Calendar.MONTH)
         val totalDays = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
         cal.set(year, month, 1)
         val firstDow = cal.get(Calendar.DAY_OF_WEEK) - 1
+        val ym = String.format("%04d-%02d-", year, month + 1)
 
-        val skipSet = HashSet<Int>()
-        val arr = WidgetData.getJsonArray(ctx, "skip_days_set")
-        for (i in 0 until arr.length()) skipSet.add(arr.optInt(i))
-
-        // Habit-name chips row (top 5)
-        val skipList = WidgetData.getJsonArray(ctx, "skip_days")
-        val chips = StringBuilder()
-        for (i in 0 until minOf(5, skipList.length())) {
-            val o = skipList.optJSONObject(i) ?: continue
-            if (chips.isNotEmpty()) chips.append("  ")
-            chips.append("[").append(o.optString("name")).append(" ").append(o.optInt("count")).append("]")
-        }
-        v.setTextViewText(R.id.chips, chips.toString())
+        val skipped = HashSet<Int>()
+        habit?.optJSONArray("skipped")?.let { for (i in 0 until it.length()) skipped.add(it.optInt(i)) }
+        val done = HashSet<Int>()
+        habit?.optJSONArray("days")?.let { for (i in 0 until it.length()) done.add(it.optInt(i)) }
 
         for (i in 1..42) {
             val cellId = ctx.resources.getIdentifier("s$i", "id", ctx.packageName)
             if (cellId == 0) continue
             val day = i - firstDow
-            if (day in 1..totalDays) {
-                v.setViewVisibility(cellId, View.VISIBLE)
-                v.setTextViewText(cellId, day.toString())
-                if (skipSet.contains(day)) {
-                    v.setInt(cellId, "setBackgroundResource", R.drawable.widget_cell_skip)
-                    v.setTextColor(cellId, 0xFFf59e0b.toInt())
-                } else {
-                    v.setInt(cellId, "setBackgroundResource", R.drawable.widget_cell)
-                    v.setTextColor(cellId, 0xFFFFFFFF.toInt())
-                }
-            } else {
+            if (day !in 1..totalDays) {
                 v.setViewVisibility(cellId, View.INVISIBLE)
+                continue
             }
+            v.setViewVisibility(cellId, View.VISIBLE)
+            val date = ym + String.format("%02d", day)
+            val isSkip = skipped.contains(day)
+            val isFuture = day > today
+
+            v.setTextViewText(cellId, if (isSkip) "–" else day.toString())
+            val bg = when {
+                isSkip -> R.drawable.widget_cell_skip
+                day == today -> R.drawable.widget_cell_today
+                isFuture -> R.drawable.widget_cell_future
+                done.contains(day) -> R.drawable.widget_card
+                else -> R.drawable.widget_cell
+            }
+            v.setInt(cellId, "setBackgroundResource", bg)
+            v.setTextColor(
+                cellId,
+                when {
+                    isSkip -> 0xFFFCD34D.toInt()
+                    day == today -> 0xFF7DD3FC.toInt()
+                    isFuture -> 0xFF4B5058.toInt()
+                    else -> 0xFFE7E9EE.toInt()
+                }
+            )
+
+            val op = if (!isFuture && habitId.isNotEmpty())
+                HabitToggleReceiver.OP_SKIP else HabitToggleReceiver.OP_OPEN
+            v.setOnClickPendingIntent(
+                cellId,
+                HabitToggleReceiver.pi(ctx, 2000 + day, op, habitId = habitId, date = date, day = day)
+            )
         }
-        v.setOnClickPendingIntent(R.id.root, WidgetData.openAppIntent(ctx))
         return v
     }
 }
