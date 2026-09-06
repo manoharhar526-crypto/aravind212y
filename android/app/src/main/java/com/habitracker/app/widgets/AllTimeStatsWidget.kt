@@ -19,7 +19,7 @@ class AllTimeStatsWidget : AppWidgetProvider() {
             val best = WidgetData.getString(ctx, "alltime_best", "—")
             v.setTextViewText(R.id.best_habit_name, if (best.isBlank()) "—" else best)
             v.setTextViewText(R.id.best_habit_sub, "Most completions this year")
-            v.setOnClickPendingIntent(R.id.root, WidgetData.openAppIntent(ctx))
+            v.setOnClickPendingIntent(R.id.root, HabitToggleReceiver.refreshPi(ctx))
             mgr.updateAppWidget(id, v)
         }
     }

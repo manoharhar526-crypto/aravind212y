@@ -95,7 +95,7 @@ private class MonthGridFactory(private val ctx: Context) : RemoteViewsService.Re
             // Tap: any day up to today toggles completion; future days open the app.
             val fill = Intent().apply {
                 putExtra(HabitToggleReceiver.EXTRA_OP,
-                    if (notFuture && inMonth) HabitToggleReceiver.OP_TOGGLE else HabitToggleReceiver.OP_OPEN)
+                    if (notFuture && inMonth) HabitToggleReceiver.OP_TOGGLE else HabitToggleReceiver.OP_REFRESH)
                 putExtra(HabitToggleReceiver.EXTRA_HABIT_ID, habitId)
                 putExtra(HabitToggleReceiver.EXTRA_DATE, date)
                 putExtra(HabitToggleReceiver.EXTRA_DAY, dayNum)

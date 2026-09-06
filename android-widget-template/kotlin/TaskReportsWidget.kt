@@ -15,7 +15,7 @@ class TaskReportsWidget : AppWidgetProvider() {
             fillCard(v, "daily", WidgetData.getInt(ctx, "task_rep_daily_done"), WidgetData.getInt(ctx, "task_rep_daily_total"))
             fillCard(v, "weekly", WidgetData.getInt(ctx, "task_rep_weekly_done"), WidgetData.getInt(ctx, "task_rep_weekly_total"))
             fillCard(v, "monthly", WidgetData.getInt(ctx, "task_rep_monthly_done"), WidgetData.getInt(ctx, "task_rep_monthly_total"))
-            v.setOnClickPendingIntent(R.id.root, WidgetData.openAppIntent(ctx))
+            v.setOnClickPendingIntent(R.id.root, HabitToggleReceiver.refreshPi(ctx))
             mgr.updateAppWidget(id, v)
         }
     }

@@ -74,8 +74,8 @@ class MonthGridWidget : AppWidgetProvider() {
         )
 
         // Header taps → open app
-        v.setOnClickPendingIntent(R.id.title, WidgetData.openAppIntent(ctx))
-        v.setOnClickPendingIntent(R.id.subtitle, WidgetData.openAppIntent(ctx))
+        v.setOnClickPendingIntent(R.id.title, HabitToggleReceiver.refreshPi(ctx))
+        v.setOnClickPendingIntent(R.id.subtitle, HabitToggleReceiver.refreshPi(ctx))
 
         return v
     }

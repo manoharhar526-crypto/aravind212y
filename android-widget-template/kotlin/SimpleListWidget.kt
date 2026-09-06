@@ -46,7 +46,7 @@ class SkipDaysWidget : AppWidgetProvider() {
             R.id.skip_next,
             HabitToggleReceiver.pi(ctx, 202, HabitToggleReceiver.OP_SKIP_HABIT, delta = 1)
         )
-        v.setOnClickPendingIntent(R.id.title, WidgetData.openAppIntent(ctx))
+        v.setOnClickPendingIntent(R.id.title, HabitToggleReceiver.refreshPi(ctx))
 
         val cal = Calendar.getInstance()
         val today = cal.get(Calendar.DAY_OF_MONTH)
@@ -95,7 +95,7 @@ class SkipDaysWidget : AppWidgetProvider() {
             )
 
             val op = if (!isFuture && habitId.isNotEmpty())
-                HabitToggleReceiver.OP_SKIP else HabitToggleReceiver.OP_OPEN
+                HabitToggleReceiver.OP_SKIP else HabitToggleReceiver.OP_REFRESH
             v.setOnClickPendingIntent(
                 cellId,
                 HabitToggleReceiver.pi(ctx, 2000 + day, op, habitId = habitId, date = date, day = day)
@@ -127,7 +127,7 @@ class AnalyticsWidget : AppWidgetProvider() {
                 } else v.setViewVisibility(rows[i], View.GONE)
             }
             v.setViewVisibility(R.id.empty, if (arr.length() == 0) View.VISIBLE else View.GONE)
-            v.setOnClickPendingIntent(R.id.root, WidgetData.openAppIntent(ctx))
+            v.setOnClickPendingIntent(R.id.root, HabitToggleReceiver.refreshPi(ctx))
             mgr.updateAppWidget(id, v)
         }
     }
@@ -167,7 +167,7 @@ class HabitReportsWidget : AppWidgetProvider() {
                 } else v.setViewVisibility(rowIds[i], View.GONE)
             }
             v.setViewVisibility(R.id.empty, if (reports.length() == 0) View.VISIBLE else View.GONE)
-            v.setOnClickPendingIntent(R.id.root, WidgetData.openAppIntent(ctx))
+            v.setOnClickPendingIntent(R.id.root, HabitToggleReceiver.refreshPi(ctx))
             mgr.updateAppWidget(id, v)
         }
     }

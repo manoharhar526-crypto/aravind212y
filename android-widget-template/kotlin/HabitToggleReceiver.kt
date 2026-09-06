@@ -13,7 +13,7 @@ import android.content.Intent
  *  • OP_SKIP       — flip a per-habit skip day (marks the day N/A)
  *  • OP_WEEK       — shift the Monthly Tracking Grid week window (±1, 0 = today)
  *  • OP_SKIP_HABIT — cycle the habit shown by the Habit Skip Days widget
- *  • OP_OPEN       — just open the app (optionally at a given date)
+ *  • OP_REFRESH    — re-render widgets in place (never opens the app)
  *
  * Toggles are queued in SharedPreferences and drained by the web app, while the
  * cached widget JSON is flipped optimistically so the tap feels instant.
@@ -45,7 +45,7 @@ class HabitToggleReceiver : BroadcastReceiver() {
 
             OP_TOGGLE -> {
                 if (habitId.isNullOrBlank() || date.isNullOrBlank() || day <= 0) {
-                    WidgetData.openAppIntent(ctx).send(); return
+                    WidgetData.refreshAll(ctx); return
                 }
                 WidgetData.queueToggle(ctx, habitId, date)
                 WidgetData.optimisticToggle(ctx, habitId, day, "days")
@@ -53,16 +53,15 @@ class HabitToggleReceiver : BroadcastReceiver() {
 
             OP_SKIP -> {
                 if (habitId.isNullOrBlank() || date.isNullOrBlank() || day <= 0) {
-                    WidgetData.openAppIntent(ctx).send(); return
+                    WidgetData.refreshAll(ctx); return
                 }
                 WidgetData.queueSkip(ctx, habitId, date)
                 WidgetData.optimisticToggle(ctx, habitId, day, "skipped")
             }
 
             else -> {
+                // OP_REFRESH / unknown: never launch the app, just re-render in place.
                 if (!date.isNullOrBlank()) WidgetData.putString(ctx, WidgetData.KEY_NAV_DATE, date)
-                WidgetData.openAppIntent(ctx).send()
-                return
             }
         }
 
@@ -82,7 +81,10 @@ class HabitToggleReceiver : BroadcastReceiver() {
         const val OP_SKIP = "skip"
         const val OP_WEEK = "week"
         const val OP_SKIP_HABIT = "skipHabit"
-        const val OP_OPEN = "open"
+        const val OP_REFRESH = "refresh"
+
+        /** In-place refresh tap — widgets never launch the app. */
+        fun refreshPi(ctx: Context): PendingIntent = pi(ctx, 900, OP_REFRESH)
 
         /** Direct PendingIntent for non-collection widgets. */
         fun pi(
