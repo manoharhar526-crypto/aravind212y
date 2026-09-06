@@ -19,6 +19,7 @@ const ANDROID = path.join(ROOT, "android", "app", "src", "main");
 const PKG_DIR = path.join(ANDROID, "java", "com", "habitracker", "app", "widgets");
 const LAYOUT_DIR = path.join(ANDROID, "res", "layout");
 const XML_DIR = path.join(ANDROID, "res", "xml");
+const DRAWABLE_DIR = path.join(ANDROID, "res", "drawable");
 const MANIFEST = path.join(ANDROID, "AndroidManifest.xml");
 const STRINGS_XML = path.join(ANDROID, "res", "values", "strings.xml");
 const ROOT_GRADLE = path.join(ROOT, "android", "build.gradle");
@@ -47,6 +48,7 @@ console.log("[widgets] copying widget sources into android/");
 copyAll(path.join(TEMPLATE, "kotlin"), PKG_DIR, ".kt");
 copyAll(path.join(TEMPLATE, "res-layout"), LAYOUT_DIR, ".xml");
 copyAll(path.join(TEMPLATE, "res-xml"), XML_DIR, ".xml");
+copyAll(path.join(TEMPLATE, "res-drawable"), DRAWABLE_DIR, ".xml");
 console.log("[widgets] copied Kotlin, layout, and widget-provider XML files ✓");
 
 const patchFile = (file, patcher) => {
