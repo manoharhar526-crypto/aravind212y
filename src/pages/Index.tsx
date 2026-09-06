@@ -188,26 +188,41 @@ const Index = () => {
     }).catch(() => { /* ignore on web */ });
   }, [habits, tasks, calendarNotes, frozenDates]);
 
-  // ── Widget taps — apply completions queued by the native widget while the app was closed
+  // ── Widget taps — apply completions/skips queued by the native widget while the app was closed
   useEffect(() => {
     const applyQueued = () => {
-      import("@/services/widgetSync").then(async ({ drainPendingWidgetToggles }) => {
-        const queued = await drainPendingWidgetToggles();
-        if (!queued.length) return;
-        setHabits(prev =>
-          prev.map(habit => {
-            const dates = queued.filter(q => q.habitId === habit.id).map(q => q.date);
-            if (!dates.length) return habit;
-            let days = [...habit.completedDays];
-            for (const d of dates) {
-              days = days.includes(d) ? days.filter(x => x !== d) : [...days, d];
-            }
-            return { ...habit, completedDays: days.sort() };
-          }),
-        );
+      import("@/services/widgetSync").then(async ({ drainPendingWidgetToggles, drainPendingWidgetSkips, consumeWidgetNavDate }) => {
+        const [queued, skips, navDate] = await Promise.all([
+          drainPendingWidgetToggles(),
+          drainPendingWidgetSkips(),
+          consumeWidgetNavDate(),
+        ]);
+        if (queued.length || skips.length) {
+          setHabits(prev =>
+            prev.map(habit => {
+              const dates = queued.filter(q => q.habitId === habit.id).map(q => q.date);
+              const skipDates = skips.filter(q => q.habitId === habit.id).map(q => q.date);
+              if (!dates.length && !skipDates.length) return habit;
+              let days = [...habit.completedDays];
+              for (const d of dates) {
+                days = days.includes(d) ? days.filter(x => x !== d) : [...days, d];
+              }
+              let skipped = [...(habit.skippedDays ?? [])];
+              for (const d of skipDates) {
+                skipped = skipped.includes(d) ? skipped.filter(x => x !== d) : [...skipped, d];
+              }
+              return { ...habit, completedDays: days.sort(), skippedDays: skipped.sort() };
+            }),
+          );
+        }
+        if (navDate) {
+          const parsed = new Date(`${navDate}T12:00:00`);
+          if (!Number.isNaN(parsed.getTime())) setCurrentMonth(parsed);
+        }
       }).catch(() => { /* ignore on web */ });
     };
     applyQueued();
+
     const onVisible = () => { if (document.visibilityState === "visible") applyQueued(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
