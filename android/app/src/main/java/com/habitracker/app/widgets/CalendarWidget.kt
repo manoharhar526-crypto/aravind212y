@@ -62,7 +62,7 @@ class CalendarWidget : AppWidgetProvider() {
                 v.setOnClickPendingIntent(
                     cellId,
                     HabitToggleReceiver.pi(
-                        ctx, 3000 + day, HabitToggleReceiver.OP_OPEN, date = dateStr, day = day
+                        ctx, 3000 + day, HabitToggleReceiver.OP_REFRESH, date = dateStr, day = day
                     )
                 )
             } else {
@@ -73,7 +73,7 @@ class CalendarWidget : AppWidgetProvider() {
             R.id.footer,
             if (hasNoteThisMonth) "• has a note — tap a day to open it" else "Tap a day to add a note"
         )
-        v.setOnClickPendingIntent(R.id.title, WidgetData.openAppIntent(ctx))
+        v.setOnClickPendingIntent(R.id.title, HabitToggleReceiver.refreshPi(ctx))
         return v
     }
 }

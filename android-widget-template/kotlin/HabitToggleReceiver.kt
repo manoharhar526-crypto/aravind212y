@@ -45,7 +45,7 @@ class HabitToggleReceiver : BroadcastReceiver() {
 
             OP_TOGGLE -> {
                 if (habitId.isNullOrBlank() || date.isNullOrBlank() || day <= 0) {
-                    WidgetData.openAppIntent(ctx).send(); return
+                    WidgetData.refreshAll(ctx); return
                 }
                 WidgetData.queueToggle(ctx, habitId, date)
                 WidgetData.optimisticToggle(ctx, habitId, day, "days")
@@ -53,7 +53,7 @@ class HabitToggleReceiver : BroadcastReceiver() {
 
             OP_SKIP -> {
                 if (habitId.isNullOrBlank() || date.isNullOrBlank() || day <= 0) {
-                    WidgetData.openAppIntent(ctx).send(); return
+                    WidgetData.refreshAll(ctx); return
                 }
                 WidgetData.queueSkip(ctx, habitId, date)
                 WidgetData.optimisticToggle(ctx, habitId, day, "skipped")
@@ -61,7 +61,7 @@ class HabitToggleReceiver : BroadcastReceiver() {
 
             else -> {
                 if (!date.isNullOrBlank()) WidgetData.putString(ctx, WidgetData.KEY_NAV_DATE, date)
-                WidgetData.openAppIntent(ctx).send()
+                HabitToggleReceiver.refreshPi(ctx).send()
                 return
             }
         }
