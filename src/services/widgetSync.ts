@@ -240,3 +240,33 @@ export const drainPendingWidgetToggles = async (): Promise<Array<{ habitId: stri
     return [];
   }
 };
+
+/**
+ * Drains skip-day taps queued by the native Skip Days widget.
+ * Each entry toggles that habit's skipped state for the given date.
+ */
+export const drainPendingWidgetSkips = async (): Promise<Array<{ habitId: string; date: string }>> => {
+  if (!Capacitor.isNativePlatform()) return [];
+  try {
+    const { value } = await Preferences.get({ key: "pending_skips" });
+    if (!value) return [];
+    const arr = JSON.parse(value) as Array<{ habitId: string; date: string }>;
+    await Preferences.set({ key: "pending_skips", value: "[]" });
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+};
+
+/** Reads (and clears) a date the native calendar widget asked the app to open. */
+export const consumeWidgetNavDate = async (): Promise<string | null> => {
+  if (!Capacitor.isNativePlatform()) return null;
+  try {
+    const { value } = await Preferences.get({ key: "widget_nav_date" });
+    if (!value) return null;
+    await Preferences.set({ key: "widget_nav_date", value: "" });
+    return value;
+  } catch {
+    return null;
+  }
+};

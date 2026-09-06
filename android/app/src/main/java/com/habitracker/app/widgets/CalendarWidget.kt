@@ -1,8 +1,8 @@
 package com.habitracker.app.widgets
 
+import android.content.Context
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.Context
 import android.view.View
 import android.widget.RemoteViews
 import com.habitracker.app.R
@@ -11,8 +11,9 @@ import java.util.Calendar
 /**
  * Full-month calendar widget. Renders a 7x6 grid (Sun→Sat) for the current
  * month, highlights today, and marks days that have notes with a "•".
- * Reads note-dates from SharedPreferences key `calendar_notes` (JSONArray of
- * "YYYY-MM-DD" strings) written by widgetSync.ts.
+ *
+ * Every day cell is tappable — it opens the app with that date remembered
+ * (`widget_nav_date`) so the calendar view can jump straight to it.
  */
 class CalendarWidget : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
@@ -47,21 +48,32 @@ class CalendarWidget : AppWidgetProvider() {
                 val dateStr = ym + String.format("%02d", day)
                 val hasNote = noteSet.contains(dateStr)
                 if (hasNote) hasNoteThisMonth = true
-                val label = if (hasNote) "$day•" else day.toString()
-                v.setTextViewText(cellId, label)
+                v.setTextViewText(cellId, if (hasNote) "$day•" else day.toString())
                 if (day == today) {
-                    v.setInt(cellId, "setBackgroundResource", R.drawable.widget_cell_done)
-                    v.setTextColor(cellId, 0xFF000000.toInt())
+                    v.setInt(cellId, "setBackgroundResource", R.drawable.widget_cell_today)
+                    v.setTextColor(cellId, 0xFF7DD3FC.toInt())
+                } else if (hasNote) {
+                    v.setInt(cellId, "setBackgroundResource", R.drawable.widget_card)
+                    v.setTextColor(cellId, 0xFFFFFFFF.toInt())
                 } else {
                     v.setInt(cellId, "setBackgroundResource", R.drawable.widget_cell)
-                    v.setTextColor(cellId, 0xFFFFFFFF.toInt())
+                    v.setTextColor(cellId, 0xFFE7E9EE.toInt())
                 }
+                v.setOnClickPendingIntent(
+                    cellId,
+                    HabitToggleReceiver.pi(
+                        ctx, 3000 + day, HabitToggleReceiver.OP_OPEN, date = dateStr, day = day
+                    )
+                )
             } else {
                 v.setViewVisibility(cellId, View.INVISIBLE)
             }
         }
-        v.setTextViewText(R.id.footer, if (hasNoteThisMonth) "• indicates a note" else "Tap a day to add a note")
-        v.setOnClickPendingIntent(R.id.root, WidgetData.openAppIntent(ctx))
+        v.setTextViewText(
+            R.id.footer,
+            if (hasNoteThisMonth) "• has a note — tap a day to open it" else "Tap a day to add a note"
+        )
+        v.setOnClickPendingIntent(R.id.title, WidgetData.openAppIntent(ctx))
         return v
     }
 }
