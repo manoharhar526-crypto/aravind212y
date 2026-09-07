@@ -190,6 +190,12 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     setItem("today_date", today),
     setItem("last_sync", new Date().toISOString()),
 
+    // Compact "Today" summary widget
+    setItem("today_done", String(doneCount)),
+    setItem("today_total", String(totalCount)),
+    setItem("today_pct", String(progressPct)),
+    setItem("today_streak", String(maxStreak)),
+
     // The 7 supported widgets:
     setItem("month_grid", JSON.stringify(monthGrid)),
     setItem("skip_days", JSON.stringify(skipDays)),

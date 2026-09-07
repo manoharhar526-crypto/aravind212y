@@ -95,7 +95,7 @@ patchFile(APP_GRADLE, (s) => {
 });
 
 patchFile(STRINGS_XML, (s) => {
-  if (s.includes('name="widget_month_grid"') && !s.includes('name="widget_today_habits"')) return s;
+  if (s.includes('name="widget_month_grid"') && s.includes('name="widget_today_summary"')) return s;
   // Strip any old widget label block, then re-emit the current 7 labels
   let out = s.replace(/\s*<string name="widget_[^"]+">[^<]*<\/string>/g, "");
   const labels = `
@@ -105,7 +105,8 @@ patchFile(STRINGS_XML, (s) => {
     <string name="widget_calendar">Calendar</string>
     <string name="widget_all_time_stats">All-Time Statistics</string>
     <string name="widget_habit_reports">Habit Reports</string>
-    <string name="widget_task_reports">Task Reports</string>`;
+    <string name="widget_task_reports">Task Reports</string>
+    <string name="widget_today_summary">Today Summary</string>`;
   return out.replace("</resources>", `${labels}\n</resources>`);
 });
 
