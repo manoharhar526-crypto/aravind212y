@@ -29,7 +29,8 @@ object WidgetRefreshScheduler {
         CalendarWidget::class.java,
         AllTimeStatsWidget::class.java,
         HabitReportsWidget::class.java,
-        TaskReportsWidget::class.java
+        TaskReportsWidget::class.java,
+        TodaySummaryWidget::class.java
     )
 
     fun scheduleAll(ctx: Context) {
