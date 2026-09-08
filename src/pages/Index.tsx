@@ -613,6 +613,8 @@ const Index = () => {
                   onEveningTimeChange={setEveningTime}
                   onNightTimeChange={setNightTime}
                   onTimezoneChange={setTimezone}
+                  habits={monthHabits}
+                  tasks={tasks}
                 />
                 <Button variant="ghost" size="icon" onClick={handleSignOut} className="h-8 w-8 flex-shrink-0" title="Log out" aria-label="Log out">
                   <LogOut className="w-4 h-4" />
@@ -677,6 +679,8 @@ const Index = () => {
                   onEveningTimeChange={setEveningTime}
                   onNightTimeChange={setNightTime}
                   onTimezoneChange={setTimezone}
+                  habits={monthHabits}
+                  tasks={tasks}
                 />
                 <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1.5">
                   <LogOut className="w-4 h-4" />

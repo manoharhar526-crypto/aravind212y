@@ -10,6 +10,7 @@ import { Preferences } from "@capacitor/preferences";
 import type { Habit } from "@/types/habit";
 import type { Task } from "@/types/task";
 import type { CalendarNote } from "@/types/calendarNote";
+import { readWidgetPrefs } from "@/lib/widgetPrefs";
 import {
   calculateTotalStreak,
   getAllTimeStats,
@@ -53,8 +54,12 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
   const month = monthKey();
   const dayNum = new Date().getDate();
 
-  // Habits scoped to current month
-  const monthHabits = habits.filter(h => h.month === month);
+  // Habits scoped to current month, minus anything hidden from widgets
+  const prefs = readWidgetPrefs();
+  const monthHabits = habits
+    .filter(h => h.month === month)
+    .filter(h => !prefs.habits.includes(h.id));
+  tasks = tasks.filter(t => !prefs.tasks.includes(t.id));
 
   // 1. Today's habits (id, name, completed)
   const todaysHabits = monthHabits.map(h => ({
