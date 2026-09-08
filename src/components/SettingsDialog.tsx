@@ -20,6 +20,10 @@ import {
 } from "@/lib/notificationUtils";
 import { Capacitor } from "@capacitor/core";
 import { useTheme } from "@/hooks/useTheme";
+import { WidgetPrefsTab } from "@/components/WidgetPrefsTab";
+import type { Habit } from "@/types/habit";
+import type { Task } from "@/types/task";
+
 
 const APP_VERSION = "v2.1.2.25";
 
