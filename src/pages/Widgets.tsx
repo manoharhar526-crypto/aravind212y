@@ -1,3 +1,4 @@
+import { readWidgetPrefs } from "@/lib/widgetPrefs";
 import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -49,7 +50,11 @@ export default function Widgets() {
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const totalDaysInMonth = getDaysInMonth(now);
 
-  const monthHabits = useMemo(() => getHabitsForMonth(habits, now), [habits, now]);
+  const widgetPrefs = readWidgetPrefs();
+  const monthHabits = useMemo(
+    () => getHabitsForMonth(habits, now).filter(h => !widgetPrefs.habits.includes(h.id)),
+    [habits, now, widgetPrefs.habits]
+  );
 
   // Persist changes back to storage
   const persist = useCallback((newHabits: Habit[], newTasks: Task[]) => {
