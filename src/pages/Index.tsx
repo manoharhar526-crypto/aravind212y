@@ -32,6 +32,7 @@ import { GoalsOverview } from "@/components/GoalsOverview";
 import { TaskReportCard } from "@/components/TaskReportCard";
 import { HabitReportCard } from "@/components/HabitReportCard";
 import { DailyTasksView } from "@/components/DailyTasksView";
+import { WIDGET_PREFS_KEY } from "@/lib/widgetPrefs";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
