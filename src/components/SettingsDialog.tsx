@@ -39,6 +39,8 @@ interface SettingsDialogProps {
   onEveningTimeChange: (time: string) => void;
   onNightTimeChange: (time: string) => void;
   onTimezoneChange: (tz: string) => void;
+  habits?: Habit[];
+  tasks?: Task[];
 }
 
 export const SettingsDialog = ({
@@ -53,6 +55,9 @@ export const SettingsDialog = ({
   onEveningTimeChange,
   onNightTimeChange,
   onTimezoneChange,
+  habits,
+  tasks,
+
 }: SettingsDialogProps) => {
   const { theme, toggleTheme } = useTheme();
   const [notificationStatus, setNotificationStatus] = useState<'granted' | 'denied' | 'default' | 'unsupported'>(getNotificationStatus());
