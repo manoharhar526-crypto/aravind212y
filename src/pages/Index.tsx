@@ -183,10 +183,16 @@ const Index = () => {
 
   // ── Widget sync — mirrors latest data to native SharedPreferences for Android home-screen widgets
   useEffect(() => {
-    import("@/services/widgetSync").then(({ syncWidgetData }) => {
-      syncWidgetData({ habits, tasks, notes: calendarNotes, frozenDates });
-    }).catch(() => { /* ignore on web */ });
+    const push = () => {
+      import("@/services/widgetSync").then(({ syncWidgetData }) => {
+        syncWidgetData({ habits, tasks, notes: calendarNotes, frozenDates });
+      }).catch(() => { /* ignore on web */ });
+    };
+    push();
+    window.addEventListener(WIDGET_PREFS_KEY, push);
+    return () => window.removeEventListener(WIDGET_PREFS_KEY, push);
   }, [habits, tasks, calendarNotes, frozenDates]);
+
 
   // ── Widget taps — apply completions/skips queued by the native widget while the app was closed
   useEffect(() => {
