@@ -20,6 +20,10 @@ import {
 } from "@/lib/notificationUtils";
 import { Capacitor } from "@capacitor/core";
 import { useTheme } from "@/hooks/useTheme";
+import { WidgetPrefsTab } from "@/components/WidgetPrefsTab";
+import type { Habit } from "@/types/habit";
+import type { Task } from "@/types/task";
+
 
 const APP_VERSION = "v2.1.2.25";
 
@@ -35,6 +39,8 @@ interface SettingsDialogProps {
   onEveningTimeChange: (time: string) => void;
   onNightTimeChange: (time: string) => void;
   onTimezoneChange: (tz: string) => void;
+  habits?: Habit[];
+  tasks?: Task[];
 }
 
 export const SettingsDialog = ({
@@ -49,6 +55,9 @@ export const SettingsDialog = ({
   onEveningTimeChange,
   onNightTimeChange,
   onTimezoneChange,
+  habits,
+  tasks,
+
 }: SettingsDialogProps) => {
   const { theme, toggleTheme } = useTheme();
   const [notificationStatus, setNotificationStatus] = useState<'granted' | 'denied' | 'default' | 'unsupported'>(getNotificationStatus());
@@ -155,12 +164,18 @@ export const SettingsDialog = ({
         </DialogHeader>
 
         <Tabs defaultValue="general" className="py-2">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="general" className="text-xs">General</TabsTrigger>
             <TabsTrigger value="reminders" className="text-xs">Reminders</TabsTrigger>
+            <TabsTrigger value="widgets" className="text-xs">Widgets</TabsTrigger>
             <TabsTrigger value="account" className="text-xs">Account</TabsTrigger>
             <TabsTrigger value="data" className="text-xs">Data</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="widgets" className="pt-4">
+            <WidgetPrefsTab habits={habits ?? []} tasks={tasks ?? []} />
+          </TabsContent>
+
 
           {/* General tab: Appearance + Timezone */}
           <TabsContent value="general" className="space-y-6 pt-4">
