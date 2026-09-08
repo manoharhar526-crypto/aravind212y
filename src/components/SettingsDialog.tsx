@@ -155,12 +155,18 @@ export const SettingsDialog = ({
         </DialogHeader>
 
         <Tabs defaultValue="general" className="py-2">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="general" className="text-xs">General</TabsTrigger>
             <TabsTrigger value="reminders" className="text-xs">Reminders</TabsTrigger>
+            <TabsTrigger value="widgets" className="text-xs">Widgets</TabsTrigger>
             <TabsTrigger value="account" className="text-xs">Account</TabsTrigger>
             <TabsTrigger value="data" className="text-xs">Data</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="widgets" className="pt-4">
+            <WidgetPrefsTab habits={habits ?? []} tasks={tasks ?? []} />
+          </TabsContent>
+
 
           {/* General tab: Appearance + Timezone */}
           <TabsContent value="general" className="space-y-6 pt-4">
