@@ -38,9 +38,18 @@ export const LoginForm = ({ onSwitchToSignup }: LoginFormProps) => {
       });
 
       if (error || data?.error) {
-        toast.error(data?.error || "Login failed. Please try again.");
+        let message = data?.error as string | undefined;
+        // Non-2xx responses put the body on error.context — read it for the real reason
+        if (!message && error && "context" in error) {
+          try {
+            const body = await (error as { context: Response }).context.json();
+            message = body?.error;
+          } catch { /* ignore */ }
+        }
+        toast.error(message || "Invalid username or password");
         return;
       }
+
 
       if (data?.session) {
         await supabase.auth.setSession({
