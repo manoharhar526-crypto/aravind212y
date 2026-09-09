@@ -1,6 +1,8 @@
 package com.habitracker.app.widgets
 
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.view.View
