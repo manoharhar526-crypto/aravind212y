@@ -60,3 +60,10 @@
 <service android:name="com.habitracker.app.widgets.MonthGridRemoteViewsService"
     android:permission="android.permission.BIND_REMOTEVIEWS"
     android:exported="false"/>
+
+<!-- Dialog screen for writing/editing a calendar note straight from the widget -->
+<activity android:name="com.habitracker.app.widgets.NoteEditorActivity"
+    android:exported="false"
+    android:excludeFromRecents="true"
+    android:launchMode="singleTop"
+    android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar"/>

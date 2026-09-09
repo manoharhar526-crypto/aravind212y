@@ -59,12 +59,7 @@ class CalendarWidget : AppWidgetProvider() {
                     v.setInt(cellId, "setBackgroundResource", R.drawable.widget_cell)
                     v.setTextColor(cellId, 0xFFE7E9EE.toInt())
                 }
-                v.setOnClickPendingIntent(
-                    cellId,
-                    HabitToggleReceiver.pi(
-                        ctx, 3000 + day, HabitToggleReceiver.OP_REFRESH, date = dateStr, day = day
-                    )
-                )
+                v.setOnClickPendingIntent(cellId, notePi(ctx, day, dateStr))
             } else {
                 v.setViewVisibility(cellId, View.INVISIBLE)
             }
