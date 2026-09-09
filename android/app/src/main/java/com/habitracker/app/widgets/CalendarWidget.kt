@@ -1,6 +1,8 @@
 package com.habitracker.app.widgets
 
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.view.View
@@ -59,21 +61,29 @@ class CalendarWidget : AppWidgetProvider() {
                     v.setInt(cellId, "setBackgroundResource", R.drawable.widget_cell)
                     v.setTextColor(cellId, 0xFFE7E9EE.toInt())
                 }
-                v.setOnClickPendingIntent(
-                    cellId,
-                    HabitToggleReceiver.pi(
-                        ctx, 3000 + day, HabitToggleReceiver.OP_REFRESH, date = dateStr, day = day
-                    )
-                )
+                v.setOnClickPendingIntent(cellId, notePi(ctx, day, dateStr))
             } else {
                 v.setViewVisibility(cellId, View.INVISIBLE)
             }
         }
         v.setTextViewText(
             R.id.footer,
-            if (hasNoteThisMonth) "• has a note — tap a day to open it" else "Tap a day to add a note"
+            if (hasNoteThisMonth) "• has a note — tap a day to write or edit it" else "Tap a day to add a note"
         )
         v.setOnClickPendingIntent(R.id.title, HabitToggleReceiver.refreshPi(ctx))
         return v
+    }
+
+    /** Opens the small note editor dialog for the tapped day. */
+    private fun notePi(ctx: Context, day: Int, dateStr: String): PendingIntent {
+        val i = Intent(ctx, NoteEditorActivity::class.java).apply {
+            action = "com.habitracker.app.widgets.EDIT_NOTE.$dateStr"
+            putExtra(NoteEditorActivity.EXTRA_DATE, dateStr)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        return PendingIntent.getActivity(
+            ctx, 3000 + day, i,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 }

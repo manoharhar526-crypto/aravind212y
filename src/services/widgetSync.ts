@@ -147,6 +147,12 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     .map(n => n.date)
     .filter(d => d.startsWith(monthPrefix));
 
+  // Full note text per date so the widget's note editor can open with content
+  const calendarNotesMap: Record<string, { title: string; body: string }> = {};
+  for (const n of notes) {
+    calendarNotesMap[n.date] = { title: n.title ?? "", body: n.body ?? "" };
+  }
+
   // 10. Habit analytics — top habits by completion % this month
   const analytics = monthHabits
     .map(h => ({ name: h.name, pct: calculateCompletionRate(h, now, totalDaysInMonth) }))
@@ -206,6 +212,7 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     setItem("skip_days", JSON.stringify(skipDays)),
     setItem("skip_days_set", JSON.stringify(skipDaySet)),
     setItem("calendar_notes", JSON.stringify(calendarNotesThisMonth)),
+    setItem("calendar_notes_map", JSON.stringify(calendarNotesMap)),
     setItem("analytics", JSON.stringify(analytics)),
     setItem("calendar_week", JSON.stringify(calendarWeek)),
     setItem("calendar_month", calendarMonth),
@@ -279,5 +286,29 @@ export const consumeWidgetNavDate = async (): Promise<string | null> => {
     return value;
   } catch {
     return null;
+  }
+};
+
+export type PendingWidgetNote = {
+  date: string;
+  title: string;
+  body: string;
+  deleted: boolean;
+};
+
+/**
+ * Drains notes written/deleted in the native calendar widget's note editor.
+ * Each entry is the final state for that date (or a deletion).
+ */
+export const drainPendingWidgetNotes = async (): Promise<PendingWidgetNote[]> => {
+  if (!Capacitor.isNativePlatform()) return [];
+  try {
+    const { value } = await Preferences.get({ key: "pending_notes" });
+    if (!value) return [];
+    const arr = JSON.parse(value) as PendingWidgetNote[];
+    await Preferences.set({ key: "pending_notes", value: "[]" });
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
   }
 };
