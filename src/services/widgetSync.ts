@@ -288,3 +288,27 @@ export const consumeWidgetNavDate = async (): Promise<string | null> => {
     return null;
   }
 };
+
+export type PendingWidgetNote = {
+  date: string;
+  title: string;
+  body: string;
+  deleted: boolean;
+};
+
+/**
+ * Drains notes written/deleted in the native calendar widget's note editor.
+ * Each entry is the final state for that date (or a deletion).
+ */
+export const drainPendingWidgetNotes = async (): Promise<PendingWidgetNote[]> => {
+  if (!Capacitor.isNativePlatform()) return [];
+  try {
+    const { value } = await Preferences.get({ key: "pending_notes" });
+    if (!value) return [];
+    const arr = JSON.parse(value) as PendingWidgetNote[];
+    await Preferences.set({ key: "pending_notes", value: "[]" });
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+};
