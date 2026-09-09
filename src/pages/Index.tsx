@@ -198,12 +198,32 @@ const Index = () => {
   // ── Widget taps — apply completions/skips queued by the native widget while the app was closed
   useEffect(() => {
     const applyQueued = () => {
-      import("@/services/widgetSync").then(async ({ drainPendingWidgetToggles, drainPendingWidgetSkips, consumeWidgetNavDate }) => {
-        const [queued, skips, navDate] = await Promise.all([
+      import("@/services/widgetSync").then(async ({ drainPendingWidgetToggles, drainPendingWidgetSkips, drainPendingWidgetNotes, consumeWidgetNavDate }) => {
+        const [queued, skips, widgetNotes, navDate] = await Promise.all([
           drainPendingWidgetToggles(),
           drainPendingWidgetSkips(),
+          drainPendingWidgetNotes(),
           consumeWidgetNavDate(),
         ]);
+        if (widgetNotes.length) {
+          setCalendarNotes(prev => {
+            let next = [...prev];
+            for (const n of widgetNotes) {
+              next = next.filter(x => x.date !== n.date);
+              if (!n.deleted) {
+                next.push({
+                  id: `${n.date}-widget-${Date.now()}`,
+                  date: n.date,
+                  title: n.title || "Note",
+                  body: n.body || undefined,
+                });
+              }
+            }
+            saveCalendarNotes(next, userId);
+            scheduleCalendarNoteNotifications(next);
+            return next;
+          });
+        }
         if (queued.length || skips.length) {
           setHabits(prev =>
             prev.map(habit => {
