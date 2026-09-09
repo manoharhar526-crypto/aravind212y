@@ -147,6 +147,12 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     .map(n => n.date)
     .filter(d => d.startsWith(monthPrefix));
 
+  // Full note text per date so the widget's note editor can open with content
+  const calendarNotesMap: Record<string, { title: string; body: string }> = {};
+  for (const n of notes) {
+    calendarNotesMap[n.date] = { title: n.title ?? "", body: n.body ?? "" };
+  }
+
   // 10. Habit analytics — top habits by completion % this month
   const analytics = monthHabits
     .map(h => ({ name: h.name, pct: calculateCompletionRate(h, now, totalDaysInMonth) }))
@@ -206,6 +212,7 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     setItem("skip_days", JSON.stringify(skipDays)),
     setItem("skip_days_set", JSON.stringify(skipDaySet)),
     setItem("calendar_notes", JSON.stringify(calendarNotesThisMonth)),
+    setItem("calendar_notes_map", JSON.stringify(calendarNotesMap)),
     setItem("analytics", JSON.stringify(analytics)),
     setItem("calendar_week", JSON.stringify(calendarWeek)),
     setItem("calendar_month", calendarMonth),
