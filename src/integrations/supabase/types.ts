@@ -38,6 +38,45 @@ export type Database = {
         }
         Relationships: []
       }
+      app_releases: {
+        Row: {
+          apk_name: string
+          created_at: string
+          file_path: string
+          file_size: number | null
+          id: string
+          is_published: boolean
+          is_required: boolean
+          release_notes: string | null
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          apk_name: string
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          is_published?: boolean
+          is_required?: boolean
+          release_notes?: string | null
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          apk_name?: string
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          is_published?: boolean
+          is_required?: boolean
+          release_notes?: string | null
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
