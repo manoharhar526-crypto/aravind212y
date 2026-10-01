@@ -2,7 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { STORAGE_KEYS, ADMIN_GATE_SESSION_KEY } from "@/lib/constants";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import Index from "./pages/Index";
@@ -17,6 +19,17 @@ import { ProtectedRoute, AdminRoute, AdminGateRoute, AuthRoute, useAdminAutoLogo
 
 const queryClient = new QueryClient();
 
+const AdminPanelPage = () => {
+  const navigate = useNavigate();
+  const handleBack = async () => {
+    localStorage.removeItem(STORAGE_KEYS.IS_ADMIN);
+    sessionStorage.removeItem(ADMIN_GATE_SESSION_KEY);
+    await supabase.auth.signOut();
+    navigate("/auth", { replace: true });
+  };
+  return <AdminPanel onBack={handleBack} />;
+};
+
 const AppRoutes = () => {
   useAdminAutoLogout();
   return (
@@ -26,7 +39,7 @@ const AppRoutes = () => {
       <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
       <Route path="/admin-login" element={<Navigate to="/auth" replace />} />
       <Route path="/admin-gate" element={<AdminGateRoute><AdminGate /></AdminGateRoute>} />
-      <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+      <Route path="/admin" element={<AdminRoute><AdminPanelPage /></AdminRoute>} />
       <Route path="/admin/updates" element={<AdminRoute><AdminUpdates /></AdminRoute>} />
       <Route path="/admin/user/:userId" element={<AdminRoute><AdminUserDetail /></AdminRoute>} />
       <Route path="*" element={<NotFound />} />
