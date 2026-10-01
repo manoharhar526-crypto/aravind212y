@@ -184,9 +184,9 @@ export const HabitGrid = memo(({
                 const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const frozen = frozenDates.includes(dateStr);
                 return (
-                  <th key={day} className={cn("w-7 sm:w-10 text-center p-0.5 sm:p-1 border-l border-border font-normal", isToday(day) && "bg-primary/20", frozen && "bg-blue-500/10")}>
-                    <div className="text-[8px] sm:text-[10px] text-muted-foreground">{frozen ? "❄️" : getDayOfWeek(currentMonth, day)}</div>
-                    <div className={cn("text-[10px] sm:text-xs font-medium", isToday(day) && "text-primary font-bold", frozen && "text-blue-400")}>{day}</div>
+                  <th key={day} className={cn("w-7 sm:w-10 text-center p-0.5 sm:p-1 border-l border-border font-normal", isToday(day) && "bg-primary/20")}>
+                    <div className="text-[8px] sm:text-[10px] text-muted-foreground">{getDayOfWeek(currentMonth, day)}</div>
+                    <div className={cn("text-[10px] sm:text-xs font-medium", isToday(day) && "text-primary font-bold")}>{day}</div>
                   </th>
                 );
               })
@@ -331,7 +331,7 @@ export const HabitGrid = memo(({
                 </td>
                 <td className="w-14 sm:w-16 p-2 border-l border-border text-center">
                   {streak > 0 ? (
-                    <div className="flex items-center justify-center gap-0.5 text-foreground" title={`${streak} day streak (across all months)!`}>
+                    <div className="flex items-center justify-center gap-0.5 text-foreground" title={`${streak} day streak`}>
                       <Flame className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
                       <span className="text-xs sm:text-sm font-bold">{streak}</span>
                     </div>

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@/lib/navigation";
 import { Loader2, ArrowLeft, Pencil, Trash2, Key, Shield, Eye, Search } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -145,6 +145,7 @@ const AdminPanel = ({ onBack }: { onBack: () => void }) => {
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Badge variant="secondary" className="text-xs">{users.length} users</Badge>
             <ResetSecretCodeDialog />
+            <Button variant="outline" size="sm" onClick={() => navigate("/admin/updates")}>Updates</Button>
             <Button variant="outline" size="sm" onClick={() => fetchUsers()} disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
             </Button>

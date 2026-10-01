@@ -17,6 +17,7 @@ import {
   getCompletedDaysForMonth,
   getDaysInMonth,
   calculateCompletionRate,
+  normalizeHabitDays,
 } from "@/lib/habitUtils";
 
 // NOTE: we intentionally use the DEFAULT Capacitor Preferences group
@@ -54,11 +55,13 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
   const month = monthKey();
   const dayNum = new Date().getDate();
 
-  // Habits scoped to current month, minus anything hidden from widgets
+  // Habits scoped to current month, minus anything hidden from widgets.
+  // Normalized so a day can never be exported as both done and N/A.
   const prefs = readWidgetPrefs();
   const monthHabits = habits
     .filter(h => h.month === month)
-    .filter(h => !prefs.habits.includes(h.id));
+    .filter(h => !prefs.habits.includes(h.id))
+    .map(normalizeHabitDays);
   tasks = tasks.filter(t => !prefs.tasks.includes(t.id));
 
   // 1. Today's habits (id, name, completed)
@@ -104,18 +107,26 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
   const totalDaysInMonth = getDaysInMonth(now);
   const monthPrefix = `${month}-`;
 
-  // 8. Monthly tracking grid — full 30/31 day cells per habit + skipped days
-  //    for tap-to-toggle in the native collection-widget UI.
+  // 8. Monthly tracking grid — full 30/31 day cells per habit, with N/A days
+  //    and frozen days kept apart so the widget can colour them differently.
   const monthGrid = monthHabits.map(h => {
-    const skippedNums = (h.skippedDays ?? [])
-      .filter(d => d.startsWith(monthPrefix))
-      .map(d => parseInt(d.slice(-2), 10))
-      .filter(n => Number.isFinite(n));
+    const doneNums = getCompletedDaysForMonth(h, now);
+    const naNums: number[] = [];
+    const frozenNums: number[] = [];
+    for (let day = 1; day <= totalDaysInMonth; day++) {
+      const date = `${month}-${String(day).padStart(2, "0")}`;
+      if (doneNums.includes(day)) continue;
+      const manualSkip = (h.skippedDays ?? []).includes(date);
+      const restDay = (h.restDays ?? []).includes(new Date(`${date}T12:00:00`).getDay());
+      if (manualSkip || restDay) naNums.push(day);
+      else if (frozenDates.includes(date)) frozenNums.push(day);
+    }
     return {
       id: h.id,
       name: h.name,
-      days: getCompletedDaysForMonth(h, now),
-      skipped: skippedNums,
+      days: doneNums,
+      skipped: naNums,
+      frozen: frozenNums,
       total: totalDaysInMonth,
     };
   });
@@ -199,7 +210,6 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
 
   await Promise.all([
     setItem("today_date", today),
-    setItem("last_sync", new Date().toISOString()),
 
     // Compact "Today" summary widget
     setItem("today_done", String(doneCount)),
@@ -229,6 +239,10 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     setItem("task_rep_monthly_done", String(doneOf(tm))),
     setItem("task_rep_monthly_total", String(tm.length)),
   ]);
+
+  // Commit marker: Android listens for this key and repaints only after every
+  // payload above has finished writing, avoiding a refresh with stale cells.
+  await setItem("last_sync", new Date().toISOString());
 
   // Broadcast intent so widgets refresh
   try {

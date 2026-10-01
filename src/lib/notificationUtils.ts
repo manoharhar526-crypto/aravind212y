@@ -4,6 +4,37 @@ import type { Task } from '@/types/task';
 
 const isNative = () => Capacitor.isNativePlatform();
 
+// Custom reminder sound (android/app/src/main/res/raw/hey_its_me_goku.mp3).
+// Android keeps the sound tied to the channel, so the channel id is bumped
+// whenever the sound changes — otherwise the old sound sticks forever.
+export const NOTIF_SOUND = 'hey_its_me_goku.mp3';
+export const NOTIF_CHANNEL = 'habit-reminders-goku';
+
+let _channelReady = false;
+
+const ensureChannel = async (): Promise<void> => {
+  if (!isNative() || _channelReady) return;
+  if (Capacitor.getPlatform() !== 'android') { _channelReady = true; return; }
+  try {
+    // Drop the older channels so the new sound actually takes effect.
+    for (const id of ['habit-reminders', 'default']) {
+      try { await LocalNotifications.deleteChannel({ id }); } catch { /* ignore */ }
+    }
+    await LocalNotifications.createChannel({
+      id: NOTIF_CHANNEL,
+      name: 'Habit Reminders',
+      description: 'Daily habit and goal reminders',
+      importance: 5,
+      visibility: 1,
+      sound: NOTIF_SOUND,
+      vibration: true,
+    });
+  } catch (e) {
+    console.warn('Notification channel error:', e);
+  }
+  _channelReady = true;
+};
+
 // ─── Register web service worker ──────────────────────────────────────────────
 
 let _swReg: ServiceWorkerRegistration | null = null;
@@ -85,6 +116,7 @@ export const getNotificationStatusAsync = async (): Promise<'granted' | 'denied'
 export const sendNotification = async (title: string, body: string): Promise<void> => {
   if (isNative()) {
     try {
+      await ensureChannel();
       await LocalNotifications.schedule({
         notifications: [{
           id: Math.floor(Math.random() * 900000) + 1,
@@ -92,7 +124,8 @@ export const sendNotification = async (title: string, body: string): Promise<voi
           body,
           schedule: { at: new Date(Date.now() + 500) },
           smallIcon: 'ic_stat_notify',
-          sound: 'default',
+          largeIcon: 'luffy',
+          sound: NOTIF_SOUND, channelId: NOTIF_CHANNEL,
           actionTypeId: '',
           extra: null,
         }],
@@ -114,12 +147,147 @@ export const sendNotification = async (title: string, body: string): Promise<voi
 };
 
 // ─── Schedule all smart notifications ────────────────────────────────────────
-// Native IDs: 2001=morning, 2002=evening, 2003=night, 2004=weekly, 3000+=tasks
-// Web: posts schedule to SW via postMessage
+//
+// Reminder rules — deliberately quiet:
+//   • Nothing pending? No reminder today at all. Being nagged about a habit you
+//     already did is the fastest way to make someone mute the app.
+//   • Never between midnight and 07:00 — anything landing in that window is
+//     pushed to 07:00.
+//   • At most two habit reminders a day (a check-in and a last chance) instead
+//     of one at every configured time.
+//
+// Native IDs: 2001=check-in, 2003=last chance, 2004=weekly, 3000+=tasks
+
+/** Reminders are never delivered before this hour. */
+export const QUIET_UNTIL_HOUR = 7;
+
+/** Next occurrence of "HH:MM", pushed out of the quiet overnight window. */
+const nextAt = (timeStr: string, now: Date): Date => {
+  const [h, m] = timeStr.split(':').map(Number);
+  const d = new Date(now);
+  d.setHours(Number.isFinite(h) ? h : 9, Number.isFinite(m) ? m : 0, 0, 0);
+  if (d.getHours() < QUIET_UNTIL_HOUR) d.setHours(QUIET_UNTIL_HOUR, 0, 0, 0);
+  if (d <= now) d.setDate(d.getDate() + 1);
+  return d;
+};
+
+/** "Workout", "Workout and Reading", "Workout, Reading and 2 more". */
+const nameLine = (names: string[]): string => {
+  const shown = names.slice(0, 2);
+  const rest = names.length - shown.length;
+  if (rest > 0) return `${shown.join(', ')} and ${rest} more`;
+  if (shown.length === 2) return `${shown[0]} and ${shown[1]}`;
+  return shown[0] ?? '';
+};
+
+/**
+ * A snapshot of what is actually finished / unfinished right now.
+ * The reminder text is always built from this, so a notification can never
+ * claim something is pending when it has already been done, skipped (N/A),
+ * or when the day is frozen.
+ */
+export type DayStatus = {
+  /** Habits that exist for today (already excluding N/A + frozen days). */
+  totalHabits: number;
+  /** Names of habits still unfinished today. */
+  pendingHabits: string[];
+  /** Habits already ticked off today. */
+  doneHabits: number;
+  /** Titles of tasks still unfinished (daily / weekly / monthly / general). */
+  pendingTasks: string[];
+  /** Tasks already completed. */
+  doneTasks: number;
+};
+
+type PlannedReminder = {
+  id: number;
+  at: Date;
+  title: string;
+  body: string;
+  /** Daily repeat — only used for the recurring habit reminders. */
+  daily: boolean;
+};
+
+/**
+ * Works out the (very short) list of reminders worth sending.
+ * Exported so the behaviour can be tested without a device.
+ *
+ * Reminders never repeat blindly: the app reschedules every time habits or
+ * tasks change, so each reminder carries an up-to-date picture of the day.
+ */
+export const planHabitReminders = (
+  status: DayStatus,
+  morningTime: string,
+  nightTime: string,
+  now = new Date(),
+): PlannedReminder[] => {
+  const { totalHabits, pendingHabits, doneHabits, pendingTasks, doneTasks } = status;
+
+  // Nothing set up at all — a single gentle nudge, nothing more.
+  if (totalHabits === 0 && pendingTasks.length === 0 && doneTasks === 0) {
+    return [{
+      id: 2001,
+      at: nextAt(morningTime, now),
+      title: 'Ready to start? 🌱',
+      body: 'Add your first habit and begin today.',
+      daily: false,
+    }];
+  }
+
+  // Everything already done: stay silent today, just line up tomorrow morning.
+  if (pendingHabits.length === 0 && pendingTasks.length === 0) {
+    return [{
+      id: 2001,
+      at: nextAt(morningTime, now),
+      title: 'Good morning! ☀️',
+      body: 'You finished everything yesterday. Ready to do it again today?',
+      daily: false,
+    }];
+  }
+
+  // Build a warm, plain-English sentence about what is still waiting.
+  const parts: string[] = [];
+  if (pendingHabits.length > 0) parts.push(nameLine(pendingHabits));
+  if (pendingTasks.length > 0) parts.push(nameLine(pendingTasks));
+  const list = parts.join(', plus ');
+  const onlyOne = pendingHabits.length + pendingTasks.length === 1;
+
+  const morningBody = onlyOne
+    ? `${list} is waiting for you today.`
+    : `${list} are waiting for you today.`;
+
+  const nightBody = onlyOne
+    ? `Just ${list} left before bed.`
+    : `You still have ${list} left today.`;
+
+  const checkIn = nextAt(morningTime, now);
+  const lastChance = nextAt(nightTime, now);
+
+  const plan: PlannedReminder[] = [{
+    id: 2001,
+    at: checkIn,
+    title: 'Good morning! ☀️',
+    body: morningBody,
+    daily: false,
+  }];
+
+  // Only add the late nudge when it is genuinely a different, later moment.
+  if (lastChance.getTime() - checkIn.getTime() > 60 * 60 * 1000) {
+    plan.push({
+      id: 2003,
+      at: lastChance,
+      title: doneHabits > 0 ? 'Almost there! 💪' : 'Quick check before bed 🌙',
+      body: nightBody,
+      daily: false,
+    });
+  }
+
+  return plan;
+};
+
 
 export const scheduleSmartNotifications = async (
-  incompleteHabits: string[],
-  totalHabits: number,
+  status: DayStatus,
   tasks: Task[],
   currentMonth: Date,
   morningTime = '06:00',
@@ -127,21 +295,28 @@ export const scheduleSmartNotifications = async (
   nightTime = '22:00',
 ): Promise<void> => {
   if (isNative()) {
-    await _scheduleNative(incompleteHabits, totalHabits, tasks, currentMonth, morningTime, eveningTime, nightTime);
+    await _scheduleNative(status, tasks, currentMonth, morningTime, nightTime);
   } else {
-    await _scheduleWeb(incompleteHabits, totalHabits, tasks, currentMonth, morningTime, eveningTime, nightTime);
+    await _scheduleWeb(status, tasks, currentMonth, morningTime, nightTime);
   }
+};
+
+/** Weekly Sunday recap — once a week is not nagging. */
+const weeklySummaryAt = (now: Date): Date | null => {
+  const daysUntilSunday = (7 - now.getDay()) % 7;
+  const nextSunday = new Date(now);
+  nextSunday.setDate(now.getDate() + (daysUntilSunday === 0 ? 7 : daysUntilSunday));
+  nextSunday.setHours(20, 0, 0, 0);
+  return nextSunday > now ? nextSunday : null;
 };
 
 // ─── Web scheduling via Service Worker ───────────────────────────────────────
 
 const _scheduleWeb = async (
-  incompleteHabits: string[],
-  totalHabits: number,
+  status: DayStatus,
   tasks: Task[],
   currentMonth: Date,
   morningTime: string,
-  eveningTime: string,
   nightTime: string,
 ) => {
   if (Notification.permission !== 'granted') return;
@@ -149,78 +324,42 @@ const _scheduleWeb = async (
   if (!sw || !sw.active) return;
 
   const now = new Date();
+  const notifications: { id: number; at: number; title: string; body: string }[] =
+    planHabitReminders(status, morningTime, nightTime, now)
+      .map(p => ({ id: p.id, at: p.at.getTime(), title: p.title, body: p.body }));
 
-  const parseWebTime = (timeStr: string): Date => {
-    const [h, m] = timeStr.split(':').map(Number);
-    const d = new Date();
-    d.setHours(h, m, 0, 0);
-    if (d <= now) d.setDate(d.getDate() + 1);
-    return d;
-  };
-
-  const notifications: { id: number; at: number; title: string; body: string }[] = [];
-
-  // Morning
-  const morningBody = totalHabits === 0
-    ? "You haven't created any habits yet. Open the app and start tracking today!"
-    : incompleteHabits.length === 0
-      ? "You already completed all habits! Keep it up! 🔥"
-      : `Today's habits: ${incompleteHabits.slice(0, 3).join(', ')}${incompleteHabits.length > 3 ? ` +${incompleteHabits.length - 3} more` : ''}`;
-  notifications.push({ id: 2001, at: parseWebTime(morningTime).getTime(), title: '🌅 Morning Check-in', body: morningBody });
-
-  // Evening
-  if (totalHabits > 0) {
-    const eveningBody = incompleteHabits.length === 0
-      ? "All habits done for today! Amazing work! 🌟"
-      : `Not done yet: ${incompleteHabits.slice(0, 3).join(', ')}${incompleteHabits.length > 3 ? ` +${incompleteHabits.length - 3} more` : ''}`;
-    notifications.push({ id: 2002, at: parseWebTime(eveningTime).getTime(), title: incompleteHabits.length === 0 ? '✅ Evening Check' : '⏰ Habit Check', body: eveningBody });
+  const sunday = weeklySummaryAt(now);
+  if (sunday) {
+    notifications.push({
+      id: 2004,
+      at: sunday.getTime(),
+      title: 'Your week is done! 📈',
+      body: 'Take a look at everything you finished this week.',
+    });
   }
 
-  // Night
-  if (totalHabits > 0) {
-    const nightBody = incompleteHabits.length === 0
-      ? "You completed ALL your habits today! Incredible! 🎉"
-      : `Last chance! Still pending: ${incompleteHabits.slice(0, 3).join(', ')}${incompleteHabits.length > 3 ? ` +${incompleteHabits.length - 3} more` : ''}`;
-    notifications.push({ id: 2003, at: parseWebTime(nightTime).getTime(), title: incompleteHabits.length === 0 ? '🏆 All Done!' : '🌙 Final Reminder', body: nightBody });
-  }
-
-  // Weekly Sunday summary
-  const today = new Date();
-  const daysUntilSunday = (7 - today.getDay()) % 7;
-  const nextSunday = new Date();
-  nextSunday.setDate(today.getDate() + (daysUntilSunday === 0 ? 7 : daysUntilSunday));
-  nextSunday.setHours(20, 0, 0, 0);
-  if (nextSunday > now) {
-    notifications.push({ id: 2004, at: nextSunday.getTime(), title: '📊 Weekly Summary', body: 'Check how many habits you completed this week! Open the app to see your progress. 🔥' });
-  }
-
-  // Task notifications - monthly goals only
+  // Monthly goals only — daily task pings were pure noise.
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
   let taskNotifId = 3000;
-  for (const task of tasks.filter(t => !t.completed)) {
+  for (const task of tasks.filter(t => !t.completed && t.type === 'monthly')) {
     if (taskNotifId >= 3100) break;
-    if (task.type === 'monthly') {
-      const taskDate = new Date(year, month, 1, 9, 0, 0, 0);
-      if (taskDate > now) {
-        notifications.push({ id: taskNotifId++, at: taskDate.getTime(), title: '📌 Monthly Goal Reminder', body: `Don't forget: "${task.title}"` });
-      }
+    const taskDate = new Date(year, month, 1, 9, 0, 0, 0);
+    if (taskDate > now) {
+      notifications.push({ id: taskNotifId++, at: taskDate.getTime(), title: 'Monthly goal 📌', body: `Don't forget about "${task.title}" this month.` });
     }
   }
 
   sw.active.postMessage({ type: 'SCHEDULE_NOTIFICATIONS', notifications });
-  console.log(`Scheduled ${notifications.length} web notifications via SW`);
 };
 
 // ─── Native scheduling ────────────────────────────────────────────────────────
 
 const _scheduleNative = async (
-  incompleteHabits: string[],
-  totalHabits: number,
+  status: DayStatus,
   tasks: Task[],
   currentMonth: Date,
   morningTime: string,
-  eveningTime: string,
   nightTime: string,
 ) => {
   try {
@@ -228,6 +367,7 @@ const _scheduleNative = async (
     if (display !== 'granted') {
       await LocalNotifications.requestPermissions();
     }
+    await ensureChannel();
 
     const now = new Date();
     const notifications: Parameters<typeof LocalNotifications.schedule>[0]["notifications"] = [];
@@ -236,57 +376,55 @@ const _scheduleNative = async (
     for (let i = 3000; i < 3100; i++) cancelIds.push({ id: i });
     try { await LocalNotifications.cancel({ notifications: cancelIds }); } catch (e) { console.warn("Notification error:", e); }
 
-    const parseTime = (timeStr: string) => {
-      const [h, m] = timeStr.split(':').map(Number);
-      const d = new Date();
-      d.setHours(h, m, 0, 0);
-      if (d <= now) d.setDate(d.getDate() + 1);
-      return d;
-    };
+    const base = {
+      smallIcon: 'ic_stat_notify',
+      largeIcon: 'luffy',
+      sound: NOTIF_SOUND,
+      channelId: NOTIF_CHANNEL,
+      actionTypeId: '',
+      extra: null,
+    } as const;
 
-    const morningBody = totalHabits === 0
-      ? "You haven't created any habits yet. Open the app and start tracking today!"
-      : incompleteHabits.length === 0
-        ? "You already completed all habits! Keep it up! 🔥"
-        : `Today's habits: ${incompleteHabits.slice(0, 3).join(', ')}${incompleteHabits.length > 3 ? ` +${incompleteHabits.length - 3} more` : ''}`;
-    notifications.push({ id: 2001, title: '🌅 Morning Check-in', body: morningBody, schedule: { at: parseTime(morningTime), repeats: true, every: 'day' }, smallIcon: 'ic_stat_notify', sound: 'default', actionTypeId: '', extra: null });
-
-    if (totalHabits > 0) {
-      const eveningBody = incompleteHabits.length === 0 ? "All habits done for today! Amazing work! 🌟" : `Not done yet: ${incompleteHabits.slice(0, 3).join(', ')}${incompleteHabits.length > 3 ? ` +${incompleteHabits.length - 3} more` : ''}`;
-      notifications.push({ id: 2002, title: incompleteHabits.length === 0 ? '✅ Evening Check' : '⏰ Habit Check', body: eveningBody, schedule: { at: parseTime(eveningTime), repeats: true, every: 'day' }, smallIcon: 'ic_stat_notify', sound: 'default', actionTypeId: '', extra: null });
+    for (const p of planHabitReminders(status, morningTime, nightTime, now)) {
+      notifications.push({
+        id: p.id,
+        title: p.title,
+        body: p.body,
+        schedule: p.daily ? { at: p.at, repeats: true, every: 'day' } : { at: p.at, repeats: false },
+        ...base,
+      });
     }
 
-    if (totalHabits > 0) {
-      const nightBody = incompleteHabits.length === 0 ? "You completed ALL your habits today! Incredible! 🎉" : `Last chance! Still pending: ${incompleteHabits.slice(0, 3).join(', ')}${incompleteHabits.length > 3 ? ` +${incompleteHabits.length - 3} more` : ''}`;
-      notifications.push({ id: 2003, title: incompleteHabits.length === 0 ? '🏆 All Done!' : '🌙 Final Reminder', body: nightBody, schedule: { at: parseTime(nightTime), repeats: true, every: 'day' }, smallIcon: 'ic_stat_notify', sound: 'default', actionTypeId: '', extra: null });
+    const sunday = weeklySummaryAt(now);
+    if (sunday) {
+      notifications.push({
+        id: 2004,
+        title: 'Your week is done! 📈',
+        body: 'Take a look at everything you finished this week.',
+        schedule: { at: sunday, repeats: true, every: 'week' },
+        ...base,
+      });
     }
 
-    const today = new Date();
-    const daysUntilSunday = (7 - today.getDay()) % 7;
-    const nextSunday = new Date();
-    nextSunday.setDate(today.getDate() + (daysUntilSunday === 0 ? 7 : daysUntilSunday));
-    nextSunday.setHours(20, 0, 0, 0);
-    if (nextSunday > now) {
-      notifications.push({ id: 2004, title: '📊 Weekly Summary', body: 'Check how many habits you completed this week! 🔥', schedule: { at: nextSunday, repeats: true, every: 'week' }, smallIcon: 'ic_stat_notify', sound: 'default', actionTypeId: '', extra: null });
-    }
-
-    // Monthly goal reminders only (daily type removed)
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     let taskNotifId = 3000;
-    for (const task of tasks.filter(t => !t.completed)) {
+    for (const task of tasks.filter(t => !t.completed && t.type === 'monthly')) {
       if (taskNotifId >= 3100) break;
-      if (task.type === 'monthly') {
-        const taskDate = new Date(year, month, 1, 9, 0, 0, 0);
-        if (taskDate > now) {
-          notifications.push({ id: taskNotifId++, title: '📌 Monthly Goal Reminder', body: `Don't forget: "${task.title}"`, schedule: { at: taskDate, repeats: false }, smallIcon: 'ic_stat_notify', sound: 'default', actionTypeId: '', extra: null });
-        }
+      const taskDate = new Date(year, month, 1, 9, 0, 0, 0);
+      if (taskDate > now) {
+        notifications.push({
+          id: taskNotifId++,
+          title: 'Monthly goal 📌',
+          body: `Don't forget about "${task.title}" this month.`,
+          schedule: { at: taskDate, repeats: false },
+          ...base,
+        });
       }
     }
 
     if (notifications.length > 0) {
       await LocalNotifications.schedule({ notifications });
-      console.log(`Scheduled ${notifications.length} native notifications`);
     }
   } catch (e) {
     console.error('scheduleSmartNotifications error:', e);
@@ -319,6 +457,7 @@ export const initNotificationsOnNative = async (): Promise<void> => {
     if (display !== 'granted') {
       await LocalNotifications.requestPermissions();
     }
+    await ensureChannel();
   } catch (e) {
     console.error('Init notifications error:', e);
   }
@@ -331,6 +470,7 @@ export const scheduleCalendarNoteNotifications = async (notes: import("@/types/c
     const { LocalNotifications } = await import("@capacitor/local-notifications");
     const perm = await LocalNotifications.checkPermissions();
     if (perm.display !== "granted") await LocalNotifications.requestPermissions();
+    await ensureChannel();
 
     // Cancel existing calendar note notifications (ids 4000-4999)
     const cancelIds = Array.from({ length: 1000 }, (_, i) => ({ id: 4000 + i }));
@@ -353,7 +493,8 @@ export const scheduleCalendarNoteNotifications = async (notes: import("@/types/c
         body: note.title + (note.body ? ` — ${note.body}` : ""),
         schedule: { at: notifDate, repeats: false },
         smallIcon: "ic_stat_notify",
-        sound: "default",
+        largeIcon: "luffy",
+        sound: NOTIF_SOUND, channelId: NOTIF_CHANNEL,
         actionTypeId: "",
         extra: null,
       });

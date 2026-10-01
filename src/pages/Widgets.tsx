@@ -1,35 +1,40 @@
 import { readWidgetPrefs } from "@/lib/widgetPrefs";
-import { useState, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useNavigate } from "@/lib/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useToday } from "@/hooks/useToday";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  loadAppStorage, saveAppStorage, loadSettings, loadCalendarNotes, saveCalendarNotes,
+  loadAppStorage, saveAppStorage, loadCalendarNotes, saveCalendarNotes,
 } from "@/lib/appStorage";
 import { CalendarView } from "@/components/CalendarView";
 import {
   getDaysInMonth, getHabitsForMonth, createDateString,
   getCompletedDaysForMonth, calculateCompletionRate, getAllTimeStats, calculateTotalStreak,
+  toggleHabitDayMark,
 } from "@/lib/habitUtils";
 import { getTasksByType } from "@/lib/taskUtils";
 import { HabitCalendar } from "@/components/HabitCalendar";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { CalendarNote } from "@/types/calendarNote";
+import { syncWidgetData } from "@/services/widgetSync";
 import {
   ArrowLeft, LayoutGrid, BarChart3, PieChart,
   Trophy, CheckCircle2, Flame, ListChecks,
 } from "lucide-react";
 import { toast } from "sonner";
 
+const dayKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** Run heavy work after the tap has painted so the tick shows instantly. */
+const afterPaint = (fn: () => void) => {
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => setTimeout(fn, 0));
+  else setTimeout(fn, 0);
 };
 
 export default function Widgets() {
@@ -37,84 +42,98 @@ export default function Widgets() {
   const { user, username } = useAuth();
   const userId = user?.id;
 
-  const stored = loadAppStorage(userId);
-  const settings = loadSettings(userId);
-  const [habits, setHabits] = useState<Habit[]>(stored?.habits ?? []);
-  const [tasks, setTasks] = useState<Task[]>(stored?.tasks ?? []);
-  const [notes, setNotes] = useState<CalendarNote[]>(loadCalendarNotes(userId));
-  const [currentMonth] = useState<Date>(stored?.currentMonth ?? new Date());
-  const [frozenDates] = useState<string[]>(settings.frozenDates ?? []);
+  const [habits, setHabits] = useState<Habit[]>(() => loadAppStorage(userId)?.habits ?? []);
+  const [tasks, setTasks] = useState<Task[]>(() => loadAppStorage(userId)?.tasks ?? []);
+  const [notes, setNotes] = useState<CalendarNote[]>(() => loadCalendarNotes(userId));
+  const frozenDates = useMemo<string[]>(() => [], []);
 
-  const today = todayStr();
-  const now = useMemo(() => new Date(), []);
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  // Always-fresh refs so taps never act on stale data, even hours later.
+  const habitsRef = useRef(habits);
+  const tasksRef = useRef(tasks);
+  const notesRef = useRef(notes);
+  habitsRef.current = habits;
+  tasksRef.current = tasks;
+  notesRef.current = notes;
+
+  // Reload from storage when the user id resolves or the app comes back to the foreground.
+  const reload = useCallback(() => {
+    const s = loadAppStorage(userId);
+    if (s) {
+      setHabits(s.habits ?? []);
+      setTasks(s.tasks ?? []);
+    }
+    setNotes(loadCalendarNotes(userId));
+  }, [userId]);
+  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === "visible") reload(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [reload]);
+
+  const now = useToday();
+  const today = dayKey(now);
+  const yesterday = useMemo(() => {
+    const y = new Date(now); y.setDate(y.getDate() - 1); return dayKey(y);
+  }, [now]);
+  const monthKey = today.slice(0, 7);
   const totalDaysInMonth = getDaysInMonth(now);
 
-  const widgetPrefs = readWidgetPrefs();
+  const widgetPrefs = useMemo(() => readWidgetPrefs(), []);
   const monthHabits = useMemo(
     () => getHabitsForMonth(habits, now).filter(h => !widgetPrefs.habits.includes(h.id)),
     [habits, now, widgetPrefs.habits]
   );
 
-  // Persist changes back to storage
-  const persist = useCallback((newHabits: Habit[], newTasks: Task[]) => {
-    saveAppStorage({ habits: newHabits, tasks: newTasks, currentMonth }, userId);
-  }, [currentMonth, userId]);
+  // Save + sync are deferred and coalesced so rapid taps stay smooth.
+  const pendingSave = useRef(false);
+  const persist = useCallback(() => {
+    if (pendingSave.current) return;
+    pendingSave.current = true;
+    afterPaint(() => {
+      pendingSave.current = false;
+      const h = habitsRef.current, t = tasksRef.current;
+      const stored = loadAppStorage(userId);
+      saveAppStorage({ habits: h, tasks: t, currentMonth: stored?.currentMonth ?? new Date() }, userId);
+      void syncWidgetData({ habits: h, tasks: t, notes: notesRef.current, frozenDates }).catch(() => {});
+    });
+  }, [userId, frozenDates]);
 
-  const isCompletedDay = (habitId: string, dateStr: string) => {
-    return habits.find((h) => h.id === habitId)?.completedDays.includes(dateStr) ?? false;
-  };
-
-  const handleToggleHabitDay = (habitId: string, dateStr: string) => {
-    const date = new Date(dateStr + "T00:00:00");
-    const todayDate = new Date();
-    todayDate.setHours(0, 0, 0, 0);
-    const yesterdayDate = new Date(todayDate);
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-
-    const isToday = date.getTime() === todayDate.getTime();
-    const isYesterday = date.getTime() === yesterdayDate.getTime();
-
-    if (!isToday && !isYesterday) {
+  const handleToggleHabitDay = useCallback((habitId: string, dateStr: string) => {
+    const nowKey = dayKey(new Date());
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    if (dateStr !== nowKey && dateStr !== dayKey(y)) {
       toast.error("Can only complete today or yesterday");
       return;
     }
+    const habit = habitsRef.current.find(h => h.id === habitId);
+    if (habit?.skippedDays?.includes(dateStr) && !habit.completedDays.includes(dateStr)) {
+      toast.error("Remove the N/A mark first, then mark it done");
+      return;
+    }
+    const next = habitsRef.current.map(h =>
+      h.id === habitId ? toggleHabitDayMark(h, dateStr, "complete") : h
+    );
+    habitsRef.current = next;
+    setHabits(next);
+    persist();
+  }, [persist]);
 
-    const wasCompleted = isCompletedDay(habitId, dateStr);
-    const newHabits = habits.map((h) => {
-      if (h.id !== habitId) return h;
-      return {
-        ...h,
-        completedDays: wasCompleted
-          ? h.completedDays.filter((d) => d !== dateStr)
-          : [...h.completedDays, dateStr],
-      };
-    });
-    setHabits(newHabits);
-    persist(newHabits, tasks);
-    toast.success(wasCompleted ? "Habit unchecked" : "Habit completed");
-  };
+  const handleToggleSkipDay = useCallback((habitId: string, dateStr: string) => {
+    const next = habitsRef.current.map(h =>
+      h.id === habitId ? toggleHabitDayMark(h, dateStr, "skip") : h
+    );
+    habitsRef.current = next;
+    setHabits(next);
+    persist();
+  }, [persist]);
 
-  const handleToggleSkipDay = (habitId: string, dateStr: string) => {
-    const newHabits = habits.map((h) => {
-      if (h.id !== habitId) return h;
-      const skipped = h.skippedDays ?? [];
-      return {
-        ...h,
-        skippedDays: skipped.includes(dateStr)
-          ? skipped.filter((d) => d !== dateStr)
-          : [...skipped, dateStr].sort(),
-      };
-    });
-    setHabits(newHabits);
-    persist(newHabits, tasks);
-  };
-
-  const handleToggleTask = (taskId: string) => {
-    const newTasks = tasks.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t));
-    setTasks(newTasks);
-    persist(habits, newTasks);
-  };
+  const handleToggleTask = useCallback((taskId: string) => {
+    const next = tasksRef.current.map(t => (t.id === taskId ? { ...t, completed: !t.completed } : t));
+    tasksRef.current = next;
+    setTasks(next);
+    persist();
+  }, [persist]);
 
 
   // ─── Widget data helpers ────────────────────────────────────────────────────
@@ -135,23 +154,18 @@ export default function Widgets() {
   );
 
 
-  const handleAddNote = (note: CalendarNote) => {
-    const next = [...notes, note];
+  const saveNotes = (next: CalendarNote[]) => {
+    notesRef.current = next;
     setNotes(next);
-    saveCalendarNotes(next, userId);
+    afterPaint(() => {
+      saveCalendarNotes(next, userId);
+      void syncWidgetData({ habits: habitsRef.current, tasks: tasksRef.current, notes: next, frozenDates }).catch(() => {});
+    });
   };
-
-  const handleDeleteNote = (id: string) => {
-    const next = notes.filter((n) => n.id !== id);
-    setNotes(next);
-    saveCalendarNotes(next, userId);
-  };
-
-  const handleEditNote = (id: string, updated: Partial<CalendarNote>) => {
-    const next = notes.map((n) => (n.id === id ? { ...n, ...updated } : n));
-    setNotes(next);
-    saveCalendarNotes(next, userId);
-  };
+  const handleAddNote = (note: CalendarNote) => saveNotes([...notesRef.current, note]);
+  const handleDeleteNote = (id: string) => saveNotes(notesRef.current.filter((n) => n.id !== id));
+  const handleEditNote = (id: string, updated: Partial<CalendarNote>) =>
+    saveNotes(notesRef.current.map((n) => (n.id === id ? { ...n, ...updated } : n)));
 
   const habitReports = useMemo(
     () =>
@@ -253,33 +267,36 @@ export default function Widgets() {
                           const dateStr = createDateString(now, day);
                           const isCompleted = completedDays.includes(day);
                           const isSkipped = skipped.has(day);
-                          const isToday = day === now.getDate();
-                          const dayDate = new Date(dateStr + "T00:00:00");
-                          const todayDate = new Date();
-                          todayDate.setHours(0, 0, 0, 0);
-                          const yesterdayDate = new Date(todayDate);
-                          yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-                          const canToggle = dayDate.getTime() === todayDate.getTime() || dayDate.getTime() === yesterdayDate.getTime();
+                          const isFrozen = !isCompleted && !isSkipped && frozenDates.includes(dateStr);
+                          const isToday = dateStr === today;
+                          const canToggle = isToday || dateStr === yesterday;
 
                           return (
                             <button
                               key={day}
-                              onClick={() => canToggle && handleToggleHabitDay(habit.id, dateStr)}
-                              disabled={!canToggle && !isCompleted && !isSkipped}
+                              type="button"
+                              onPointerDown={canToggle ? (e) => { e.preventDefault(); handleToggleHabitDay(habit.id, dateStr); } : undefined}
+                              onKeyDown={canToggle ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleToggleHabitDay(habit.id, dateStr); } } : undefined}
+                              disabled={!canToggle && !isCompleted && !isSkipped && !isFrozen}
+                              aria-current={isToday ? "date" : undefined}
                               className={cn(
-                                "aspect-square rounded-[2px] text-[9px] sm:text-[10px] font-medium flex items-center justify-center transition-colors",
+                                "aspect-square rounded-[2px] text-[9px] sm:text-[10px] font-medium flex items-center justify-center touch-manipulation select-none active:scale-90 transition-transform duration-75",
                                 isCompleted
                                   ? "bg-primary text-primary-foreground"
                                   : isSkipped
-                                  ? "bg-orange-500/30 text-orange-400"
+                                  ? "bg-yellow-500/30 text-yellow-400"
+                                  : isFrozen
+                                  ? "bg-blue-500/30 text-blue-400"
+                                  : isToday
+                                  ? "bg-primary/25 text-primary font-bold"
                                   : "bg-muted/50 text-muted-foreground",
                                 isToday && "ring-2 ring-primary ring-offset-1 ring-offset-background",
                                 canToggle && !isCompleted && !isSkipped && "hover:bg-muted cursor-pointer",
-                                !canToggle && !isCompleted && !isSkipped && "opacity-50 cursor-default"
+                                !canToggle && !isCompleted && !isSkipped && !isFrozen && "opacity-50 cursor-default"
                               )}
                               title={day.toString()}
                             >
-                              {isCompleted ? "✓" : isSkipped ? "⊘" : day}
+                              {isCompleted ? "✓" : isSkipped ? "–" : day}
                             </button>
                           );
                         })}
@@ -291,7 +308,8 @@ export default function Widgets() {
             )}
             <div className="flex flex-wrap gap-2 mt-3 text-[10px] text-muted-foreground">
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-primary" /> Done</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-orange-500/30" /> Skipped</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-500/30" /> N/A</span>
+              
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-muted/50 border border-border" /> Pending</span>
               <span className="ml-auto">Tap today/yesterday to toggle</span>
             </div>
@@ -341,10 +359,6 @@ export default function Widgets() {
                 <div className="p-2.5 rounded-md bg-muted/40">
                   <p className="text-[10px] text-muted-foreground">Rate</p>
                   <p className="text-xl font-bold">{allTime.allTimeRate}%</p>
-                </div>
-                <div className="p-2.5 rounded-md bg-muted/40">
-                  <p className="text-[10px] text-muted-foreground">Best Streak</p>
-                  <p className="text-xl font-bold">{allTime.longestStreak}</p>
                 </div>
               </div>
               {allTime.bestHabit && (
@@ -412,7 +426,7 @@ export default function Widgets() {
                           <button
                             key={task.id}
                             onClick={() => handleToggleTask(task.id)}
-                            className="w-full flex items-center gap-1.5 text-[10px] text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors"
+                            className="w-full flex items-center gap-1.5 text-[10px] text-left touch-manipulation hover:bg-muted/50 rounded px-1 py-0.5 transition-colors"
                           >
                             <span className={cn("w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0", task.completed ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
                               {task.completed && <CheckCircle2 className="w-3 h-3" />}

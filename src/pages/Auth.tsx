@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SignupForm } from "@/components/auth/SignupForm";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@/lib/navigation";
 
 import { useAuth } from "@/hooks/useAuth";
 
@@ -12,19 +12,8 @@ const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Redirect authenticated users — use user_roles table (same as App.tsx)
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle()
-      .then(({ data }) => {
-        navigate(data ? "/admin" : "/", { replace: true });
-      });
-  }, [user, navigate]);
+  // Redirects for signed-in users are handled solely by AuthRoute in App.tsx.
+  void navigate; void user;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
