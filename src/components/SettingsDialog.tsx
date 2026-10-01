@@ -11,6 +11,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DataExportPanel } from "@/components/DataExportPanel";
+import { DataImportPanel } from "@/components/DataImportPanel";
 import { Settings, Bell, Trash2, UserX, Loader2, KeyRound, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +23,7 @@ import {
 import { Capacitor } from "@capacitor/core";
 import { useTheme } from "@/hooks/useTheme";
 import { WidgetPrefsTab } from "@/components/WidgetPrefsTab";
+import { UpdateCard } from "@/components/UpdateCard";
 import type { Habit } from "@/types/habit";
 import type { Task } from "@/types/task";
 
@@ -41,6 +44,7 @@ interface SettingsDialogProps {
   onTimezoneChange: (tz: string) => void;
   habits?: Habit[];
   tasks?: Task[];
+  onImport?: (data: { habits?: Habit[]; tasks?: Task[]; calendarNotes?: any[] }) => void;
 }
 
 export const SettingsDialog = ({
@@ -57,7 +61,7 @@ export const SettingsDialog = ({
   onTimezoneChange,
   habits,
   tasks,
-
+  onImport,
 }: SettingsDialogProps) => {
   const { theme, toggleTheme } = useTheme();
   const [notificationStatus, setNotificationStatus] = useState<'granted' | 'denied' | 'default' | 'unsupported'>(getNotificationStatus());
@@ -179,6 +183,7 @@ export const SettingsDialog = ({
 
           {/* General tab: Appearance + Timezone */}
           <TabsContent value="general" className="space-y-6 pt-4">
+            <UpdateCard />
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 {theme === "dark" ? <Moon className="h-4 w-4 text-muted-foreground" /> : <Sun className="h-4 w-4 text-muted-foreground" />}
@@ -338,13 +343,18 @@ export const SettingsDialog = ({
             </div>
           </TabsContent>
 
-          {/* Data tab: Reset */}
-          <TabsContent value="data" className="space-y-4 pt-4">
+          {/* Data tab: Export + Reset */}
+          <TabsContent value="data" className="space-y-6 pt-4">
+            <DataExportPanel habits={habits ?? []} tasks={tasks ?? []} />
+            {onImport && <DataImportPanel onImport={onImport} />}
+
+            <div className="space-y-4 pt-4 border-t border-border">
             <div className="flex items-center gap-2">
               <Trash2 className="h-4 w-4 text-muted-foreground" />
               <h3 className="font-medium">Reset Data</h3>
             </div>
             <p className="text-sm text-muted-foreground">This will permanently delete all your habits, tasks, and settings.</p>
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="w-full">Reset All Data</Button>
@@ -364,6 +374,7 @@ export const SettingsDialog = ({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            </div>
           </TabsContent>
         </Tabs>
 

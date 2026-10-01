@@ -2,7 +2,7 @@ import { Task } from "@/types/task";
 import { CalendarNote } from "@/types/calendarNote";
 import { TaskSection } from "./TaskSection";
 import { CalendarView } from "./CalendarView";
-import { getTasksByType } from "@/lib/taskUtils";
+import { getTasksByType, getWeeklyTasksByWeek } from "@/lib/taskUtils";
 import { Calendar } from "lucide-react";
 
 interface GoalsOverviewProps {
@@ -32,14 +32,26 @@ export const GoalsOverview = ({
 }: GoalsOverviewProps) => {
   const generalTasks = getTasksByType(tasks, "general");
   const monthlyTasks = getTasksByType(tasks, "monthly");
+  const weekNumber = Math.min(5, Math.ceil(new Date().getDate() / 7));
+  const weeklyTasks = getWeeklyTasksByWeek(tasks, weekNumber);
 
   return (
     <div className="space-y-8">
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
         <TaskSection
           title="General Goals"
           tasks={generalTasks}
           type="general"
+          onToggleTask={onToggleTask}
+          onAddTask={onAddTask}
+          onDeleteTask={onDeleteTask}
+          onEditTask={onEditTask}
+        />
+        <TaskSection
+          title={`Weekly Goals · Week ${weekNumber}`}
+          tasks={weeklyTasks}
+          type="weekly"
+          weekNumber={weekNumber}
           onToggleTask={onToggleTask}
           onAddTask={onAddTask}
           onDeleteTask={onDeleteTask}

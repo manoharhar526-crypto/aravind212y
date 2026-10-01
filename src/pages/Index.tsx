@@ -1,11 +1,13 @@
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useToday } from "@/hooks/useToday";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useSearchParams, useNavigate } from "@/lib/navigation";
 import { Habit } from "@/types/habit";
 import { Task } from "@/types/task";
 import { CalendarNote } from "@/types/calendarNote";
 import {
   defaultHabits, generateId, getMonthName, createDateString, isDayCompleted,
   getMonthKey, getHabitsForMonth, getPreviousMonth, getAllTimeStats,
+  toggleHabitDayMark,
 } from "@/lib/habitUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { defaultTasks } from "@/lib/taskUtils";
@@ -15,6 +17,8 @@ import {
 } from "@/lib/appStorage";
 import { scheduleSmartNotifications, cancelAllNotifications, scheduleCalendarNoteNotifications } from "@/lib/notificationUtils";
 import { useBackgroundSync } from "@/hooks/useBackgroundSync";
+import { mergeSnapshots, mergeHabits, mergeTasks, mergeNotes } from "@/lib/mergeData";
+import { YearCard } from "@/components/YearCard";
 import { cancelPending, clearDebounce, enqueue, flushPending } from "@/services/backgroundSync";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -32,6 +36,8 @@ import { GoalsOverview } from "@/components/GoalsOverview";
 import { TaskReportCard } from "@/components/TaskReportCard";
 import { HabitReportCard } from "@/components/HabitReportCard";
 import { DailyTasksView } from "@/components/DailyTasksView";
+import { EmptyHabitsState } from "@/components/EmptyHabitsState";
+import { exportHabitsCsv, exportTasksCsv, exportEverythingJson } from "@/lib/exportUtils";
 import { WIDGET_PREFS_KEY } from "@/lib/widgetPrefs";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { Button } from "@/components/ui/button";
@@ -43,7 +49,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ChevronLeft, ChevronRight, Bell, BellOff, LogOut, User, Loader2,
-  Trophy, Calendar, CheckCircle2, Flame, SnowflakeIcon, LayoutGrid,
+  Trophy, Calendar, CheckCircle2, Flame,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CopyHabitsDialog } from "@/components/CopyHabitsDialog";
@@ -94,18 +100,19 @@ const Index = () => {
   const [currentMonth, setCurrentMonth] = useState<Date>(stored?.currentMonth ?? new Date());
 
   // FIX 2: reminderTime removed — replaced by morningTime/eveningTime/nightTime only
-  // FIX 7: frozenDates + timezone added to settings
   const [reminderEnabled, setReminderEnabled] = useState(initialSettings.reminderEnabled);
   const [morningTime, setMorningTime] = useState(initialSettings.morningTime);
   const [eveningTime, setEveningTime] = useState(initialSettings.eveningTime);
   const [nightTime, setNightTime] = useState(initialSettings.nightTime);
-  const [frozenDates, setFrozenDates] = useState<string[]>(initialSettings.frozenDates ?? []);
+  // Freeze feature removed — no day is ever frozen.
+  const frozenDates = useMemo<string[]>(() => [], []);
   // FIX 5: timezone from settings, empty string = auto-detect
   const [timezone, setTimezone] = useState<string>(initialSettings.timezone ?? "");
 
   const [showCopyDialog, setShowCopyDialog] = useState(false);
   const [pendingMonth, setPendingMonth] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const currentMonthRef = useRef(stored?.currentMonth ?? new Date());
   const [syncReady, setSyncReady] = useState(false);
   const isFirstSave = useRef(true);
 
@@ -113,6 +120,21 @@ const Index = () => {
   const currentMonthHabits = getHabitsForMonth(habits, currentMonth);
   const currentMonthKey = getMonthKey(currentMonth);
   const currentMonthTasks = tasks.filter(t => !t.month || t.month === currentMonthKey);
+
+  // ── New app update notifications (on open, on resume, and live) ────────────
+  useEffect(() => {
+    let alive = true;
+    const check = () => { if (alive) import("@/lib/appUpdates").then((m) => m.notifyIfNewRelease()); };
+    const t = setTimeout(check, 3000);
+    const onVis = () => { if (document.visibilityState === "visible") check(); };
+    document.addEventListener("visibilitychange", onVis);
+    const ch = supabase.channel("app-releases-notify")
+      .on("postgres_changes", { event: "*", schema: "public", table: "app_releases" }, () => setTimeout(check, 1500))
+      .subscribe();
+    let stopSchedule: (() => void) | undefined;
+    import("@/lib/appUpdates").then((m) => { if (alive) stopSchedule = m.startScheduledUpdateChecks(); });
+    return () => { alive = false; clearTimeout(t); stopSchedule?.(); document.removeEventListener("visibilitychange", onVis); supabase.removeChannel(ch); };
+  }, []);
 
   // ── Restore latest cloud data before enabling background sync ──────────────
   useEffect(() => {
@@ -128,7 +150,6 @@ const Index = () => {
     const local = loadAppStorage(userId);
     const localNotes = loadCalendarNotes(userId);
     const localHasData = !!local && (local.habits.length > 0 || local.tasks.length > 0 || localNotes.length > 0);
-    const localSavedAt = Date.parse(local?.savedAt ?? "") || 0;
 
     Promise.resolve(supabase
       .from("user_sync_data")
@@ -148,26 +169,44 @@ const Index = () => {
         const remoteNotes = Array.isArray(payload.calendarNotes) ? (payload.calendarNotes as CalendarNote[]) : null;
         const remoteFrozenDates = Array.isArray(payload.frozenDates) ? (payload.frozenDates as string[]) : [];
         const remoteHasData = !!remoteHabits?.length || !!remoteTasks?.length || !!remoteNotes?.length;
-        const remoteSavedAt = Date.parse(payload.savedAt ?? data?.updated_at ?? "") || 0;
+        const remoteSavedAt = payload.savedAt ?? data?.updated_at ?? "";
 
-        if (remoteHasData && (!localHasData || remoteSavedAt >= localSavedAt)) {
+        if (remoteHasData) {
           cancelPending(userId);
-          const restoredMonth = payload.currentMonth ? new Date(payload.currentMonth) : new Date();
-          const safeMonth = isNaN(restoredMonth.getTime()) ? new Date() : restoredMonth;
-          const nextHabits = remoteHabits ?? defaultHabits;
-          const nextTasks = remoteTasks ?? defaultTasks;
-          const nextNotes = remoteNotes ?? [];
+          const restoredMonth = payload.currentMonth ? new Date(payload.currentMonth) : null;
+          const safeMonth =
+            restoredMonth && !isNaN(restoredMonth.getTime()) && !localHasData
+              ? restoredMonth
+              : null;
 
-          setHabits(nextHabits);
-          setTasks(nextTasks);
-          setCalendarNotes(nextNotes);
-          setCurrentMonth(safeMonth);
-          setFrozenDates(remoteFrozenDates);
-          saveAppStorage({ habits: nextHabits, tasks: nextTasks, currentMonth: safeMonth }, userId);
-          saveCalendarNotes(nextNotes, userId);
-          saveSettings({ ...loadSettings(userId), frozenDates: remoteFrozenDates }, userId);
-          scheduleCalendarNoteNotifications(nextNotes);
-          if (!localHasData) toast.success("Your saved data was restored");
+          // Union-merge: nothing marked on this phone or in the cloud is lost.
+          const merged = mergeSnapshots(
+            {
+              habits: local?.habits ?? (localHasData ? [] : defaultHabits),
+              tasks: local?.tasks ?? (localHasData ? [] : defaultTasks),
+              calendarNotes: localNotes,
+              frozenDates: loadSettings(userId).frozenDates ?? [],
+              savedAt: local?.savedAt,
+            },
+            {
+              habits: remoteHabits ?? [],
+              tasks: remoteTasks ?? [],
+              calendarNotes: remoteNotes ?? [],
+              frozenDates: remoteFrozenDates,
+              savedAt: remoteSavedAt,
+            },
+          );
+
+          setHabits(merged.habits);
+          setTasks(merged.tasks);
+          setCalendarNotes(merged.calendarNotes);
+          if (safeMonth) setCurrentMonth(safeMonth);
+          saveAppStorage(
+            { habits: merged.habits, tasks: merged.tasks, currentMonth: safeMonth ?? currentMonthRef.current },
+            userId,
+          );
+          saveCalendarNotes(merged.calendarNotes, userId);
+          scheduleCalendarNoteNotifications(merged.calendarNotes);
         }
 
         setSyncReady(true);
@@ -182,6 +221,33 @@ const Index = () => {
   // ── Background sync — silently keeps cloud storage up-to-date ───────────────
   useBackgroundSync({ enabled: syncReady, userId, habits, tasks, calendarNotes, currentMonth, frozenDates, username });
 
+  // ── New month: carry habits forward automatically so widgets never go blank.
+  // Ids are derived from month + name so every device creates the same ids and
+  // merges dedupe instead of duplicating.
+  const realToday = useToday();
+  const realMonthKey = getMonthKey(realToday);
+  useEffect(() => {
+    if (!syncReady) return;
+    setHabits(prev => {
+      if (getHabitsForMonth(prev, realToday).length > 0) return prev;
+      const prevHabits = getHabitsForMonth(prev, getPreviousMonth(realToday));
+      if (prevHabits.length === 0) return prev;
+      const carried: Habit[] = prevHabits
+        .slice()
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((h, i) => ({
+          id: `${realMonthKey}-${h.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+          name: h.name,
+          month: realMonthKey,
+          completedDays: [],
+          restDays: h.restDays,
+          order: i,
+        }));
+      return [...prev, ...carried];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncReady, realMonthKey]);
+
   // ── Widget sync — mirrors latest data to native SharedPreferences for Android home-screen widgets
   useEffect(() => {
     const push = () => {
@@ -192,7 +258,8 @@ const Index = () => {
     push();
     window.addEventListener(WIDGET_PREFS_KEY, push);
     return () => window.removeEventListener(WIDGET_PREFS_KEY, push);
-  }, [habits, tasks, calendarNotes, frozenDates]);
+    // realToday: re-push at midnight so widgets switch day/month right away
+  }, [habits, tasks, calendarNotes, frozenDates, realToday]);
 
 
   // ── Widget taps — apply completions/skips queued by the native widget while the app was closed
@@ -230,15 +297,10 @@ const Index = () => {
               const dates = queued.filter(q => q.habitId === habit.id).map(q => q.date);
               const skipDates = skips.filter(q => q.habitId === habit.id).map(q => q.date);
               if (!dates.length && !skipDates.length) return habit;
-              let days = [...habit.completedDays];
-              for (const d of dates) {
-                days = days.includes(d) ? days.filter(x => x !== d) : [...days, d];
-              }
-              let skipped = [...(habit.skippedDays ?? [])];
-              for (const d of skipDates) {
-                skipped = skipped.includes(d) ? skipped.filter(x => x !== d) : [...skipped, d];
-              }
-              return { ...habit, completedDays: days.sort(), skippedDays: skipped.sort() };
+              let next = habit;
+              for (const d of dates) next = toggleHabitDayMark(next, d, "complete");
+              for (const d of skipDates) next = toggleHabitDayMark(next, d, "skip");
+              return next;
             }),
           );
         }
@@ -275,19 +337,33 @@ const Index = () => {
     const today = new Date();
     const monthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
     const dateString = `${monthKey}-${String(today.getDate()).padStart(2, "0")}`;
-    // Always use TODAY's month habits, regardless of which month is being viewed
-    const todayHabits = habits.filter(h => h.month === monthKey);
-    const totalHabits = todayHabits.length;
-    const incomplete = totalHabits > 0
-      ? todayHabits
-          .filter(h => !h.completedDays.includes(dateString))
-          .map(h => h.name)
-      : [];
-    scheduleSmartNotifications(
-      incomplete, totalHabits, tasks, currentMonth,
-      morningTime, eveningTime, nightTime,
+    // Always use TODAY's month habits, regardless of which month is being viewed.
+    // An N/A day or a rest day means nothing is due today.
+    const weekday = today.getDay();
+    const todayHabits = habits.filter(h =>
+      h.month === monthKey &&
+      !(h.skippedDays ?? []).includes(dateString) &&
+      !(h.restDays ?? []).includes(weekday)
     );
-  }, [habits, tasks, reminderEnabled, currentMonth, morningTime, eveningTime, nightTime]);
+    const pendingHabits = todayHabits.filter(h => !h.completedDays.includes(dateString)).map(h => h.name);
+    const day = today.getDate();
+    const relevantTasks = tasks.filter(t => {
+      if (t.month && t.month !== monthKey) return false;
+      if (t.type === 'daily' && t.day !== undefined && t.day !== day) return false;
+      if (t.type === 'weekly' && t.weekNumber !== undefined && t.weekNumber !== Math.ceil(day / 7)) return false;
+      return true;
+    });
+    scheduleSmartNotifications(
+      {
+        totalHabits: todayHabits.length,
+        pendingHabits,
+        doneHabits: todayHabits.length - pendingHabits.length,
+        pendingTasks: relevantTasks.filter(t => !t.completed).map(t => t.title),
+        doneTasks: relevantTasks.filter(t => t.completed).length,
+      },
+      tasks, currentMonth, morningTime, eveningTime, nightTime,
+    );
+  }, [habits, tasks, frozenDates, reminderEnabled, currentMonth, morningTime, eveningTime, nightTime]);
 
   // Save settings (no reminderTime — removed dead code)
   useEffect(() => {
@@ -313,7 +389,6 @@ const Index = () => {
     setMorningTime("06:00");
     setEveningTime("18:00");
     setNightTime("22:00");
-    setFrozenDates([]);
     setTimezone("");
     toast.success("All data has been reset");
   };
@@ -337,17 +412,18 @@ const Index = () => {
 
   const handleToggleDay = (habitId: string, day: number) => {
     const dateString = createDateString(currentMonth, day);
+    const target = habits.find(h => h.id === habitId);
+    if (
+      target?.skippedDays?.includes(dateString) &&
+      !target.completedDays.includes(dateString)
+    ) {
+      toast.error("Remove the N/A mark first, then mark it done");
+      return;
+    }
     setHabits(prev =>
-      prev.map(habit => {
-        if (habit.id !== habitId) return habit;
-        const isCompleted = isDayCompleted(habit, currentMonth, day);
-        return {
-          ...habit,
-          completedDays: isCompleted
-            ? habit.completedDays.filter(d => d !== dateString)
-            : [...habit.completedDays, dateString].sort(),
-        };
-      }),
+      prev.map(habit =>
+        habit.id === habitId ? toggleHabitDayMark(habit, dateString, "complete") : habit,
+      ),
     );
   };
 
@@ -504,6 +580,13 @@ const Index = () => {
     setTasks(restoredTasks);
   };
 
+  /** Adds imported data on top of what's here — nothing existing is lost. */
+  const handleImport = (data: { habits?: Habit[]; tasks?: Task[]; calendarNotes?: CalendarNote[] }) => {
+    if (data.habits?.length) setHabits(prev => mergeHabits(prev, data.habits!, true));
+    if (data.tasks?.length) setTasks(prev => mergeTasks(prev, data.tasks!, true));
+    if (data.calendarNotes?.length) setCalendarNotes(prev => mergeNotes(prev, data.calendarNotes!, true));
+  };
+
   const handleSignOut = async () => {
     if (userId) {
       clearDebounce(userId);
@@ -521,31 +604,12 @@ const Index = () => {
     await signOut();
   };
 
-  // FIX 7: Streak freeze toggle for a date
-  const handleToggleFreeze = (dateStr: string) => {
-    setFrozenDates(prev => {
-      if (prev.includes(dateStr)) {
-        toast.success("Freeze removed — day counts as missed");
-        return prev.filter(d => d !== dateStr);
-      }
-      toast.success("Day frozen ❄️ — streak protected");
-      return [...prev, dateStr];
-    });
-  };
-
   // Per-habit skip day toggle (e.g. college closed on Sunday)
   const handleToggleSkipDay = (habitId: string, dateStr: string) => {
     setHabits(prev =>
-      prev.map(habit => {
-        if (habit.id !== habitId) return habit;
-        const skipped = habit.skippedDays ?? [];
-        return {
-          ...habit,
-          skippedDays: skipped.includes(dateStr)
-            ? skipped.filter(d => d !== dateStr)
-            : [...skipped, dateStr].sort(),
-        };
-      })
+      prev.map(habit =>
+        habit.id === habitId ? toggleHabitDayMark(habit, dateStr, "skip") : habit,
+      )
     );
   };
 
@@ -556,23 +620,12 @@ const Index = () => {
     .filter(t => (t.month === prevMonthKey || !t.month) && !t.completed)
     .map(t => ({ id: t.id, title: t.title }));
 
+  currentMonthRef.current = currentMonth;
   const allTime = getAllTimeStats(habits, frozenDates);
 
-  // Today's freeze state (always toggleable from the header)
-  const todayDateStr = todayStr();
-  const todayFrozen = frozenDates.includes(todayDateStr);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Cloud-restore overlay */}
-      {userId && !syncReady && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" role="status" aria-live="polite">
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
-            <p className="text-sm text-muted-foreground">Syncing your data…</p>
-          </div>
-        </div>
-      )}
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
@@ -596,28 +649,7 @@ const Index = () => {
 
               {/* Mobile header buttons */}
               <div className="flex items-center gap-1 sm:hidden flex-shrink-0">
-                <Button
-                  variant={todayFrozen ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => handleToggleFreeze(todayDateStr)}
-                  className="h-8 w-8 flex-shrink-0"
-                  title="Freeze today's streak"
-                  aria-label="Freeze today's streak"
-                >
-                  <SnowflakeIcon className="w-4 h-4" />
-                </Button>
-
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => navigate("/widgets")}
-                  className="h-8 w-8 flex-shrink-0"
-                  title="Widgets"
-                  aria-label="Widgets"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </Button>
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
                   size="icon"
@@ -659,29 +691,7 @@ const Index = () => {
             <div className="flex items-center justify-between sm:justify-end gap-2">
               {/* Desktop header buttons */}
               <div className="hidden sm:flex items-center gap-2">
-                {/* Streak freeze button — always available for today */}
-                <Button
-                  variant={todayFrozen ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleToggleFreeze(todayDateStr)}
-                  className="gap-1.5"
-                  title="Freeze today's streak — a missed day won't break it"
-                >
-                  <SnowflakeIcon className="w-4 h-4" />
-                  <span>{todayFrozen ? "Frozen" : "Freeze Day"}</span>
-                </Button>
-
                 <BackupRestoreDialog habits={habits} tasks={tasks} onRestore={handleRestore} />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/widgets")}
-                  className="gap-1.5"
-                  title="Widgets"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                  <span>Widgets</span>
-                </Button>
                 <Button
                   variant={reminderEnabled ? "default" : "outline"}
                   size="sm"
@@ -746,6 +756,12 @@ const Index = () => {
 
           {/* ── Habits Tab ── */}
           <TabsContent value="habits" className="space-y-6 sm:space-y-8">
+            {currentMonthHabits.length === 0 && (
+              <section>
+                <EmptyHabitsState action={<AddHabitDialog onAddHabit={handleAddHabit} />} />
+              </section>
+            )}
+
             <section>
               <Card className="overflow-hidden border-border">
                 <div className="p-3 sm:p-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -753,7 +769,6 @@ const Index = () => {
                     <h2 className="font-semibold text-sm sm:text-base">Monthly Tracking Grid</h2>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Drag rows to reorder · Click ✏️ to rename
-                      {frozenDates.length > 0 && ` · ❄️ ${frozenDates.length} day(s) frozen`}
                     </p>
                   </div>
                   <AddHabitDialog onAddHabit={handleAddHabit} />
@@ -776,6 +791,10 @@ const Index = () => {
                 currentMonth={currentMonth}
                 onToggleSkipDay={handleToggleSkipDay}
               />
+            </section>
+
+            <section>
+              <YearCard habits={habits} frozenDates={frozenDates} username={username ?? undefined} />
             </section>
 
             <section>
@@ -841,15 +860,6 @@ const Index = () => {
                       <Trophy className="w-4 h-4 text-foreground" />
                     </div>
                   </Card>
-                  <Card className="p-3 sm:p-4 bg-card border-border">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Longest Streak</p>
-                        <p className="text-xl sm:text-2xl font-bold mt-1">{allTime.longestStreak}d</p>
-                      </div>
-                      <Flame className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  </Card>
                   {allTime.bestHabit && (
                     <Card className="p-3 sm:p-4 bg-card border-border col-span-2 sm:col-span-1">
                       <div className="flex items-start justify-between gap-2">
@@ -882,6 +892,26 @@ const Index = () => {
                 <TaskCompletionChart tasks={currentMonthTasks} />
                 <TaskProgressChart tasks={currentMonthTasks} currentMonth={currentMonth} />
               </div>
+            </section>
+
+            <section>
+              <Card className="border-border p-3 sm:p-4">
+                <h2 className="font-semibold text-sm sm:text-base">Export your data</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Download a copy of everything you have tracked so far.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => exportHabitsCsv(habits)}>
+                    Habits (CSV)
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => exportTasksCsv(tasks)}>
+                    Goals (CSV)
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => exportEverythingJson(habits, tasks)}>
+                    Everything (JSON)
+                  </Button>
+                </div>
+              </Card>
             </section>
           </TabsContent>
         </Tabs>

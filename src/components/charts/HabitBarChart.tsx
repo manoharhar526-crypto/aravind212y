@@ -77,10 +77,10 @@ export const HabitBarChart = ({ habits, currentMonth }: HabitBarChartProps) => {
                 borderRadius: "8px",
                 color: "hsl(var(--foreground))",
               }}
-              formatter={(value: number, name: string, props: { payload: { days: number; fullName: string } }) => [
-                `${value}% (${props.payload.days}/${daysInMonth} days)`,
-                props.payload.fullName,
-              ]}
+              formatter={(value, _name, props) => {
+                const p = (props as { payload?: { days?: number; fullName?: string } }).payload;
+                return [`${value}% (${p?.days ?? 0}/${daysInMonth} days)`, p?.fullName ?? ""];
+              }}
               labelFormatter={() => ""}
             />
             <Bar dataKey="completion" radius={[0, 4, 4, 0]}>

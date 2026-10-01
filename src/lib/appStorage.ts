@@ -2,6 +2,9 @@ import type { Habit } from "@/types/habit";
 import type { Task } from "@/types/task";
 import type { CalendarNote } from "@/types/calendarNote";
 import { STORAGE_KEYS } from "@/lib/constants";
+import { normalizeHabitDays } from "@/lib/habitUtils";
+import { defaultFreezeState, MAX_FREEZES, type FreezeState } from "@/lib/forgiveness";
+import { saveDurable } from "@/lib/durableStore";
 
 const userStorageKey     = (userId: string) => `${STORAGE_KEYS.APP_DATA}_${userId}`;
 const userSettingsKey    = (userId: string) => `${STORAGE_KEYS.SETTINGS}_${userId}`;
@@ -26,6 +29,8 @@ export type AppSettings = {
   nightTime: string;
   frozenDates: string[];
   timezone: string;
+  /** Streak-freeze wallet: how many are left, when they were last topped up. */
+  freeze?: FreezeState;
 };
 
 const defaultSettings: AppSettings = {
@@ -35,6 +40,7 @@ const defaultSettings: AppSettings = {
   nightTime: "22:00",
   frozenDates: [],
   timezone: "",
+  freeze: defaultFreezeState(),
 };
 
 // ── App Data ──────────────────────────────────────────────────────────────────
@@ -65,7 +71,9 @@ export const loadAppStorage = (userId?: string): { habits: Habit[]; tasks: Task[
           : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
         return { ...h, month };
       })() : h;
-      return withMonth.order === undefined ? { ...withMonth, order: i } : withMonth;
+      const ordered = withMonth.order === undefined ? { ...withMonth, order: i } : withMonth;
+      // Repair legacy rows where a day was saved as both done and N/A.
+      return normalizeHabitDays(ordered);
     });
     const restoredMonth = parsed.currentMonth ? new Date(parsed.currentMonth) : new Date();
     const currentMonth  = isNaN(restoredMonth.getTime()) ? new Date() : restoredMonth;
@@ -83,7 +91,24 @@ export const saveAppStorage = (state: { habits: Habit[]; tasks: Task[]; currentM
       savedAt:      new Date().toISOString(),
     };
     window.localStorage.setItem(key, JSON.stringify(payload));
-  } catch (e) { console.warn("Storage error:", e); }
+    // Second, independent copy: IndexedDB survives a localStorage wipe.
+    saveDurable(
+      { habits: state.habits, tasks: state.tasks, currentMonth: payload.currentMonth, savedAt: payload.savedAt! },
+      userId,
+    );
+  } catch (e) {
+    console.warn("Storage error:", e);
+    // Even if localStorage failed (quota/private mode), keep the durable copy.
+    saveDurable(
+      {
+        habits: state.habits,
+        tasks: state.tasks,
+        currentMonth: state.currentMonth.toISOString(),
+        savedAt: new Date().toISOString(),
+      },
+      userId,
+    );
+  }
 };
 
 // ── Manual Code Backups ───────────────────────────────────────────────────────
@@ -154,6 +179,12 @@ export const loadSettings = (userId?: string): AppSettings => {
       nightTime:       parsed.nightTime       ?? defaultSettings.nightTime,
       frozenDates:     Array.isArray(parsed.frozenDates) ? parsed.frozenDates : [],
       timezone:        typeof parsed.timezone === "string" ? parsed.timezone : "",
+      freeze: {
+        ...defaultFreezeState(),
+        ...(parsed.freeze ?? {}),
+        credits: Math.max(0, Math.min(MAX_FREEZES, parsed.freeze?.credits ?? MAX_FREEZES)),
+        spentOn: Array.isArray(parsed.freeze?.spentOn) ? parsed.freeze!.spentOn : [],
+      },
     };
   } catch (e) { console.warn("Storage error:", e); return defaultSettings; }
 };

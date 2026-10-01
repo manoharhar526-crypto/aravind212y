@@ -78,16 +78,6 @@ export const HabitReportCard = ({ habits, currentMonth, frozenDates = [] }: Habi
           </Card>
         )}
 
-        {longestStreak && longestStreak.streak > 0 && (
-          <Card className="p-4 border-border">
-            <div className="flex items-center gap-2 mb-2">
-              <Flame className="w-4 h-4 text-muted-foreground" />
-              <h4 className="font-medium text-sm">Best Streak</h4>
-            </div>
-            <span className="text-sm font-bold truncate block">{longestStreak.habit.name}</span>
-            <span className="text-xs text-muted-foreground">{longestStreak.streak} day streak</span>
-          </Card>
-        )}
       </div>
 
       {/* Per-Habit Breakdown */}
