@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "@tanstack/react-router";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { STORAGE_KEYS, ADMIN_GATE_SESSION_KEY } from "@/lib/constants";
