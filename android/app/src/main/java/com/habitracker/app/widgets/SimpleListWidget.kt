@@ -34,10 +34,16 @@ class SkipDaysWidget : AppWidgetProvider() {
         val habit: JSONObject? = habits.optJSONObject(idx)
         val habitId = habit?.optString("id") ?: ""
 
+        val habitSkipCount = habit?.optJSONArray("skipped")?.length() ?: 0
+        val habitName = habit?.optString("name")?.ifBlank { "No habits" } ?: "Open app to sync"
         v.setTextViewText(
             R.id.skip_habit,
-            habit?.optString("name")?.ifBlank { "No habits" } ?: "Open app to sync"
+            if (habitSkipCount > 0) "$habitName  ⊘$habitSkipCount" else habitName
         )
+        if (habits.length() > 0) {
+            v.setTextViewText(R.id.subtitle, "${idx + 1}/${habits.length()}" +
+                if (habitSkipCount > 0) " · ⊘ $habitSkipCount skipped" else "")
+        }
         v.setOnClickPendingIntent(
             R.id.skip_prev,
             HabitToggleReceiver.pi(ctx, 201, HabitToggleReceiver.OP_SKIP_HABIT, delta = -1)
@@ -75,26 +81,33 @@ class SkipDaysWidget : AppWidgetProvider() {
             val isSkip = skipped.contains(day)
             val isFuture = day > today
 
-            v.setTextViewText(cellId, if (isSkip) "–" else day.toString())
+            val isDone = done.contains(day)
+            v.setTextViewText(cellId, when {
+                isDone -> "$day\n✓"
+                isSkip -> "$day\n⊘"
+                else -> day.toString()
+            })
             val bg = when {
+                isDone -> R.drawable.widget_skip_done
                 isSkip -> R.drawable.widget_cell_skip
                 day == today -> R.drawable.widget_cell_today
                 isFuture -> R.drawable.widget_cell_future
-                done.contains(day) -> R.drawable.widget_card
                 else -> R.drawable.widget_cell
             }
             v.setInt(cellId, "setBackgroundResource", bg)
             v.setTextColor(
                 cellId,
                 when {
-                    isSkip -> 0xFFFCD34D.toInt()
+                    isDone -> 0xFFFFFFFF.toInt()
+                    isSkip -> 0xFFF97316.toInt()
                     day == today -> 0xFF7DD3FC.toInt()
                     isFuture -> 0xFF4B5058.toInt()
                     else -> 0xFFE7E9EE.toInt()
                 }
             )
 
-            val op = if (!isFuture && habitId.isNotEmpty())
+            // Same rules as the app: no future days, completed days must be unchecked first.
+            val op = if (!isFuture && !isDone && habitId.isNotEmpty())
                 HabitToggleReceiver.OP_SKIP else HabitToggleReceiver.OP_REFRESH
             v.setOnClickPendingIntent(
                 cellId,
