@@ -42,7 +42,7 @@ class TodaySummaryWidget : AppWidgetProvider() {
             v.setTextColor(
                 R.id.pct,
                 when {
-                    pct >= 80 -> 0xFF7DD3FC.toInt()
+                    pct >= 80 -> 0xFFFFFFFF.toInt()
                     pct >= 40 -> 0xFFE7E9EE.toInt()
                     else -> 0xFF8B8F98.toInt()
                 }

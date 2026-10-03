@@ -26,7 +26,7 @@
         <TextView android:id="@+id/week_today" android:layout_width="wrap_content" android:layout_height="26dp"
             android:layout_marginStart="6dp" android:background="@drawable/widget_pill" android:gravity="center"
             android:paddingStart="10dp" android:paddingEnd="10dp"
-            android:textColor="#7dd3fc" android:textSize="10sp" android:textStyle="bold" android:text="Today" />
+            android:textColor="#FFFFFF" android:textSize="10sp" android:textStyle="bold" android:text="Today" />
     </LinearLayout>
 
     <!-- Day-of-week header, aligned with the row cells -->

@@ -17,7 +17,7 @@
         android:layout_weight="1" android:orientation="vertical" android:gravity="center"
         android:background="@drawable/widget_card" android:padding="10dp" android:layout_marginTop="10dp">
         <TextView android:id="@+id/pct" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:textColor="#7dd3fc" android:textSize="34sp" android:textStyle="bold" android:text="0%" />
+            android:textColor="#FFFFFF" android:textSize="34sp" android:textStyle="bold" android:text="0%" />
         <TextView android:id="@+id/count" android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:paddingTop="2dp" android:textColor="#E7E9EE" android:textSize="11sp" android:text="0 of 0 habits" />
         <TextView android:id="@+id/streak" android:layout_width="wrap_content" android:layout_height="wrap_content"

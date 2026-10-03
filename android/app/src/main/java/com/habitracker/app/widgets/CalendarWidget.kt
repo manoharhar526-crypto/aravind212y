@@ -24,11 +24,47 @@ class CalendarWidget : AppWidgetProvider() {
         private const val EXTRA_DELTA = "delta"
         private const val PREFS = "calendar_widget_state"
         private const val KEY_OFFSET = "month_offset"
+        private const val KEY_YEAR_MODE = "year_mode"
+        private const val ACTION_MODE = "com.habitracker.app.widgets.CAL_MODE"
         private val MONTHS = arrayOf("January","February","March","April","May","June","July","August","September","October","November","December")
     }
 
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
-        for (id in ids) mgr.updateAppWidget(id, build(ctx))
+        for (id in ids) {
+            // Never let one bad value leave the widget stuck on the static "Calendar" placeholder.
+            val views = try { build(ctx) } catch (e: Exception) {
+                android.util.Log.e("CalendarWidget", "build failed", e)
+                fallback(ctx)
+            }
+            try { mgr.updateAppWidget(id, views) } catch (e: Exception) {
+                android.util.Log.e("CalendarWidget", "update failed", e)
+            }
+        }
+    }
+
+    override fun onEnabled(ctx: Context) { refreshAll(ctx) }
+
+    override fun onAppWidgetOptionsChanged(ctx: Context, mgr: AppWidgetManager, id: Int, opts: android.os.Bundle) {
+        onUpdate(ctx, mgr, intArrayOf(id))
+    }
+
+    private fun refreshAll(ctx: Context) {
+        val mgr = AppWidgetManager.getInstance(ctx)
+        onUpdate(ctx, mgr, mgr.getAppWidgetIds(ComponentName(ctx, CalendarWidget::class.java)))
+    }
+
+    /** Minimal, always-safe view: real month title + working arrows. */
+    private fun fallback(ctx: Context): RemoteViews {
+        val v = RemoteViews(ctx.packageName, R.layout.widget_calendar)
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        cal.add(Calendar.MONTH, ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_OFFSET, 0))
+        v.setTextViewText(R.id.title, "${MONTHS[cal.get(Calendar.MONTH)]} ${cal.get(Calendar.YEAR)}")
+        v.setOnClickPendingIntent(R.id.title, modePi(ctx))
+        v.setOnClickPendingIntent(R.id.cal_prev, navPi(ctx, -1))
+        v.setOnClickPendingIntent(R.id.cal_next, navPi(ctx, 1))
+        v.setOnClickPendingIntent(R.id.cal_today, navPi(ctx, 0))
+        return v
     }
 
     override fun onReceive(ctx: Context, intent: Intent) {
@@ -36,10 +72,15 @@ class CalendarWidget : AppWidgetProvider() {
             val sp = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val delta = intent.getIntExtra(EXTRA_DELTA, 0)
             val next = if (delta == 0) 0 else sp.getInt(KEY_OFFSET, 0) + delta
-            sp.edit().putInt(KEY_OFFSET, next).apply()
+            sp.edit().putInt(KEY_OFFSET, next).commit()
+            refreshAll(ctx)
+            return
+        }
+        if (intent.action == ACTION_MODE) {
+            val sp = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            sp.edit().putBoolean(KEY_YEAR_MODE, !sp.getBoolean(KEY_YEAR_MODE, false)).apply()
             val mgr = AppWidgetManager.getInstance(ctx)
-            val ids = mgr.getAppWidgetIds(ComponentName(ctx, CalendarWidget::class.java))
-            onUpdate(ctx, mgr, ids)
+            onUpdate(ctx, mgr, mgr.getAppWidgetIds(ComponentName(ctx, CalendarWidget::class.java)))
             return
         }
         super.onReceive(ctx, intent)
@@ -55,9 +96,21 @@ class CalendarWidget : AppWidgetProvider() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
+    private fun modePi(ctx: Context): PendingIntent {
+        val i = Intent(ctx, MonthPickerActivity::class.java).apply {
+            action = "com.habitracker.app.widgets.PICK_MONTH"
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NO_HISTORY)
+        }
+        return PendingIntent.getActivity(ctx, 2950, i,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
     private fun build(ctx: Context): RemoteViews {
         val v = RemoteViews(ctx.packageName, R.layout.widget_calendar)
-        val offset = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_OFFSET, 0)
+        val sp = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val offset = sp.getInt(KEY_OFFSET, 0)
+        val yearMode = false
+        val step = if (yearMode) 12 else 1
 
         val now = Calendar.getInstance()
         val todayDay = now.get(Calendar.DAY_OF_MONTH)
@@ -73,16 +126,20 @@ class CalendarWidget : AppWidgetProvider() {
         val firstDow = cal.get(Calendar.DAY_OF_WEEK) - 1
         val isThisMonth = year == todayYear && month == todayMonth
 
-        v.setTextViewText(R.id.title, "${MONTHS[month]} $year")
+        // Tap the title to open the month/year picker pop-up.
+        v.setTextViewText(R.id.title, if (yearMode) "« ${MONTHS[month].substring(0, 3)} $year »" else "${MONTHS[month]} $year")
+        v.setTextViewText(R.id.cal_prev, if (yearMode) "«" else "‹")
+        v.setTextViewText(R.id.cal_next, if (yearMode) "»" else "›")
+        v.setOnClickPendingIntent(R.id.title, modePi(ctx))
         v.setTextViewText(R.id.cal_today, "Today · $todayDay ${MONTHS[todayMonth].substring(0, 3)}")
-        v.setOnClickPendingIntent(R.id.cal_prev, navPi(ctx, -1))
-        v.setOnClickPendingIntent(R.id.cal_next, navPi(ctx, 1))
+        v.setOnClickPendingIntent(R.id.cal_prev, navPi(ctx, -step))
+        v.setOnClickPendingIntent(R.id.cal_next, navPi(ctx, step))
         v.setOnClickPendingIntent(R.id.cal_today, navPi(ctx, 0))
 
         val notesArr = WidgetData.getJsonArray(ctx, "calendar_notes")
         val noteSet = HashSet<String>()
         for (i in 0 until notesArr.length()) noteSet.add(notesArr.optString(i))
-        val ym = String.format("%04d-%02d-", year, month + 1)
+        val ym = String.format(java.util.Locale.US, "%04d-%02d-", year, month + 1)
 
         var hasNoteThisMonth = false
         for (i in 1..42) {
@@ -91,7 +148,7 @@ class CalendarWidget : AppWidgetProvider() {
             val day = i - firstDow
             if (day in 1..totalDays) {
                 v.setViewVisibility(cellId, View.VISIBLE)
-                val dateStr = ym + String.format("%02d", day)
+                val dateStr = ym + String.format(java.util.Locale.US, "%02d", day)
                 val hasNote = noteSet.contains(dateStr)
                 if (hasNote) hasNoteThisMonth = true
                 v.setTextViewText(cellId, if (hasNote) "$day\n•" else day.toString())
@@ -109,7 +166,9 @@ class CalendarWidget : AppWidgetProvider() {
         }
         v.setTextViewText(
             R.id.footer,
-            if (hasNoteThisMonth) "• has a note — tap a day to write or edit it" else "Tap a day to add a note"
+            if (yearMode) "Arrows change year · tap the title for months"
+            else if (hasNoteThisMonth) "• has a note · tap the title to pick a month"
+            else "Tap a day to add a note · tap the title to pick a month"
         )
         return v
     }

@@ -179,6 +179,7 @@ const ensurePerm = (name) => {
 };
 ensurePerm("android.permission.RECEIVE_BOOT_COMPLETED");
 ensurePerm("android.permission.WAKE_LOCK");
+ensurePerm("android.permission.REQUEST_INSTALL_PACKAGES");
 
 manifest = manifest.replace("</application>", block + "</application>");
 fs.writeFileSync(MANIFEST, manifest);

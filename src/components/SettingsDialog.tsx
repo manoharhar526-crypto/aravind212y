@@ -345,8 +345,8 @@ export const SettingsDialog = ({
 
           {/* Data tab: Export + Reset */}
           <TabsContent value="data" className="space-y-6 pt-4">
-            <DataExportPanel habits={habits ?? []} tasks={tasks ?? []} />
             {onImport && <DataImportPanel onImport={onImport} />}
+            <DataExportPanel habits={habits ?? []} tasks={tasks ?? []} />
 
             <div className="space-y-4 pt-4 border-t border-border">
             <div className="flex items-center gap-2">
