@@ -174,6 +174,38 @@ object WidgetData {
         putString(ctx, "month_grid", arr.toString())
     }
 
+    /** Only today and yesterday can be ticked from a widget. */
+    fun isTickable(date: String): Boolean {
+        val y = dateStr(Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -1) })
+        return date == todayStr() || date == y
+    }
+
+    /** True if [day] is in the habit's [field] list ("days" or "skipped"). */
+    fun hasDay(ctx: Context, habitId: String, day: Int, field: String): Boolean {
+        val arr = getJsonArray(ctx, "month_grid")
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            if (o.optString("id") != habitId) continue
+            val d = o.optJSONArray(field) ?: return false
+            for (j in 0 until d.length()) if (d.optInt(j) == day) return true
+        }
+        return false
+    }
+
+    /** Flips the previous-month "yesterday" state; returns false if it's skipped. */
+    fun togglePrev(ctx: Context, prevId: String, date: String): Boolean {
+        val arr = getJsonArray(ctx, "month_grid")
+        var ok = false
+        for (i in 0 until arr.length()) {
+            val p = arr.optJSONObject(i)?.optJSONObject("prev") ?: continue
+            if (p.optString("id") != prevId || p.optString("date") != date) continue
+            if (p.optBoolean("skip")) return false
+            p.put("done", !p.optBoolean("done")); ok = true
+        }
+        if (ok) putString(ctx, "month_grid", arr.toString())
+        return ok
+    }
+
     fun optimisticToggleMonthGrid(ctx: Context, habitId: String, day: Int) =
         optimisticToggle(ctx, habitId, day, "days")
 
