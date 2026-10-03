@@ -44,19 +44,27 @@ class HabitToggleReceiver : BroadcastReceiver() {
             }
 
             OP_TOGGLE -> {
-                if (habitId.isNullOrBlank() || date.isNullOrBlank() || day <= 0) {
+                if (habitId.isNullOrBlank() || date.isNullOrBlank() || day < 0 || !WidgetData.isTickable(date)) {
                     WidgetData.refreshAll(ctx); return
                 }
-                WidgetData.queueToggle(ctx, habitId, date)
-                WidgetData.optimisticToggle(ctx, habitId, day, "days")
+                if (day == 0) {
+                    // Yesterday that belongs to last month.
+                    if (WidgetData.togglePrev(ctx, habitId, date)) WidgetData.queueToggle(ctx, habitId, date)
+                } else if (!WidgetData.hasDay(ctx, habitId, day, "skipped")) {
+                    WidgetData.queueToggle(ctx, habitId, date)
+                    WidgetData.optimisticToggle(ctx, habitId, day, "days")
+                }
             }
 
             OP_SKIP -> {
                 if (habitId.isNullOrBlank() || date.isNullOrBlank() || day <= 0) {
                     WidgetData.refreshAll(ctx); return
                 }
-                WidgetData.queueSkip(ctx, habitId, date)
-                WidgetData.optimisticToggle(ctx, habitId, day, "skipped")
+                // A ticked day can't be skipped — untick it first.
+                if (!WidgetData.hasDay(ctx, habitId, day, "days")) {
+                    WidgetData.queueSkip(ctx, habitId, date)
+                    WidgetData.optimisticToggle(ctx, habitId, day, "skipped")
+                }
             }
 
             else -> {

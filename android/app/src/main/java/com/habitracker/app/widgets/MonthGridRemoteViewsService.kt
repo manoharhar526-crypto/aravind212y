@@ -30,12 +30,14 @@ private class MonthGridFactory(private val ctx: Context) : RemoteViewsService.Re
     private var habits: JSONArray = JSONArray()
     private var dates: List<Triple<String, Int, Boolean>> = emptyList() // date, dayNum, isPast/today
     private var todayStr: String = ""
+    private var yesterdayStr: String = ""
 
     override fun onCreate() {}
 
     override fun onDataSetChanged() {
         habits = WidgetData.getJsonArray(ctx, "month_grid")
         todayStr = WidgetData.todayStr()
+        yesterdayStr = WidgetData.dateStr(Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -1) })
         val start = WidgetData.weekStart(ctx)
         val out = mutableListOf<Triple<String, Int, Boolean>>()
         for (i in 0 until 7) {
@@ -64,21 +66,29 @@ private class MonthGridFactory(private val ctx: Context) : RemoteViewsService.Re
 
         val currentMonth = todayStr.substring(0, 7)
 
+        val prev = o.optJSONObject("prev")
+
         for (i in cellIds.indices) {
-            val (date, dayNum, notFuture) = dates[i]
+            val (date, dayNum, _) = dates[i]
             val id = cellIds[i]
             val inMonth = date.startsWith(currentMonth)
-            val isDone = inMonth && done.contains(dayNum)
-            val isSkip = inMonth && skipped.contains(dayNum)
+            // Yesterday in the previous month (1st of the month): use the exported "prev" state.
+            val usePrev = !inMonth && prev != null && date == yesterdayStr && prev.optString("date") == date
+            val isDone = if (usePrev) prev!!.optBoolean("done") else inMonth && done.contains(dayNum)
+            val isSkip = !isDone && (if (usePrev) prev!!.optBoolean("skip") else inMonth && skipped.contains(dayNum))
             val isToday = date == todayStr
+            // Only today and yesterday can be ticked; skipped days must be un-skipped first.
+            val inWindow = date == todayStr || date == yesterdayStr
+            val tappable = inWindow && !isSkip && (inMonth || usePrev)
+            val isFuture = date > todayStr
 
-            v.setTextViewText(id, if (isDone) "✓" else if (isSkip) "–" else dayNum.toString())
+            v.setTextViewText(id, if (isDone) "✓" else if (isSkip) "⊘" else dayNum.toString())
 
             val bg = when {
                 isDone -> R.drawable.widget_cell_done
                 isSkip -> R.drawable.widget_cell_skip
                 isToday -> R.drawable.widget_cell_today
-                !notFuture -> R.drawable.widget_cell_future
+                isFuture || !inWindow -> R.drawable.widget_cell_future
                 else -> R.drawable.widget_cell
             }
             v.setInt(id, "setBackgroundResource", bg)
@@ -87,19 +97,18 @@ private class MonthGridFactory(private val ctx: Context) : RemoteViewsService.Re
                 when {
                     isDone -> 0xFF0B0D10.toInt()
                     isSkip -> 0xFF8B8F98.toInt()
-                    !notFuture -> 0xFF4b5058.toInt()
+                    isFuture || !inWindow -> 0xFF4b5058.toInt()
                     else -> 0xFFE7E9EE.toInt()
                 }
             )
 
-            // Tap: any day up to today toggles completion; future days open the app.
             val fill = Intent().apply {
                 putExtra(HabitToggleReceiver.EXTRA_OP,
-                    if (notFuture && inMonth) HabitToggleReceiver.OP_TOGGLE else HabitToggleReceiver.OP_REFRESH)
-                putExtra(HabitToggleReceiver.EXTRA_HABIT_ID, habitId)
+                    if (tappable) HabitToggleReceiver.OP_TOGGLE else HabitToggleReceiver.OP_REFRESH)
+                putExtra(HabitToggleReceiver.EXTRA_HABIT_ID, if (usePrev) prev!!.optString("id") else habitId)
                 putExtra(HabitToggleReceiver.EXTRA_DATE, date)
-                putExtra(HabitToggleReceiver.EXTRA_DAY, dayNum)
-                putExtra(HabitToggleReceiver.EXTRA_TOGGLEABLE, notFuture && inMonth)
+                putExtra(HabitToggleReceiver.EXTRA_DAY, if (usePrev) 0 else dayNum)
+                putExtra(HabitToggleReceiver.EXTRA_TOGGLEABLE, tappable)
             }
             v.setOnClickFillInIntent(id, fill)
         }

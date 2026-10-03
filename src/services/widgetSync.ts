@@ -109,6 +109,12 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
 
   // 8. Monthly tracking grid — full 30/31 day cells per habit, with N/A days
   //    and frozen days kept apart so the widget can colour them differently.
+  // Yesterday may fall in the previous month (on the 1st). Export that day's
+  // state from the matching previous-month habit so the widget can still tick it.
+  const yd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yDate = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, "0")}-${String(yd.getDate()).padStart(2, "0")}`;
+  const yMonth = yDate.substring(0, 7);
+
   const monthGrid = monthHabits.map(h => {
     const doneNums = getCompletedDaysForMonth(h, now);
     const naNums: number[] = [];
@@ -121,6 +127,20 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
       if (manualSkip || restDay) naNums.push(day);
       else if (frozenDates.includes(date)) frozenNums.push(day);
     }
+    let prev: { id: string; date: string; done: boolean; skip: boolean } | undefined;
+    if (yMonth !== month) {
+      const ph = habits.find(p => p.month === yMonth && p.name === h.name);
+      if (ph) {
+        const done = (ph.completedDays ?? []).includes(yDate);
+        prev = {
+          id: ph.id,
+          date: yDate,
+          done,
+          skip: !done && ((ph.skippedDays ?? []).includes(yDate) ||
+            (ph.restDays ?? []).includes(yd.getDay())),
+        };
+      }
+    }
     return {
       id: h.id,
       name: h.name,
@@ -128,6 +148,7 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
       skipped: naNums,
       frozen: frozenNums,
       total: totalDaysInMonth,
+      ...(prev ? { prev } : {}),
     };
   });
 
