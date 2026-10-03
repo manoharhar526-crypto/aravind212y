@@ -19,11 +19,30 @@ import java.util.Calendar
  */
 class SkipDaysWidget : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
-        for (id in ids) mgr.updateAppWidget(id, build(ctx))
+        for (id in ids) mgr.updateAppWidget(id, build(ctx, heightDp(mgr, id)))
     }
 
-    private fun build(ctx: Context): RemoteViews {
+    /** Re-render on resize so a bigger widget shows more chips. */
+    override fun onAppWidgetOptionsChanged(ctx: Context, mgr: AppWidgetManager, id: Int, opts: android.os.Bundle) {
+        mgr.updateAppWidget(id, build(ctx, heightDp(mgr, id)))
+    }
+
+    private fun heightDp(mgr: AppWidgetManager, id: Int): Int =
+        mgr.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
+
+    private fun build(ctx: Context, heightDp: Int = 0): RemoteViews {
         val v = RemoteViews(ctx.packageName, R.layout.widget_skip_days)
+        // More space → more content: no chips when small, 1 row medium, 2 rows tall.
+        // More space → more chip rows: 0 when small, up to 8 rows (32 chips) when tall.
+        val chipRows = when {
+            heightDp in 1..199 -> 0
+            heightDp == 0 -> 8
+            else -> (4 + (heightDp - 400) / 60).coerceIn(4, 8)
+        }
+        // Tiny widget: drop the hint and shrink cells so the month still fits.
+        val compact = heightDp in 1..199
+        v.setViewVisibility(R.id.hint, if (heightDp == 0 || heightDp >= 260) View.VISIBLE else View.GONE)
+        val cellSp = when { compact -> 8f; heightDp in 1..279 -> 10f; heightDp >= 420 -> 13f; else -> 11f }
         v.setTextViewText(R.id.title, "Habit Skip Days")
         v.setTextViewText(R.id.subtitle, WidgetData.subtitle(ctx))
 
@@ -54,6 +73,34 @@ class SkipDaysWidget : AppWidgetProvider() {
         )
         v.setOnClickPendingIntent(R.id.title, HabitToggleReceiver.refreshPi(ctx))
 
+        // Habit chips (like the app): 8 per page, the page follows the selected habit.
+        val chipIds = (1..32).map { ctx.resources.getIdentifier("chip$it", "id", ctx.packageName) }
+        val perPage = chipRows * 4
+        val pageStart = if (perPage == 0) 0 else (idx / perPage) * perPage
+        for (c in chipIds.indices) {
+            val id = chipIds[c]; if (id == 0) continue
+            val hi = pageStart + c
+            val h = if (hi < habits.length()) habits.optJSONObject(hi) else null
+            if (h == null || c >= perPage) { v.setViewVisibility(id, View.GONE); continue }
+            v.setViewVisibility(id, View.VISIBLE)
+            val n = h.optJSONArray("skipped")?.length() ?: 0
+            val name = h.optString("name").ifBlank { "Habit" }
+            v.setTextViewText(id, if (n > 0) "$name ⊘$n" else name)
+            val sel = hi == idx
+            v.setInt(id, "setBackgroundResource", if (sel) R.drawable.widget_skip_chip else R.drawable.widget_pill)
+            v.setTextColor(id, if (sel) 0xFF0B0C0F.toInt() else 0xFFB8BCC4.toInt())
+            v.setOnClickPendingIntent(id,
+                HabitToggleReceiver.pi(ctx, 2100 + hi, HabitToggleReceiver.OP_SKIP_HABIT, delta = hi - idx))
+        }
+        v.setViewVisibility(R.id.chip_row1, if (habits.length() > 0 && chipRows >= 1) View.VISIBLE else View.GONE)
+        v.setViewVisibility(R.id.chip_row2, if (chipRows >= 2 && habits.length() - pageStart > 4) View.VISIBLE else View.GONE)
+        v.setViewVisibility(R.id.chip_row3, if (chipRows >= 3 && habits.length() - pageStart > 8) View.VISIBLE else View.GONE)
+        v.setViewVisibility(R.id.chip_row4, if (chipRows >= 4 && habits.length() - pageStart > 12) View.VISIBLE else View.GONE)
+        v.setViewVisibility(R.id.chip_row5, if (chipRows >= 5 && habits.length() - pageStart > 16) View.VISIBLE else View.GONE)
+        v.setViewVisibility(R.id.chip_row6, if (chipRows >= 6 && habits.length() - pageStart > 20) View.VISIBLE else View.GONE)
+        v.setViewVisibility(R.id.chip_row7, if (chipRows >= 7 && habits.length() - pageStart > 24) View.VISIBLE else View.GONE)
+        v.setViewVisibility(R.id.chip_row8, if (chipRows >= 8 && habits.length() - pageStart > 28) View.VISIBLE else View.GONE)
+
         val cal = Calendar.getInstance()
         val today = cal.get(Calendar.DAY_OF_MONTH)
         val year = cal.get(Calendar.YEAR)
@@ -83,10 +130,12 @@ class SkipDaysWidget : AppWidgetProvider() {
 
             val isDone = done.contains(day)
             v.setTextViewText(cellId, when {
+                compact -> if (isDone) "✓" else if (isSkip) "⊘" else day.toString()
                 isDone -> "$day\n✓"
                 isSkip -> "$day\n⊘"
                 else -> day.toString()
             })
+            v.setTextViewTextSize(cellId, android.util.TypedValue.COMPLEX_UNIT_SP, cellSp)
             val bg = when {
                 isDone -> R.drawable.widget_skip_done
                 isSkip -> R.drawable.widget_cell_skip
@@ -98,9 +147,9 @@ class SkipDaysWidget : AppWidgetProvider() {
             v.setTextColor(
                 cellId,
                 when {
-                    isDone -> 0xFFFFFFFF.toInt()
-                    isSkip -> 0xFFF97316.toInt()
-                    day == today -> 0xFF7DD3FC.toInt()
+                    isDone -> 0xFF0B0C0F.toInt()
+                    isSkip -> 0xFFFCD34D.toInt()
+                    day == today -> 0xFFFFFFFF.toInt()
                     isFuture -> 0xFF4B5058.toInt()
                     else -> 0xFFE7E9EE.toInt()
                 }

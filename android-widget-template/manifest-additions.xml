@@ -67,3 +67,7 @@
     android:excludeFromRecents="true"
     android:launchMode="singleTop"
     android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar"/>
+<activity android:name="com.habitracker.app.widgets.MonthPickerActivity"
+    android:exported="false"
+    android:excludeFromRecents="true"
+    android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar"/>

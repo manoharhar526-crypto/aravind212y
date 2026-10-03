@@ -86,7 +86,7 @@ private class MonthGridFactory(private val ctx: Context) : RemoteViewsService.Re
                 id,
                 when {
                     isDone -> 0xFF0B0D10.toInt()
-                    isSkip -> 0xFFFCD34D.toInt()
+                    isSkip -> 0xFF8B8F98.toInt()
                     !notFuture -> 0xFF4b5058.toInt()
                     else -> 0xFFE7E9EE.toInt()
                 }

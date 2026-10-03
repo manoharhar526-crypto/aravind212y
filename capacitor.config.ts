@@ -21,7 +21,7 @@ const config: CapacitorConfig = {
     LocalNotifications: {
       smallIcon: 'ic_stat_notify',
       iconColor: '#ffffff',
-      sound: 'default',
+      sound: 'hey_its_me_goku.mp3',
     },
   },
 };

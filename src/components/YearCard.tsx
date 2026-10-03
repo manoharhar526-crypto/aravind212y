@@ -222,13 +222,9 @@ export const YearCard = ({ habits, frozenDates = [], username }: YearCardProps) 
   };
 
   const handleDownload = () =>
-    withCanvas(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `habits-${year}.png`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    withCanvas(async blob => {
+      const { saveFile } = await import("@/lib/saveFile");
+      await saveFile(blob, `habits-${year}.png`);
       toast.success("Saved your year card");
     });
 
