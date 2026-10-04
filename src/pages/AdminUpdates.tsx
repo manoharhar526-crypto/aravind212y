@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { APP_VERSION, AppRelease, UPDATES_BUCKET, formatSize, startDownload, releasesTable, encodeNotes, decodeRelease } from "@/lib/appUpdates";
+import { APP_VERSION, AppRelease, UPDATES_BUCKET, formatSize, startDownload, releasesTable, encodeNotes, decodeRelease, uploadApk } from "@/lib/appUpdates";
 
 const cleanName = (n: string) => {
   const s = n.trim().replace(/[^\w.\- ]/g, "").replace(/\s+/g, "-");
@@ -30,6 +30,7 @@ const AdminUpdates = () => {
   const [file, setFile] = useState<File | null>(null);
   const [form, setForm] = useState<Draft>({ version: "", apk_name: "", release_notes: "", is_published: true, is_required: false, notify: true });
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [edit, setEdit] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
@@ -50,9 +51,9 @@ const AdminUpdates = () => {
     try {
       const apkName = cleanName(form.apk_name || file.name);
       const path = `${Date.now()}-${apkName}`;
-      const { error: upErr } = await supabase.storage.from(UPDATES_BUCKET)
-        .upload(path, file, { contentType: "application/vnd.android.package-archive" });
-      if (upErr) throw upErr;
+      setProgress("Starting...");
+      await uploadApk(path, file, (sent, total, bps) =>
+        setProgress(`${Math.round((sent / total) * 100)}% · ${formatSize(sent)} of ${formatSize(total)} · ${formatSize(Math.round(bps))}/s`));
       const { error } = await releasesTable().insert({
         version: form.version.trim(), apk_name: apkName, file_path: path, file_size: file.size,
         release_notes: encodeNotes(form.release_notes, form.notify),
@@ -66,7 +67,7 @@ const AdminUpdates = () => {
       load();
     } catch (e) {
       toast.error((e as Error).message || "Upload failed");
-    } finally { setUploading(false); }
+    } finally { setUploading(false); setProgress(""); }
   };
 
   const saveEdit = async (id: string) => {
@@ -147,7 +148,7 @@ const AdminUpdates = () => {
           {Fields({ d: form, set: setForm })}
           <Button onClick={handleUpload} disabled={uploading} className="w-full gap-2">
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {uploading ? "Uploading..." : "Upload update"}
+            {uploading ? `Uploading ${progress}` : "Upload update"}
           </Button>
         </Card>
 

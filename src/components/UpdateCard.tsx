@@ -3,17 +3,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Download, Loader2, CheckCircle2, RefreshCw } from "lucide-react";
-import { APP_VERSION, AppRelease, fetchLatestRelease, formatSize, startDownload, isNewerThanDownloaded, markDownloaded } from "@/lib/appUpdates";
+import { APP_VERSION, AppRelease, fetchLatestRelease, formatSize, startDownload, isNewerThanDownloaded, markDownloaded, getSavedApk, installSavedApk } from "@/lib/appUpdates";
 
 export const UpdateCard = () => {
   const [release, setRelease] = useState<AppRelease | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [pct, setPct] = useState<number | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    setRelease(await fetchLatestRelease());
+    const r = await fetchLatestRelease();
+    setRelease(r);
+    setSaved(r ? await getSavedApk(r) : null);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -49,8 +52,16 @@ export const UpdateCard = () => {
           {release.release_notes && (
             <p className="text-xs text-muted-foreground whitespace-pre-line">{release.release_notes}</p>
           )}
+          {saved && (
+            <Button size="sm" className="w-full gap-2" onClick={async () => {
+              try { await installSavedApk(saved); } catch (e) { toast.error((e as Error).message || "Couldn't open installer"); }
+            }}>
+              <CheckCircle2 className="h-4 w-4" /> Install now
+            </Button>
+          )}
           <Button
             size="sm"
+            variant={saved ? "outline" : "default"}
             className="w-full gap-2"
             disabled={downloading}
             onClick={async () => {
@@ -59,6 +70,7 @@ export const UpdateCard = () => {
                 setPct(null);
                 await startDownload(release, setPct);
                 markDownloaded(release);
+                setSaved(await getSavedApk(release));
               } catch (e) {
                 toast.error((e as Error).message || "Download failed");
               } finally {
@@ -67,7 +79,7 @@ export const UpdateCard = () => {
             }}
           >
             {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            {downloading && pct !== null ? `Downloading ${pct}%` : `Download ${formatSize(release.file_size)}`}
+            {downloading && pct !== null ? `Downloading ${pct}%` : saved ? "Downloaded" : `Download ${formatSize(release.file_size)}`}
           </Button>
           <p className="text-[10px] text-muted-foreground">After downloading, open the file to install the update.</p>
         </div>

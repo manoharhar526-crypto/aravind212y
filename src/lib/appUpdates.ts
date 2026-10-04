@@ -52,12 +52,67 @@ export async function getDownloadUrl(r: AppRelease): Promise<string> {
  * cache and the Android installer opens directly (no browser). On the web a
  * normal file download is triggered on the same page.
  */
+const SAVED_KEY = "downloadedApk";
+type SavedApk = { id: string; filePath: string };
+
+/** The APK already saved on this phone for this release, if it is still there. */
+export async function getSavedApk(r: AppRelease): Promise<string | null> {
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    if (!Capacitor.isNativePlatform()) return null;
+    const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || "null") as SavedApk | null;
+    if (!saved || saved.id !== r.id) return null;
+    const { Filesystem, Directory } = await import("@capacitor/filesystem");
+    await Filesystem.stat({ path: r.apk_name, directory: Directory.Data });
+    return saved.filePath;
+  } catch { return null; }
+}
+
+/** Opens the Android installer for an already-downloaded APK. */
+export async function installSavedApk(filePath: string): Promise<void> {
+  const { FileOpener } = await import("@capacitor-community/file-opener");
+  await FileOpener.open({ filePath, contentType: "application/vnd.android.package-archive" });
+}
+
+/**
+ * Fast resumable upload: sends the file in 6 MB pieces, reports progress and
+ * speed, and retries a piece automatically if the connection drops.
+ */
+export async function uploadApk(
+  path: string, file: File,
+  onProgress?: (sent: number, total: number, bytesPerSec: number) => void,
+): Promise<void> {
+  const { Upload } = await import("tus-js-client");
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Please sign in again");
+  const start = Date.now();
+  await new Promise<void>((resolve, reject) => {
+    const up = new Upload(file, {
+      endpoint: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/upload/resumable`,
+      retryDelays: [0, 1000, 3000, 5000, 10000],
+      headers: { authorization: `Bearer ${session.access_token}`, "x-upsert": "true" },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      metadata: { bucketName: UPDATES_BUCKET, objectName: path, contentType: "application/vnd.android.package-archive", cacheControl: "3600" },
+      chunkSize: 6 * 1024 * 1024,
+      onError: reject,
+      onProgress: (sent, total) => onProgress?.(sent, total, sent / Math.max(0.001, (Date.now() - start) / 1000)),
+      onSuccess: () => resolve(),
+    });
+    up.findPreviousUploads().then((prev) => {
+      if (prev.length) up.resumeFromPreviousUpload(prev[0]);
+      up.start();
+    });
+  });
+}
+
 export async function startDownload(r: AppRelease, onProgress?: (pct: number) => void): Promise<void> {
-  const url = await getDownloadUrl(r);
   const { Capacitor } = await import("@capacitor/core");
   if (Capacitor.isNativePlatform()) {
+    const existing = await getSavedApk(r);
+    if (existing) return installSavedApk(existing);
+    const url = await getDownloadUrl(r);
     const { Filesystem, Directory } = await import("@capacitor/filesystem");
-    const { FileOpener } = await import("@capacitor-community/file-opener");
     const sub = onProgress
       ? await Filesystem.addListener("progress", (p) => {
           if (p.contentLength > 0) onProgress(Math.round((p.bytes / p.contentLength) * 100));
@@ -65,13 +120,15 @@ export async function startDownload(r: AppRelease, onProgress?: (pct: number) =>
       : null;
     let res;
     try {
-      res = await Filesystem.downloadFile({ url, path: r.apk_name, directory: Directory.Cache, progress: !!onProgress });
+      res = await Filesystem.downloadFile({ url, path: r.apk_name, directory: Directory.Data, progress: !!onProgress });
     } finally { await sub?.remove(); }
     const filePath =
-      res.path ?? (await Filesystem.getUri({ path: r.apk_name, directory: Directory.Cache })).uri;
-    await FileOpener.open({ filePath, contentType: "application/vnd.android.package-archive" });
+      res.path ?? (await Filesystem.getUri({ path: r.apk_name, directory: Directory.Data })).uri;
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify({ id: r.id, filePath })); } catch { /* ignore */ }
+    await installSavedApk(filePath);
     return;
   }
+  const url = await getDownloadUrl(r);
   // Hand the link straight to the browser so the download starts instantly
   // and shows progress, instead of loading the whole file in memory first.
   const a = document.createElement("a");
