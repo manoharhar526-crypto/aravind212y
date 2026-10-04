@@ -27,6 +27,8 @@ class MonthPickerActivity : Activity() {
     }
 
     private var year = 0
+    private var yearMode = false
+    private var yearPage = 0
     private var shownMonth = 0
     private lateinit var yearLabel: TextView
     private lateinit var grid: GridLayout
@@ -58,12 +60,13 @@ class MonthPickerActivity : Activity() {
             text = t; textSize = 20f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(dp(44), dp(40))
             background = bg(0xFF22252B.toInt())
-            setOnClickListener { year += d; render() }
+            setOnClickListener { if (yearMode) yearPage += d * 12 else year += d; render() }
         }
         yearLabel = TextView(this).apply {
             textSize = 18f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
             setTypeface(typeface, Typeface.BOLD)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            setOnClickListener { yearMode = !yearMode; yearPage = year - 5; render() }
         }
         nav.addView(arrow("‹", -1)); nav.addView(yearLabel); nav.addView(arrow("›", 1))
         root.addView(nav)
@@ -81,11 +84,30 @@ class MonthPickerActivity : Activity() {
     }
 
     private fun render() {
-        yearLabel.text = year.toString()
         grid.removeAllViews()
         val now = Calendar.getInstance()
         val curY = now.get(Calendar.YEAR); val curM = now.get(Calendar.MONTH)
         val cellW = (resources.displayMetrics.widthPixels * 0.8f / 3 - dp(10)).toInt().coerceAtMost(dp(96))
+        if (yearMode) {
+            yearLabel.text = "$yearPage – ${yearPage + 11}"
+            for (y in yearPage until yearPage + 12) {
+                grid.addView(TextView(this).apply {
+                    text = y.toString(); textSize = 14f; gravity = Gravity.CENTER
+                    setTextColor(if (y == year) Color.BLACK else Color.WHITE)
+                    background = when {
+                        y == year -> bg(Color.WHITE)
+                        y == curY -> bg(0xFF22252B.toInt(), Color.WHITE)
+                        else -> bg(0xFF22252B.toInt())
+                    }
+                    layoutParams = GridLayout.LayoutParams().apply {
+                        width = cellW; height = dp(42); setMargins(dp(4), dp(4), dp(4), dp(4))
+                    }
+                    setOnClickListener { year = y; yearMode = false; render() }
+                })
+            }
+            return
+        }
+        yearLabel.text = "$year ▾"
         for (m in 0 until 12) {
             val selected = m == shownMonth && year == currentShownYear()
             val isNow = m == curM && year == curY
