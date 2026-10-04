@@ -34,11 +34,8 @@ class SkipDaysWidget : AppWidgetProvider() {
         val v = RemoteViews(ctx.packageName, R.layout.widget_skip_days)
         // More space → more content: no chips when small, 1 row medium, 2 rows tall.
         // More space → more chip rows: 0 when small, up to 8 rows (32 chips) when tall.
-        val chipRows = when {
-            heightDp in 1..199 -> 0
-            heightDp == 0 -> 8
-            else -> (4 + (heightDp - 400) / 60).coerceIn(4, 8)
-        }
+        // More space → more chip rows: none when small, up to 16 rows (64 chips) when tall.
+        val chipRows = if (heightDp == 0) 4 else ((heightDp - 280) / 30).coerceIn(0, 16)
         // Tiny widget: drop the hint and shrink cells so the month still fits.
         val compact = heightDp in 1..199
         v.setViewVisibility(R.id.hint, if (heightDp == 0 || heightDp >= 260) View.VISIBLE else View.GONE)
@@ -74,7 +71,7 @@ class SkipDaysWidget : AppWidgetProvider() {
         v.setOnClickPendingIntent(R.id.title, HabitToggleReceiver.refreshPi(ctx))
 
         // Habit chips (like the app): 8 per page, the page follows the selected habit.
-        val chipIds = (1..32).map { ctx.resources.getIdentifier("chip$it", "id", ctx.packageName) }
+        val chipIds = (1..64).map { ctx.resources.getIdentifier("chip$it", "id", ctx.packageName) }
         val perPage = chipRows * 4
         val pageStart = if (perPage == 0) 0 else (idx / perPage) * perPage
         for (c in chipIds.indices) {
@@ -92,14 +89,12 @@ class SkipDaysWidget : AppWidgetProvider() {
             v.setOnClickPendingIntent(id,
                 HabitToggleReceiver.pi(ctx, 2100 + hi, HabitToggleReceiver.OP_SKIP_HABIT, delta = hi - idx))
         }
-        v.setViewVisibility(R.id.chip_row1, if (habits.length() > 0 && chipRows >= 1) View.VISIBLE else View.GONE)
-        v.setViewVisibility(R.id.chip_row2, if (chipRows >= 2 && habits.length() - pageStart > 4) View.VISIBLE else View.GONE)
-        v.setViewVisibility(R.id.chip_row3, if (chipRows >= 3 && habits.length() - pageStart > 8) View.VISIBLE else View.GONE)
-        v.setViewVisibility(R.id.chip_row4, if (chipRows >= 4 && habits.length() - pageStart > 12) View.VISIBLE else View.GONE)
-        v.setViewVisibility(R.id.chip_row5, if (chipRows >= 5 && habits.length() - pageStart > 16) View.VISIBLE else View.GONE)
-        v.setViewVisibility(R.id.chip_row6, if (chipRows >= 6 && habits.length() - pageStart > 20) View.VISIBLE else View.GONE)
-        v.setViewVisibility(R.id.chip_row7, if (chipRows >= 7 && habits.length() - pageStart > 24) View.VISIBLE else View.GONE)
-        v.setViewVisibility(R.id.chip_row8, if (chipRows >= 8 && habits.length() - pageStart > 28) View.VISIBLE else View.GONE)
+        for (r in 1..16) {
+            val rowId = ctx.resources.getIdentifier("chip_row$r", "id", ctx.packageName)
+            if (rowId == 0) continue
+            val show = chipRows >= r && habits.length() - pageStart > (r - 1) * 4
+            v.setViewVisibility(rowId, if (show) View.VISIBLE else View.GONE)
+        }
 
         val cal = Calendar.getInstance()
         val today = cal.get(Calendar.DAY_OF_MONTH)
