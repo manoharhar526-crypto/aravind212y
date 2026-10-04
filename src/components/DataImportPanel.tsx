@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Habit } from "@/types/habit";
+import { isSealedBackup, openBackup } from "@/lib/backupFile";
 import type { Task, TaskType } from "@/types/task";
 
 type Imported = { habits?: Habit[]; tasks?: Task[]; calendarNotes?: any[] };
@@ -74,12 +75,18 @@ export const DataImportPanel = ({ onImport }: { onImport: (d: Imported) => void 
     const all: Imported = { habits: [], tasks: [], calendarNotes: [] };
     try {
       for (const f of Array.from(files)) {
-        const text = await f.text();
+        const bytes = new Uint8Array(await f.arrayBuffer());
         let d: Imported;
-        if (f.name.toLowerCase().endsWith(".json") || text.trim().startsWith("{")) {
-          const j = JSON.parse(text);
+        if (isSealedBackup(bytes) || f.name.toLowerCase().endsWith(".htbak")) {
+          const j = await openBackup(bytes);
           d = { habits: j.habits, tasks: j.tasks, calendarNotes: j.calendarNotes ?? j.notes };
-        } else d = fromCsv(text);
+        } else {
+          const text = new TextDecoder().decode(bytes);
+          if (f.name.toLowerCase().endsWith(".json") || text.trim().startsWith("{")) {
+            const j = JSON.parse(text);
+            d = { habits: j.habits, tasks: j.tasks, calendarNotes: j.calendarNotes ?? j.notes };
+          } else d = fromCsv(text);
+        }
         all.habits!.push(...(d.habits ?? []));
         all.tasks!.push(...(d.tasks ?? []));
         all.calendarNotes!.push(...(d.calendarNotes ?? []));
@@ -105,7 +112,7 @@ export const DataImportPanel = ({ onImport }: { onImport: (d: Imported) => void 
       <p className="text-sm text-muted-foreground">
         Bring back a file you exported (full file or spreadsheets). Imported data is added — nothing you have now is removed.
       </p>
-      <input ref={ref} type="file" multiple accept=".json,.csv,application/json,text/csv" className="hidden"
+      <input ref={ref} type="file" multiple accept=".htbak,.json,.csv,application/octet-stream,application/json,text/csv" className="hidden"
         onChange={e => handle(e.target.files)} />
       <Button variant="outline" className="w-full gap-2" disabled={busy} onClick={() => ref.current?.click()}>
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}

@@ -231,7 +231,7 @@ export const DataExportPanel = ({ habits, tasks }: DataExportPanelProps) => {
               onClick={() => setFormat("json")}
             >
               <FileJson className="w-3.5 h-3.5" />
-              Full file
+              Protected backup
             </Button>
           </div>
         </div>

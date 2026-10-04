@@ -3,6 +3,7 @@ import type { Task } from "@/types/task";
 import { normalizeHabitDays } from "@/lib/habitUtils";
 import { saveFile } from "@/lib/saveFile";
 import { toast } from "sonner";
+import { sealBackup } from "@/lib/backupFile";
 
 const stamp = () => {
   const d = new Date();
@@ -54,16 +55,12 @@ export const exportHabitsCsv = (habits: Habit[]) =>
 export const exportTasksCsv = (tasks: Task[]) =>
   download(buildTasksCsv(tasks), `goals-${stamp()}.csv`, "text/csv");
 
-export const exportEverythingJson = (habits: Habit[], tasks: Task[]) =>
-  download(
-    JSON.stringify(
-      { exportedAt: new Date().toISOString(), habits: habits.map(normalizeHabitDays), tasks },
-      null,
-      2,
-    ),
-    `habitracker-${stamp()}.json`,
-    "application/json",
-  );
+export const exportEverythingJson = (habits: Habit[], tasks: Task[]) => {
+  const name = `habitracker-${stamp()}.htbak`;
+  void sealBackup({ exportedAt: new Date().toISOString(), habits: habits.map(normalizeHabitDays), tasks })
+    .then(blob => saveFile(blob, name))
+    .catch(() => toast.error(`Couldn't save ${name}`));
+};
 
 // ── Notes ─────────────────────────────────────────────────────────────────────
 export type NoteLike = { date: string; title: string; body?: string; notifyAt?: string };
@@ -121,7 +118,10 @@ export const exportSelection = ({
     if (parts.includes("habits")) payload.habits = pickedHabits;
     if (parts.includes("tasks")) payload.tasks = pickedTasks;
     if (parts.includes("notes")) payload.calendarNotes = pickedNotes;
-    download(JSON.stringify(payload, null, 2), `habitracker-${suffix}-${stamp()}.json`, "application/json");
+    const name = `habitracker-${suffix}-${stamp()}.htbak`;
+    void sealBackup(payload)
+      .then(blob => saveFile(blob, name))
+      .catch(() => toast.error(`Couldn't save ${name}`));
     return 1;
   }
 
