@@ -13,6 +13,8 @@ import type { CalendarNote } from "@/types/calendarNote";
 import { readWidgetPrefs } from "@/lib/widgetPrefs";
 import {
   calculateTotalStreak,
+  calculateBestStreak,
+  isExcusedDay,
   getAllTimeStats,
   getCompletedDaysForMonth,
   getDaysInMonth,
@@ -141,9 +143,14 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
         };
       }
     }
+    // Streak baselines that ignore today's tick, so the widget can add +1
+    // live when today is ticked from the home screen.
+    const withoutToday = { ...h, completedDays: h.completedDays.filter(d => d !== today) };
     return {
       id: h.id,
       name: h.name,
+      base: calculateTotalStreak(withoutToday, frozenDates),
+      best: calculateBestStreak(withoutToday, frozenDates),
       days: doneNums,
       skipped: naNums,
       frozen: frozenNums,
@@ -209,6 +216,51 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
 
   // 12. All-time stats
   const at = getAllTimeStats(habits, frozenDates);
+  // Longest-ever streak with today's ticks removed (widget re-adds them live).
+  const alltimeBestBase = habits.reduce((m, h) => Math.max(m, calculateBestStreak(
+    { ...h, completedDays: (h.completedDays ?? []).filter(d => d !== today) }, frozenDates)), 0);
+  // Same denominator getAllTimeStats uses, so the widget can update the rate live.
+  let alltimePossible = 0;
+  for (const h of habits.map(normalizeHabitDays)) {
+    const [y, m] = h.month.split("-").map(Number);
+    if (!y || !m) continue;
+    const dim = new Date(y, m, 0).getDate();
+    for (let d = 1; d <= dim; d++) {
+      const ds = `${h.month}-${String(d).padStart(2, "0")}`;
+      if (h.completedDays.includes(ds) || !isExcusedDay(h, ds, frozenDates)) alltimePossible++;
+    }
+  }
+
+  // 12b. Year Card — one char per day of this year (today excluded; widget adds it live).
+  // '.' nothing tracked, 'x' excused only, '0'..'4' share of expected habits done.
+  const yr = now.getFullYear();
+  const yearByMonth = new Map<string, Habit[]>();
+  for (const h of habits.map(normalizeHabitDays)) {
+    if (prefs.habits.includes(h.id)) continue;
+    const list = yearByMonth.get(h.month) ?? [];
+    list.push(h);
+    yearByMonth.set(h.month, list);
+  }
+  let yearLevels = "";
+  let yearDoneBase = 0;
+  let yearExpectedBase = 0;
+  for (const d = new Date(yr, 0, 1, 12); d.getFullYear() === yr; d.setDate(d.getDate() + 1)) {
+    const ds = `${yr}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (ds >= today) { yearLevels += "."; continue; }
+    const list = yearByMonth.get(ds.substring(0, 7)) ?? [];
+    if (list.length === 0) { yearLevels += "."; continue; }
+    let done = 0, expected = 0;
+    for (const h of list) {
+      const isDone = h.completedDays.includes(ds);
+      if (isDone) done++;
+      if (isDone || !isExcusedDay(h, ds, frozenDates)) expected++;
+    }
+    yearDoneBase += done;
+    yearExpectedBase += expected;
+    if (expected === 0) { yearLevels += "x"; continue; }
+    const q = done / expected;
+    yearLevels += q <= 0 ? "0" : q < 0.34 ? "1" : q < 0.67 ? "2" : q < 1 ? "3" : "4";
+  }
 
   // 13. Habit reports — per-habit monthly summary
   const habitReports = monthHabits.map(h => {
@@ -231,6 +283,12 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
 
   await Promise.all([
     setItem("today_date", today),
+    setItem("grid_month", month),
+    setItem("year_card_year", String(yr)),
+    setItem("year_levels", yearLevels),
+    setItem("year_done_base", String(yearDoneBase)),
+    setItem("year_expected_base", String(yearExpectedBase)),
+    setItem("widget_new_month", "0"),
 
     // Compact "Today" summary widget
     setItem("today_done", String(doneCount)),
@@ -251,6 +309,8 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
     setItem("alltime_months", String(at.totalMonths)),
     setItem("alltime_rate", String(at.allTimeRate)),
     setItem("alltime_streak", String(at.longestStreak)),
+    setItem("alltime_best_base", String(alltimeBestBase)),
+    setItem("alltime_possible", String(alltimePossible)),
     setItem("alltime_best", at.bestHabit?.name ?? ""),
     setItem("habit_reports", JSON.stringify(habitReports)),
     setItem("task_rep_daily_done", String(doneOf(td))),

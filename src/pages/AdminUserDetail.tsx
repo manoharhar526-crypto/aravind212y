@@ -386,7 +386,7 @@ const AdminUserDetail = () => {
             )}
 
             <Tabs defaultValue="habits" className="w-full">
-              <TabsList className="grid w-full max-w-sm grid-cols-3 mb-4">
+              <TabsList className="grid w-full max-w-none grid-cols-3 mb-4">
                 <TabsTrigger value="habits" className="text-xs sm:text-sm">Habits</TabsTrigger>
                 <TabsTrigger value="goals" className="text-xs sm:text-sm">Goals</TabsTrigger>
                 <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>

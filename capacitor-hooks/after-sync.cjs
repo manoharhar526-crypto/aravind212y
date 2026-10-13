@@ -51,6 +51,38 @@ copyAll(path.join(TEMPLATE, "res-xml"), XML_DIR, ".xml");
 copyAll(path.join(TEMPLATE, "res-drawable"), DRAWABLE_DIR, ".xml");
 console.log("[widgets] copied Kotlin, layout, and widget-provider XML files ✓");
 
+// App icon, notification icon, Goku sound and Luffy image live in assets/ so they
+// survive android/ being regenerated — copy them in on every sync.
+const ASSETS = path.join(ROOT, "assets");
+const RES = path.join(ANDROID, "res");
+const copyTree = (from, to) => {
+  if (!fs.existsSync(from)) return 0;
+  let n = 0;
+  for (const e of fs.readdirSync(from, { withFileTypes: true })) {
+    const src = path.join(from, e.name);
+    const dst = path.join(to, e.name);
+    if (e.isDirectory()) n += copyTree(src, dst);
+    else { ensureDir(to); fs.copyFileSync(src, dst); n++; }
+  }
+  return n;
+};
+let assetCount = 0;
+assetCount += copyTree(path.join(ASSETS, "android-icons"), RES);
+assetCount += copyTree(path.join(ASSETS, "notification-icon"), RES);
+const sound = path.join(ASSETS, "sound", "hey_its_me_goku.mp3");
+if (fs.existsSync(sound)) {
+  ensureDir(path.join(RES, "raw"));
+  fs.copyFileSync(sound, path.join(RES, "raw", "hey_its_me_goku.mp3"));
+  assetCount++;
+}
+const luffy = path.join(ASSETS, "notification-image", "luffy.png");
+if (fs.existsSync(luffy)) {
+  ensureDir(DRAWABLE_DIR);
+  fs.copyFileSync(luffy, path.join(DRAWABLE_DIR, "luffy.png"));
+  assetCount++;
+}
+console.log(`[assets] copied ${assetCount} icon/sound/image files into android/ ✓`);
+
 const patchFile = (file, patcher) => {
   if (!fs.existsSync(file)) return;
   const before = fs.readFileSync(file, "utf8");

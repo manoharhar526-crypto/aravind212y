@@ -35,13 +35,15 @@ class TodaySummaryWidget : AppWidgetProvider() {
 
             v.setViewVisibility(R.id.stats, View.VISIBLE)
             v.setViewVisibility(R.id.empty, View.GONE)
-            v.setTextViewText(R.id.pct, "$pct%")
+            val allDone = total > 0 && done >= total
+            v.setTextViewText(R.id.pct, if (allDone) "All Done 🎉" else "$pct%")
             v.setTextViewText(R.id.count, "$done of $total habits")
             v.setTextViewText(R.id.streak, "🔥 $streak day streak")
             v.setTextViewText(R.id.subtitle, WidgetData.todayStr().substring(5))
             v.setTextColor(
                 R.id.pct,
                 when {
+                    allDone -> 0xFFFACC15.toInt()
                     pct >= 80 -> 0xFFFFFFFF.toInt()
                     pct >= 40 -> 0xFFE7E9EE.toInt()
                     else -> 0xFF8B8F98.toInt()

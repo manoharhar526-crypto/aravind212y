@@ -31,6 +31,7 @@ class CalendarWidget : AppWidgetProvider() {
 
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
         for (id in ids) {
+            heightDp = try { mgr.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0) } catch (_: Exception) { 0 }
             // Never let one bad value leave the widget stuck on the static "Calendar" placeholder.
             val views = try { build(ctx) } catch (e: Exception) {
                 android.util.Log.e("CalendarWidget", "build failed", e)
@@ -41,6 +42,9 @@ class CalendarWidget : AppWidgetProvider() {
             }
         }
     }
+
+    /** Current widget height in dp (0 = unknown) — drives text size as it is resized. */
+    private var heightDp = 0
 
     override fun onEnabled(ctx: Context) { refreshAll(ctx) }
 
@@ -141,6 +145,20 @@ class CalendarWidget : AppWidgetProvider() {
         for (i in 0 until notesArr.length()) noteSet.add(notesArr.optString(i))
         val ym = String.format(java.util.Locale.US, "%04d-%02d-", year, month + 1)
 
+        // Grow text with the widget; hide the footer when it is small.
+        val cellSp = when {
+            heightDp == 0 -> 12f
+            heightDp < 200 -> 9f
+            heightDp < 260 -> 11f
+            heightDp < 340 -> 13f
+            heightDp < 440 -> 15f
+            else -> 17f
+        }
+        v.setViewVisibility(R.id.footer, if (heightDp in 1..219) View.GONE else View.VISIBLE)
+        v.setViewVisibility(R.id.cal_today, if (heightDp in 1..179) View.GONE else View.VISIBLE)
+        // 5-row months drop the 6th row so the rest stretch to fill the space.
+        v.setViewVisibility(R.id.crow6, if (firstDow + totalDays <= 35) View.GONE else View.VISIBLE)
+
         var hasNoteThisMonth = false
         for (i in 1..42) {
             val cellId = ctx.resources.getIdentifier("c$i", "id", ctx.packageName)
@@ -148,6 +166,7 @@ class CalendarWidget : AppWidgetProvider() {
             val day = i - firstDow
             if (day in 1..totalDays) {
                 v.setViewVisibility(cellId, View.VISIBLE)
+                v.setTextViewTextSize(cellId, android.util.TypedValue.COMPLEX_UNIT_SP, cellSp)
                 val dateStr = ym + String.format(java.util.Locale.US, "%02d", day)
                 val hasNote = noteSet.contains(dateStr)
                 if (hasNote) hasNoteThisMonth = true
@@ -161,7 +180,7 @@ class CalendarWidget : AppWidgetProvider() {
                 }
                 v.setOnClickPendingIntent(cellId, notePi(ctx, i, dateStr))
             } else {
-                v.setViewVisibility(cellId, if (i > 35 && firstDow + totalDays <= 35) View.GONE else View.INVISIBLE)
+                v.setViewVisibility(cellId, View.INVISIBLE)
             }
         }
         v.setTextViewText(

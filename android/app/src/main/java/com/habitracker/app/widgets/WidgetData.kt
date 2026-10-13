@@ -42,6 +42,9 @@ object WidgetData {
     }
 
     fun putString(ctx: Context, key: String, value: String) {
+        // apply(): the in-memory value is visible instantly to every reader and
+        // the disk write happens in the background, so a tap never blocks on
+        // a dozen flash writes when the phone wakes from a long sleep.
         prefs(ctx).edit().putString(key, value).apply()
     }
 
@@ -55,6 +58,7 @@ object WidgetData {
 
     /** Header subtitle: month name, or a hint when the app has never synced. */
     fun subtitle(ctx: Context): String {
+        if (getString(ctx, "widget_new_month", "") == "1") return "New month · open app to add new habits"
         val m = getString(ctx, "calendar_month", "")
         return if (m.isNotEmpty()) m else "Open app to sync"
     }
@@ -208,6 +212,114 @@ object WidgetData {
 
     fun optimisticToggleMonthGrid(ctx: Context, habitId: String, day: Int) =
         optimisticToggle(ctx, habitId, day, "days")
+
+    /**
+     * Recomputes every summary number (Today, Habit Summary, Analytics,
+     * All-Time) from the freshly-flipped `month_grid`, so all widgets agree
+     * the instant a habit is ticked — even with the app closed.
+     * [completionDelta] is +1/-1 when a done tick changed, else 0.
+     */
+    fun recomputeDerived(ctx: Context, completionDelta: Int = 0, possibleDelta: Int = 0) {
+        try {
+            val grid = getJsonArray(ctx, "month_grid")
+            val cal = Calendar.getInstance()
+            val todayNum = cal.get(Calendar.DAY_OF_MONTH)
+            val totalDays = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+            val rates = HashMap<String, Int>()
+            val counts = HashMap<String, Int>()
+            var doneToday = 0
+            var maxStreak = 0
+            var maxBest = 0
+            for (i in 0 until grid.length()) {
+                val o = grid.optJSONObject(i) ?: continue
+                val days = toSet(o.optJSONArray("days"))
+                // Same rule as the app's monthly rate: whole month, N/A and rest days left out.
+                val excused = toSet(o.optJSONArray("skipped"))
+                var expected = 0
+                for (d in 1..totalDays) if (d in days || d !in excused) expected++
+                // Live streak: baseline up to yesterday, +1 when today is ticked.
+                val live = o.optInt("base", 0) + (if (todayNum in days) 1 else 0)
+                maxStreak = maxOf(maxStreak, live)
+                maxBest = maxOf(maxBest, o.optInt("best", 0), live)
+                val done = days.size
+                val rate = if (expected > 0) minOf(100, Math.round(done * 100f / expected)) else 0
+                rates[o.optString("name")] = rate
+                counts[o.optString("name")] = done
+                if (todayNum in days) doneToday++
+            }
+            val total = grid.length()
+            putString(ctx, "today_done", doneToday.toString())
+            putString(ctx, "today_total", total.toString())
+            if (grid.length() > 0 && grid.optJSONObject(0)?.has("base") == true) {
+                putString(ctx, "today_streak", maxStreak.toString())
+                val base = getInt(ctx, "alltime_best_base", 0)
+                putString(ctx, "alltime_streak", maxOf(base, maxBest).toString())
+            }
+            putString(ctx, "today_pct", (if (total > 0) Math.round(doneToday * 100f / total) else 0).toString())
+
+            val reports = getJsonArray(ctx, "habit_reports")
+            for (i in 0 until reports.length()) {
+                val o = reports.optJSONObject(i) ?: continue
+                val n = o.optString("name")
+                counts[n]?.let { o.put("completed", it) }
+                rates[n]?.let { o.put("rate", it) }
+                o.put("total", totalDays)
+            }
+            putString(ctx, "habit_reports", reports.toString())
+
+            val an = getJsonArray(ctx, "analytics")
+            val list = mutableListOf<JSONObject>()
+            for (i in 0 until an.length()) an.optJSONObject(i)?.let { o ->
+                rates[o.optString("name")]?.let { o.put("pct", it) }; list.add(o)
+            }
+            list.sortByDescending { it.optInt("pct") }
+            putString(ctx, "analytics", JSONArray(list).toString())
+
+            if (completionDelta != 0) {
+                val c = (getInt(ctx, "alltime_completions", 0) + completionDelta).coerceAtLeast(0)
+                putString(ctx, "alltime_completions", c.toString())
+            }
+            val possible = (getInt(ctx, "alltime_possible", 0) + possibleDelta).coerceAtLeast(0)
+            if (possibleDelta != 0) putString(ctx, "alltime_possible", possible.toString())
+            if (possible > 0) {
+                val c = getInt(ctx, "alltime_completions", 0)
+                putString(ctx, "alltime_rate", minOf(100, Math.round(c * 100f / possible)).toString())
+            }
+        } catch (_: Exception) { /* never break a tap */ }
+    }
+
+    private fun toSet(a: JSONArray?): Set<Int> {
+        val s = HashSet<Int>(); if (a != null) for (j in 0 until a.length()) s.add(a.optInt(j)); return s
+    }
+
+    /**
+     * The app may stay closed for weeks or a whole year. When the real month is
+     * newer than the month the app last synced, carry the same habits into the
+     * new month with empty days, so widgets stay correct and tappable. Taps are
+     * queued with real dates; the app files them into the right month on open.
+     */
+    fun rollIfNewMonth(ctx: Context) {
+        try {
+            val now = todayStr().substring(0, 7)
+            var synced = getString(ctx, "grid_month", "")
+            if (synced.isEmpty()) synced = getString(ctx, "today_date", "").take(7)
+            if (synced.length != 7 || synced >= now) return
+            val cal = Calendar.getInstance()
+            val totalDays = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+            val grid = getJsonArray(ctx, "month_grid")
+            for (i in 0 until grid.length()) {
+                val o = grid.optJSONObject(i) ?: continue
+                o.put("days", JSONArray()); o.put("skipped", JSONArray()); o.put("frozen", JSONArray())
+                o.put("total", totalDays); o.put("base", 0); o.remove("prev")
+            }
+            putString(ctx, "month_grid", grid.toString())
+            putString(ctx, "grid_month", now)
+            putString(ctx, "today_date", todayStr())
+            putString(ctx, "calendar_month", SimpleDateFormat("MMMM yyyy", Locale.US).format(cal.time))
+            putString(ctx, "widget_new_month", "1")
+            recomputeDerived(ctx)
+        } catch (_: Exception) { }
+    }
 
     /** Repaints every Habitracker widget right away. */
     fun refreshAll(ctx: Context) = WidgetRefreshScheduler.refreshAllNow(ctx)

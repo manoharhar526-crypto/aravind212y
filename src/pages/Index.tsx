@@ -221,30 +221,19 @@ const Index = () => {
   // ── Background sync — silently keeps cloud storage up-to-date ───────────────
   useBackgroundSync({ enabled: syncReady, userId, habits, tasks, calendarNotes, currentMonth, frozenDates, username });
 
-  // ── New month: carry habits forward automatically so widgets never go blank.
-  // Ids are derived from month + name so every device creates the same ids and
-  // merges dedupe instead of duplicating.
+  // ── New month: ask once whether to keep the same habits (copied exactly,
+  // rest days and order included) or set up new ones.
   const realToday = useToday();
   const realMonthKey = getMonthKey(realToday);
   useEffect(() => {
     if (!syncReady) return;
-    setHabits(prev => {
-      if (getHabitsForMonth(prev, realToday).length > 0) return prev;
-      const prevHabits = getHabitsForMonth(prev, getPreviousMonth(realToday));
-      if (prevHabits.length === 0) return prev;
-      const carried: Habit[] = prevHabits
-        .slice()
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .map((h, i) => ({
-          id: `${realMonthKey}-${h.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-          name: h.name,
-          month: realMonthKey,
-          completedDays: [],
-          restDays: h.restDays,
-          order: i,
-        }));
-      return [...prev, ...carried];
-    });
+    const askedKey = `habitracker:new-month-asked:${userId ?? "anon"}:${realMonthKey}`;
+    if (localStorage.getItem(askedKey)) return;
+    if (getHabitsForMonth(habits, realToday).length > 0) return;
+    if (getHabitsForMonth(habits, getPreviousMonth(realToday)).length === 0) return;
+    localStorage.setItem(askedKey, "1");
+    setPendingMonth(new Date(realToday.getFullYear(), realToday.getMonth(), 1));
+    setShowCopyDialog(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncReady, realMonthKey]);
 
@@ -292,17 +281,37 @@ const Index = () => {
           });
         }
         if (queued.length || skips.length) {
-          setHabits(prev =>
-            prev.map(habit => {
-              const dates = queued.filter(q => q.habitId === habit.id).map(q => q.date);
-              const skipDates = skips.filter(q => q.habitId === habit.id).map(q => q.date);
-              if (!dates.length && !skipDates.length) return habit;
-              let next = habit;
-              for (const d of dates) next = toggleHabitDayMark(next, d, "complete");
-              for (const d of skipDates) next = toggleHabitDayMark(next, d, "skip");
-              return next;
-            }),
-          );
+          // Taps may be weeks or months old, or made after the month rolled over
+          // while the app stayed closed. Route each tap to the habit for the
+          // tap's own month (same name), creating that month's habit if needed,
+          // so no widget tap is ever lost.
+          setHabits(prev => {
+            const next = [...prev];
+            const apply = (habitId: string, date: string, mark: "complete" | "skip") => {
+              const src = next.find(h => h.id === habitId);
+              if (!src || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+              const m = date.slice(0, 7);
+              let idx = src.month === m
+                ? next.indexOf(src)
+                : next.findIndex(h => h.month === m && h.name === src.name);
+              if (idx < 0) {
+                next.push({
+                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+                  name: src.name,
+                  month: m,
+                  completedDays: [],
+                  skippedDays: [],
+                  restDays: src.restDays,
+                  order: src.order,
+                });
+                idx = next.length - 1;
+              }
+              next[idx] = toggleHabitDayMark(next[idx], date, mark);
+            };
+            for (const q of queued) apply(q.habitId, q.date, "complete");
+            for (const q of skips) apply(q.habitId, q.date, "skip");
+            return next;
+          });
         }
         if (navDate) {
           const parsed = new Date(`${navDate}T12:00:00`);
@@ -491,7 +500,8 @@ const Index = () => {
       name: h.name,
       month: monthKey,
       completedDays: [],
-      order: i,
+      restDays: h.restDays,
+      order: h.order ?? i,
     }));
     setHabits(prev => [...prev, ...copiedHabits]);
     if (copyTasks) {
@@ -750,7 +760,7 @@ const Index = () => {
         </section>
 
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="grid w-full max-w-sm grid-cols-3 mb-4 sm:mb-6">
+          <TabsList className="grid w-full max-w-none grid-cols-3 mb-4 sm:mb-6">
             <TabsTrigger value="habits" className="text-xs sm:text-sm">Habits</TabsTrigger>
             <TabsTrigger value="goals" className="text-xs sm:text-sm">Goals</TabsTrigger>
             <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>
@@ -910,7 +920,7 @@ const Index = () => {
                     Goals (CSV)
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => exportEverythingJson(habits, tasks)}>
-                    Everything (JSON)
+                    Protected Backup (.htb)
                   </Button>
                 </div>
               </Card>
@@ -949,6 +959,10 @@ const Index = () => {
         incompleteTasks={incompletePrevTasks}
         onCopy={handleCopyHabits}
         onSkip={handleSkipCopy}
+        onNewHabits={() => {
+          handleSkipCopy();
+          toast.info("Tap \"Add Habit\" to set up this month's new habits");
+        }}
       />
     </div>
   );

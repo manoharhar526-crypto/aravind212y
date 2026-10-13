@@ -70,6 +70,10 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_task_reports"/>
         </receiver>
         
+        <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.habitracker.app.widgets.YearCardWidget" android:exported="true" android:label="@string/widget_year_card">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_year_card"/>
+        </receiver>
         <receiver android:icon="@mipmap/ic_launcher" android:enabled="true" android:name="com.habitracker.app.widgets.TodaySummaryWidget" android:exported="true" android:label="@string/widget_today_summary">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info_today_summary"/>
@@ -89,7 +93,13 @@
         </receiver>
         
         <!-- AlarmManager target — fires every 30 min to refresh all widgets -->
-        <receiver android:icon="@mipmap/ic_launcher" android:name="com.habitracker.app.widgets.WidgetAlarmReceiver" android:enabled="true" android:exported="false"/>
+        <receiver android:icon="@mipmap/ic_launcher" android:name="com.habitracker.app.widgets.WidgetAlarmReceiver" android:enabled="true" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED"/>
+                <action android:name="android.intent.action.TIME_SET"/>
+                <action android:name="android.intent.action.TIMEZONE_CHANGED"/>
+            </intent-filter>
+        </receiver>
         
         <!-- Backing service for the Monthly Tracking Grid ListView (collection widget) -->
         <service android:name="com.habitracker.app.widgets.MonthGridRemoteViewsService"

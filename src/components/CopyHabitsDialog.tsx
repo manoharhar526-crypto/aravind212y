@@ -6,7 +6,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Copy, PlusCircle } from "lucide-react";
+import { Copy, PlusCircle, Sparkles } from "lucide-react";
 
 interface CopyHabitsDialogProps {
   open: boolean;
@@ -17,6 +17,8 @@ interface CopyHabitsDialogProps {
   incompleteTasks: { id: string; title: string }[];
   onCopy: (copyTasks: boolean) => void;
   onSkip: () => void;
+  /** User wants different habits this month — open the add-habit flow. */
+  onNewHabits?: () => void;
 }
 
 export const CopyHabitsDialog = ({
@@ -28,6 +30,7 @@ export const CopyHabitsDialog = ({
   incompleteTasks,
   onCopy,
   onSkip,
+  onNewHabits,
 }: CopyHabitsDialogProps) => {
   const hasTasks = incompleteTasks.length > 0;
 
@@ -35,14 +38,14 @@ export const CopyHabitsDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Set Up {currentMonthName}</DialogTitle>
+          <DialogTitle>New month: {currentMonthName}</DialogTitle>
           <DialogDescription>
-            You had {previousHabitNames.length} habit{previousHabitNames.length !== 1 ? "s" : ""} in {previousMonthName}. Would you like to keep the same habits?
+            You had {previousHabitNames.length} habit{previousHabitNames.length !== 1 ? "s" : ""} in {previousMonthName}. Copy the same habits to this month? Your home screen widgets will show them right away.
           </DialogDescription>
         </DialogHeader>
 
         {previousHabitNames.length > 0 && (
-          <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1">
+          <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1 max-h-48 overflow-y-auto">
             <p className="text-xs font-medium text-muted-foreground mb-2">Habits to copy:</p>
             {previousHabitNames.map((name, i) => (
               <div key={i} className="text-sm text-foreground">• {name}</div>
@@ -67,7 +70,7 @@ export const CopyHabitsDialog = ({
         <div className="flex flex-col gap-2 pt-2">
           <Button onClick={() => onCopy(true)} className="gap-2">
             <Copy className="w-4 h-4" />
-            Copy habits{hasTasks ? " + carry over tasks" : ""}
+            Yes, copy same habits{hasTasks ? " + tasks" : ""}
           </Button>
           {hasTasks && (
             <Button variant="outline" onClick={() => onCopy(false)} className="gap-2 text-sm">
@@ -75,9 +78,15 @@ export const CopyHabitsDialog = ({
               Copy habits only
             </Button>
           )}
-          <Button variant="outline" onClick={onSkip} className="gap-2">
+          {onNewHabits && (
+            <Button variant="outline" onClick={onNewHabits} className="gap-2">
+              <Sparkles className="w-4 h-4" />
+              I have new habits
+            </Button>
+          )}
+          <Button variant="ghost" onClick={onSkip} className="gap-2">
             <PlusCircle className="w-4 h-4" />
-            No, start fresh
+            Start fresh
           </Button>
         </div>
       </DialogContent>

@@ -13,4 +13,5 @@
     <string name="widget_habit_reports">Habit Reports</string>
     <string name="widget_task_reports">Task Reports</string>
     <string name="widget_today_summary">Today Summary</string>
+    <string name="widget_year_card">Year Card</string>
 </resources>

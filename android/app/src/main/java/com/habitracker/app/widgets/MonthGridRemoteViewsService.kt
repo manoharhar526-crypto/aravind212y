@@ -96,7 +96,7 @@ private class MonthGridFactory(private val ctx: Context) : RemoteViewsService.Re
                 id,
                 when {
                     isDone -> 0xFF0B0D10.toInt()
-                    isSkip -> 0xFF8B8F98.toInt()
+                    isSkip -> 0xFFF97316.toInt()
                     isFuture || !inWindow -> 0xFF4b5058.toInt()
                     else -> 0xFFE7E9EE.toInt()
                 }
@@ -104,11 +104,16 @@ private class MonthGridFactory(private val ctx: Context) : RemoteViewsService.Re
 
             val fill = Intent().apply {
                 putExtra(HabitToggleReceiver.EXTRA_OP,
-                    if (tappable) HabitToggleReceiver.OP_TOGGLE else HabitToggleReceiver.OP_REFRESH)
+                    // Always send a toggle; the receiver re-checks today/yesterday at tap time,
+                    // so a widget left untouched overnight still ticks on the first touch.
+                    HabitToggleReceiver.OP_TOGGLE)
                 putExtra(HabitToggleReceiver.EXTRA_HABIT_ID, if (usePrev) prev!!.optString("id") else habitId)
                 putExtra(HabitToggleReceiver.EXTRA_DATE, date)
                 putExtra(HabitToggleReceiver.EXTRA_DAY, if (usePrev) 0 else dayNum)
                 putExtra(HabitToggleReceiver.EXTRA_TOGGLEABLE, tappable)
+                // Marks the cell that was "today" when drawn, so a stale widget
+                // left for days still ticks the real today on the first tap.
+                putExtra(HabitToggleReceiver.EXTRA_IS_TODAY, isToday)
             }
             v.setOnClickFillInIntent(id, fill)
         }
