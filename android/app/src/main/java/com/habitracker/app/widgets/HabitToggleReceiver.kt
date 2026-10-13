@@ -20,10 +20,16 @@ import android.content.Intent
  */
 class HabitToggleReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
+        WidgetData.rollIfNewMonth(ctx)
         val op = intent.getStringExtra(EXTRA_OP) ?: OP_TOGGLE
         val habitId = intent.getStringExtra(EXTRA_HABIT_ID)
-        val date = intent.getStringExtra(EXTRA_DATE)
-        val day = intent.getIntExtra(EXTRA_DAY, -1)
+        var date = intent.getStringExtra(EXTRA_DATE)
+        var day = intent.getIntExtra(EXTRA_DAY, -1)
+        // Widget drawn days ago: its "today" cell now means the real today.
+        if (intent.getBooleanExtra(EXTRA_IS_TODAY, false) && date != WidgetData.todayStr()) {
+            date = WidgetData.todayStr()
+            day = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_MONTH)
+        }
 
         when (op) {
             OP_WEEK -> {
@@ -49,10 +55,15 @@ class HabitToggleReceiver : BroadcastReceiver() {
                 }
                 if (day == 0) {
                     // Yesterday that belongs to last month.
-                    if (WidgetData.togglePrev(ctx, habitId, date)) WidgetData.queueToggle(ctx, habitId, date)
+                    if (WidgetData.togglePrev(ctx, habitId, date)) {
+                        WidgetData.queueToggle(ctx, habitId, date)
+                        WidgetData.recomputeDerived(ctx, 0)
+                    }
                 } else if (!WidgetData.hasDay(ctx, habitId, day, "skipped")) {
                     WidgetData.queueToggle(ctx, habitId, date)
+                    val wasDone = WidgetData.hasDay(ctx, habitId, day, "days")
                     WidgetData.optimisticToggle(ctx, habitId, day, "days")
+                    WidgetData.recomputeDerived(ctx, if (wasDone) -1 else 1)
                 }
             }
 
@@ -63,7 +74,10 @@ class HabitToggleReceiver : BroadcastReceiver() {
                 // A ticked day can't be skipped — untick it first.
                 if (!WidgetData.hasDay(ctx, habitId, day, "days")) {
                     WidgetData.queueSkip(ctx, habitId, date)
+                    val wasSkipped = WidgetData.hasDay(ctx, habitId, day, "skipped")
                     WidgetData.optimisticToggle(ctx, habitId, day, "skipped")
+                    // Skipping removes a day from the honest denominator; un-skipping adds it back.
+                    WidgetData.recomputeDerived(ctx, 0, if (wasSkipped) 1 else -1)
                 }
             }
 
@@ -84,6 +98,7 @@ class HabitToggleReceiver : BroadcastReceiver() {
         const val EXTRA_DAY = "day"
         const val EXTRA_DELTA = "delta"
         const val EXTRA_TOGGLEABLE = "toggleable"
+        const val EXTRA_IS_TODAY = "isToday"
 
         const val OP_TOGGLE = "toggle"
         const val OP_SKIP = "skip"

@@ -73,6 +73,7 @@ class SkipDaysWidget : AppWidgetProvider() {
         // Habit chips (like the app): 8 per page, the page follows the selected habit.
         val chipIds = (1..64).map { ctx.resources.getIdentifier("chip$it", "id", ctx.packageName) }
         val perPage = chipRows * 4
+        val chipSp = when { heightDp >= 600 -> 13f; heightDp >= 420 -> 12f; heightDp in 1..279 -> 9f; else -> 10f }
         val pageStart = if (perPage == 0) 0 else (idx / perPage) * perPage
         for (c in chipIds.indices) {
             val id = chipIds[c]; if (id == 0) continue
@@ -83,6 +84,7 @@ class SkipDaysWidget : AppWidgetProvider() {
             val n = h.optJSONArray("skipped")?.length() ?: 0
             val name = h.optString("name").ifBlank { "Habit" }
             v.setTextViewText(id, if (n > 0) "$name ⊘$n" else name)
+            v.setTextViewTextSize(id, android.util.TypedValue.COMPLEX_UNIT_SP, chipSp)
             val sel = hi == idx
             v.setInt(id, "setBackgroundResource", if (sel) R.drawable.widget_skip_chip else R.drawable.widget_pill)
             v.setTextColor(id, if (sel) 0xFF0B0C0F.toInt() else 0xFFB8BCC4.toInt())
@@ -143,7 +145,7 @@ class SkipDaysWidget : AppWidgetProvider() {
                 cellId,
                 when {
                     isDone -> 0xFF0B0C0F.toInt()
-                    isSkip -> 0xFFFCD34D.toInt()
+                    isSkip -> 0xFFF97316.toInt()
                     day == today -> 0xFFFFFFFF.toInt()
                     isFuture -> 0xFF4B5058.toInt()
                     else -> 0xFFE7E9EE.toInt()
