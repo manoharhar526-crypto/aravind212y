@@ -80,6 +80,16 @@ const formatLocalDateTime = (date: Date, timezone: string): string => {
   });
 };
 
+/** Live clock isolated so its 1s tick doesn't re-render the whole page. */
+const HeaderClock = ({ timezone, className }: { timezone: string; className: string }) => {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return <p className={className}>{formatLocalDateTime(now, timezone)}</p>;
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const Index = () => {
@@ -111,7 +121,6 @@ const Index = () => {
 
   const [showCopyDialog, setShowCopyDialog] = useState(false);
   const [pendingMonth, setPendingMonth] = useState<Date | null>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
   const currentMonthRef = useRef(stored?.currentMonth ?? new Date());
   const [syncReady, setSyncReady] = useState(false);
   const isFirstSave = useRef(true);
@@ -239,14 +248,19 @@ const Index = () => {
 
   // ── Widget sync — mirrors latest data to native SharedPreferences for Android home-screen widgets
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const push = () => {
+      clearTimeout(timer);
+      timer = setTimeout(doPush, 300);
+    };
+    const doPush = () => {
       import("@/services/widgetSync").then(({ syncWidgetData }) => {
         syncWidgetData({ habits, tasks, notes: calendarNotes, frozenDates });
       }).catch(() => { /* ignore on web */ });
     };
     push();
     window.addEventListener(WIDGET_PREFS_KEY, push);
-    return () => window.removeEventListener(WIDGET_PREFS_KEY, push);
+    return () => { clearTimeout(timer); window.removeEventListener(WIDGET_PREFS_KEY, push); };
     // realToday: re-push at midnight so widgets switch day/month right away
   }, [habits, tasks, calendarNotes, frozenDates, realToday]);
 
@@ -337,11 +351,6 @@ const Index = () => {
 
 
 
-  // Update clock every second
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Save app data on change — skip first render (data was just loaded from storage)
   useEffect(() => {
@@ -640,7 +649,7 @@ const Index = () => {
     .map(t => ({ id: t.id, title: t.title }));
 
   currentMonthRef.current = currentMonth;
-  const allTime = getAllTimeStats(habits, frozenDates);
+  const allTime = useMemo(() => getAllTimeStats(habits, frozenDates), [habits, frozenDates]);
 
 
   return (
@@ -660,9 +669,7 @@ const Index = () => {
                   </div>
                 )}
                 {/* Clock: full width on desktop next to name */}
-                <p className="hidden sm:block text-base font-medium text-muted-foreground">
-                  {formatLocalDateTime(currentTime, timezone)}
-                </p>
+                <HeaderClock timezone={timezone} className="hidden sm:block text-base font-medium text-muted-foreground" />
               </div>
 
 
@@ -702,9 +709,7 @@ const Index = () => {
             </div>
 
             {/* Mobile clock — own full-width line, never truncated */}
-            <p className="sm:hidden text-base font-semibold text-foreground -mt-1">
-              {formatLocalDateTime(currentTime, timezone)}
-            </p>
+            <HeaderClock timezone={timezone} className="sm:hidden text-base font-semibold text-foreground -mt-1" />
 
 
 
