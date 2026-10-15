@@ -39,11 +39,11 @@ const DayCell = memo(({
 }: {
   day: number; isCompleted: boolean; canToggle: boolean; isMissed: boolean;
   dayIsFuture: boolean; isToday: boolean; isYesterday: boolean; isSkipped: boolean;
-  onToggle: () => void;
+  onToggle: (day: number) => void;
 }) => (
   <td className="p-0 border-l border-border">
     <button
-      onClick={() => canToggle && !isSkipped && onToggle()}
+      onClick={() => canToggle && !isSkipped && onToggle(day)}
       disabled={!canToggle || isSkipped}
       title={
         isSkipped ? "⊘ N/A (skipped)" :
@@ -120,6 +120,14 @@ export const HabitGrid = memo(({
     });
     return result;
   }, [daysInMonth, currentMonth]);
+
+  // Stable per-habit toggle callbacks so memoized DayCells skip re-rendering.
+  const togglerCache = useMemo(() => new Map<string, (day: number) => void>(), [onToggleDay]);
+  const getToggler = (habitId: string) => {
+    let fn = togglerCache.get(habitId);
+    if (!fn) { fn = (day: number) => onToggleDay(habitId, day); togglerCache.set(habitId, fn); }
+    return fn;
+  };
 
   const getDayHabitStats = useCallback((day: number) => {
     const completedCount = habits.filter(h => isDayCompleted(h, currentMonth, day)).length;
@@ -311,7 +319,7 @@ export const HabitGrid = memo(({
                         isToday={dayIsToday}
                         isYesterday={dayIsYesterday}
                         isSkipped={isSkipped}
-                        onToggle={() => onToggleDay(habit.id, day)}
+                        onToggle={getToggler(habit.id)}
                       />
                     );
                   })

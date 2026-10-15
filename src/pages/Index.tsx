@@ -437,9 +437,11 @@ const Index = () => {
     }
   };
 
-  const handleToggleDay = (habitId: string, day: number) => {
+  const habitsRef = useRef(habits);
+  habitsRef.current = habits;
+  const handleToggleDay = useCallback((habitId: string, day: number) => {
     const dateString = createDateString(currentMonth, day);
-    const target = habits.find(h => h.id === habitId);
+    const target = habitsRef.current.find(h => h.id === habitId);
     if (
       target?.skippedDays?.includes(dateString) &&
       !target.completedDays.includes(dateString)
@@ -452,7 +454,7 @@ const Index = () => {
         habit.id === habitId ? toggleHabitDayMark(habit, dateString, "complete") : habit,
       ),
     );
-  };
+  }, [currentMonth]);
 
   const handleAddHabit = (name: string) => {
     const monthKey = getMonthKey(currentMonth);
