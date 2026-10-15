@@ -143,6 +143,21 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
         };
       }
     }
+    // Full-date history for earlier months (same habit name) so the widget can
+    // show past weeks correctly when browsing back with ‹.
+    const hist: Record<string, "d" | "s"> = {};
+    const cutoff = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+    const cutoffKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}`;
+    for (const ph of habits) {
+      if (ph.name !== h.name || ph.month === month || ph.month < cutoffKey || ph.month > month) continue;
+      const [py, pm] = ph.month.split("-").map(Number);
+      const dim = new Date(py, pm, 0).getDate();
+      for (let d = 1; d <= dim; d++) {
+        const ds = `${ph.month}-${String(d).padStart(2, "0")}`;
+        if ((ph.completedDays ?? []).includes(ds)) hist[ds] = "d";
+        else if ((ph.skippedDays ?? []).includes(ds) || (ph.restDays ?? []).includes(new Date(`${ds}T12:00:00`).getDay())) hist[ds] = "s";
+      }
+    }
     // Streak baselines that ignore today's tick, so the widget can add +1
     // live when today is ticked from the home screen.
     const withoutToday = { ...h, completedDays: h.completedDays.filter(d => d !== today) };
@@ -155,6 +170,7 @@ export const syncWidgetData = async ({ habits, tasks, notes, frozenDates }: Widg
       skipped: naNums,
       frozen: frozenNums,
       total: totalDaysInMonth,
+      hist,
       ...(prev ? { prev } : {}),
     };
   });
