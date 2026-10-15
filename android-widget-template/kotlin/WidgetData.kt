@@ -63,6 +63,20 @@ object WidgetData {
         return if (m.isNotEmpty()) m else "Open app to sync"
     }
 
+    /** Month(s) of the week currently shown in the weekly widget. */
+    fun weekSubtitle(ctx: Context): String {
+        if (getString(ctx, "widget_new_month", "") == "1" && weekOffset(ctx) == 0) return subtitle(ctx)
+        if (!hasData(ctx)) return "Open app to sync"
+        val start = weekStart(ctx)
+        val end = (start.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 6) }
+        val full = SimpleDateFormat("MMMM yyyy", Locale.US)
+        if (start.get(Calendar.MONTH) == end.get(Calendar.MONTH)) return full.format(start.time)
+        val sm = SimpleDateFormat("MMM", Locale.US)
+        return if (start.get(Calendar.YEAR) == end.get(Calendar.YEAR))
+            sm.format(start.time) + " – " + sm.format(end.time) + " " + end.get(Calendar.YEAR)
+        else sm.format(start.time) + " " + start.get(Calendar.YEAR) + " – " + sm.format(end.time) + " " + end.get(Calendar.YEAR)
+    }
+
     /** True when the app has synced data to native storage at least once. */
     fun hasData(ctx: Context): Boolean =
         getString(ctx, "last_sync", "").isNotEmpty()
@@ -197,14 +211,19 @@ object WidgetData {
     }
 
     /** Flips the previous-month "yesterday" state; returns false if it's skipped. */
-    fun togglePrev(ctx: Context, prevId: String, date: String): Boolean {
+    fun togglePrev(ctx: Context, habitId: String, date: String): Boolean {
         val arr = getJsonArray(ctx, "month_grid")
         var ok = false
         for (i in 0 until arr.length()) {
-            val p = arr.optJSONObject(i)?.optJSONObject("prev") ?: continue
-            if (p.optString("id") != prevId || p.optString("date") != date) continue
-            if (p.optBoolean("skip")) return false
-            p.put("done", !p.optBoolean("done")); ok = true
+            val o = arr.optJSONObject(i) ?: continue
+            val p = o.optJSONObject("prev")
+            if (o.optString("id") != habitId && p?.optString("id") != habitId) continue
+            val hist = o.optJSONObject("hist") ?: JSONObject().also { o.put("hist", it) }
+            val cur = hist.optString(date, "")
+            if (cur == "s") return false
+            if (cur == "d") hist.remove(date) else hist.put(date, "d")
+            if (p != null && p.optString("date") == date) p.put("done", cur != "d")
+            ok = true
         }
         if (ok) putString(ctx, "month_grid", arr.toString())
         return ok

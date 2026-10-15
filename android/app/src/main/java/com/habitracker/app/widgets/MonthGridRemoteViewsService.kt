@@ -67,15 +67,17 @@ private class MonthGridFactory(private val ctx: Context) : RemoteViewsService.Re
         val currentMonth = todayStr.substring(0, 7)
 
         val prev = o.optJSONObject("prev")
+        val hist = o.optJSONObject("hist")
 
         for (i in cellIds.indices) {
             val (date, dayNum, _) = dates[i]
             val id = cellIds[i]
             val inMonth = date.startsWith(currentMonth)
             // Yesterday in the previous month (1st of the month): use the exported "prev" state.
-            val usePrev = !inMonth && prev != null && date == yesterdayStr && prev.optString("date") == date
-            val isDone = if (usePrev) prev!!.optBoolean("done") else inMonth && done.contains(dayNum)
-            val isSkip = !isDone && (if (usePrev) prev!!.optBoolean("skip") else inMonth && skipped.contains(dayNum))
+            val usePrev = !inMonth && date == yesterdayStr
+            val h = if (inMonth) "" else (hist?.optString(date, "") ?: "")
+            val isDone = if (inMonth) done.contains(dayNum) else h == "d"
+            val isSkip = !isDone && (if (inMonth) skipped.contains(dayNum) else h == "s")
             val isToday = date == todayStr
             // Only today and yesterday can be ticked; skipped days must be un-skipped first.
             val inWindow = date == todayStr || date == yesterdayStr
@@ -107,7 +109,7 @@ private class MonthGridFactory(private val ctx: Context) : RemoteViewsService.Re
                     // Always send a toggle; the receiver re-checks today/yesterday at tap time,
                     // so a widget left untouched overnight still ticks on the first touch.
                     HabitToggleReceiver.OP_TOGGLE)
-                putExtra(HabitToggleReceiver.EXTRA_HABIT_ID, if (usePrev) prev!!.optString("id") else habitId)
+                putExtra(HabitToggleReceiver.EXTRA_HABIT_ID, habitId)
                 putExtra(HabitToggleReceiver.EXTRA_DATE, date)
                 putExtra(HabitToggleReceiver.EXTRA_DAY, if (usePrev) 0 else dayNum)
                 putExtra(HabitToggleReceiver.EXTRA_TOGGLEABLE, tappable)

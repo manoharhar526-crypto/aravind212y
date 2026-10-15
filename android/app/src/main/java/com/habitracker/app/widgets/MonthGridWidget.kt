@@ -37,7 +37,7 @@ class MonthGridWidget : AppWidgetProvider() {
     private fun buildViews(ctx: Context, appWidgetId: Int): RemoteViews {
         val v = RemoteViews(ctx.packageName, R.layout.widget_month_grid)
 
-        v.setTextViewText(R.id.subtitle, WidgetData.subtitle(ctx))
+        v.setTextViewText(R.id.subtitle, WidgetData.weekSubtitle(ctx))
         v.setTextViewText(R.id.week_label, WidgetData.weekLabel(ctx))
 
         // Wire the ListView to our RemoteViewsService (per-widget-id intent)
