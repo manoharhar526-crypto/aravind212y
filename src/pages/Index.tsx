@@ -281,6 +281,9 @@ const Index = () => {
           });
         }
         if (queued.length || skips.length) {
+          // Make sure the save effect persists these taps even on first render,
+          // so a later storage/cloud load can't wipe them.
+          isFirstSave.current = false;
           // Taps may be weeks or months old, or made after the month rolled over
           // while the app stayed closed. Route each tap to the habit for the
           // tap's own month (same name), creating that month's habit if needed,
@@ -323,7 +326,13 @@ const Index = () => {
 
     const onVisible = () => { if (document.visibilityState === "visible") applyQueued(); };
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    // Android WebView doesn't always fire visibilitychange — listen to native resume too.
+    const subs: Array<{ remove: () => void }> = [];
+    import("@capacitor/app").then(({ App }) => {
+      App.addListener("resume", applyQueued).then(h => subs.push(h)).catch(() => {});
+      App.addListener("appStateChange", st => { if (st.isActive) applyQueued(); }).then(h => subs.push(h)).catch(() => {});
+    }).catch(() => {});
+    return () => { document.removeEventListener("visibilitychange", onVisible); subs.forEach(h => h.remove()); };
   }, []);
 
 
