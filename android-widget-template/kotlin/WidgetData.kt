@@ -59,6 +59,13 @@ object WidgetData {
     /** Header subtitle: month name, or a hint when the app has never synced. */
     fun subtitle(ctx: Context): String {
         if (getString(ctx, "widget_new_month", "") == "1") return "New month · open app to add new habits"
+        val m = getString(ctx, "calendar_month", "")
+        return if (m.isNotEmpty()) m else "Open app to sync"
+    }
+
+    /** Month(s) of the week currently shown in the weekly widget. */
+    fun weekSubtitle(ctx: Context): String {
+        if (getString(ctx, "widget_new_month", "") == "1" && weekOffset(ctx) == 0) return subtitle(ctx)
         if (!hasData(ctx)) return "Open app to sync"
         val start = weekStart(ctx)
         val end = (start.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 6) }
