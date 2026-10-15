@@ -5,6 +5,10 @@
 @tailwind utilities;
 
 /* Prevent black flash on page transitions */
+button, a, [role="button"], td, input, label {
+  touch-action: manipulation;
+}
+
 html, body {
   background-color: hsl(0, 0%, 8%);
   min-height: 100vh;
